@@ -2,13 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { authService } from "@/lib/auth-service"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { loginUser, registerUser } from "@/lib/redux/authThunks"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle, CheckCircle } from "lucide-react"
@@ -35,9 +36,31 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [registerError, setRegisterError] = useState("")
   const [registerSuccess, setRegisterSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Use Redux
+  const dispatch = useAppDispatch();
+  const { loading, isAuthenticated, user } = useAppSelector(state => state.auth);
+  
+  // Effect to sync Redux loading state with local loading state
+  useEffect(() => {
+    setIsLoading(loading);
+  }, [loading]);
+  
+  // Effect to handle authentication success
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Call the onLogin callback with user information
+      const fullName = `${user.firstName} ${user.lastName}`;
+      onLogin({
+        name: fullName,
+        email: user.email,
+        role: user.role || "User",
+      });
+    }
+  }, [isAuthenticated, user, onLogin]);
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setLoginError("")
 
     try {
@@ -46,28 +69,19 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         return;
       }
 
-      // Send request to the backend API
-      const response = await authService.login({
+      // Dispatch login action
+      await dispatch(loginUser({
         email: loginData.email,
         password: loginData.password
-      });
-      
-      // Store authentication information
-      authService.storeToken(response.access_token);
-      authService.storeUser(response.user);
-      
-      // Call the onLogin callback with user information
-      const fullName = `${response.user.firstName} ${response.user.lastName}`;
-      onLogin({
-        name: fullName,
-        email: response.user.email,
-        role: response.user.role || "User", // Fallback to "User" if role is not provided
+      })).unwrap().catch((error) => {
+        console.error("Login error:", error);
+        setLoginError(typeof error === 'string' ? error : "Failed to login. Please check your credentials.");
       });
       
     } catch (error) {
       console.error("Login error:", error);
       setLoginError(error instanceof Error ? error.message : "Failed to login. Please check your credentials.");
-    }    setIsLoading(false)
+    }
   }
   
   const handleRegister = async (e: React.FormEvent) => {
@@ -76,49 +90,46 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
     setRegisterError("")
     setRegisterSuccess("")
     
-    try {
-      // Validation
+    try {      // Validation
       if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
         setRegisterError("Please fill in all required fields")
-        setIsLoading(false)
         return
       }
 
       if (registerData.password !== registerData.confirmPassword) {
         setRegisterError("Passwords do not match")
-        setIsLoading(false)
         return
       }
 
       if (registerData.password.length < 6) {
         setRegisterError("Password must be at least 6 characters long")
-        setIsLoading(false)
         return
-      }      // Send registration request to the API
-      const response = await authService.register({
+      }// Dispatch register action
+      await dispatch(registerUser({
         firstName: registerData.firstName,
         lastName: registerData.lastName,
         email: registerData.email,
-        password: registerData.password
-      });
-
-      setRegisterSuccess("Account created successfully! You can now log in.")
-        // Reset form
-      setRegisterData({ 
-        firstName: "", 
-        lastName: "", 
-        email: "", 
-        password: "", 
-        confirmPassword: "", 
-        role: "" // Keep this for type compatibility, even though not used in UI
+        password: registerData.password      })).unwrap().then(() => {
+        setRegisterSuccess("Account created successfully! You can now log in.");
+        
+        // Reset form on success
+        setRegisterData({ 
+          firstName: "", 
+          lastName: "", 
+          email: "", 
+          password: "", 
+          confirmPassword: "", 
+          role: "" // Keep this for type compatibility, even though not used in UI
+        });
+      }).catch((error) => {
+        console.error("Registration error:", error);
+        setRegisterError(typeof error === 'string' ? error : "Failed to register. Please try again.");
       })
       
     } catch (error) {
       console.error("Registration error:", error);
       setRegisterError(error instanceof Error ? error.message : "Failed to register. Please try again.");
-    }
-
-    setIsLoading(false)
+    }    // No need to manually set isLoading to false since it's controlled by the Redux state
   }
 
   return (
@@ -213,7 +224,8 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     <p className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">API Connection</p>
                     <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                       <p>Using API at: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}</p>
-                      <p>Please register a new account or use your existing credentials</p>
+                      <p>Authentication status: {isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
+                      {!isAuthenticated && <p>Please register a new account or use your existing credentials</p>}
                     </div>
                   </div>
                 </form>
