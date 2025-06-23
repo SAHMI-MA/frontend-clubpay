@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { TopBar } from "@/components/top-bar"
@@ -11,22 +11,32 @@ import { FinancialManagement } from "@/components/financial-management"
 import { MatchManagement } from "@/components/match-management"
 import { AssociationSettings } from "@/components/association-settings"
 import { AuthPage } from "@/components/auth-page"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { logoutUser } from "@/lib/redux/authThunks"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [darkMode, setDarkMode] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null)
+  
+  // Use Redux for authentication state
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, user: reduxUser } = useAppSelector(state => state.auth);
+  
+  // Transform Redux user data to the format expected by components
+  const user = reduxUser ? {
+    name: `${reduxUser.firstName} ${reduxUser.lastName}`,
+    email: reduxUser.email,
+    role: reduxUser.role || 'User'
+  } : null;
 
   const handleLogin = (userData: { name: string; email: string; role: string }) => {
-    setUser(userData)
-    setIsAuthenticated(true)
+    // Note: We don't need to set user here anymore as it's handled by Redux
+    // when the login action is dispatched in the AuthPage component
   }
 
   const handleLogout = () => {
-    setUser(null)
-    setIsAuthenticated(false)
-    setCurrentPage("dashboard")
+    dispatch(logoutUser());
+    setCurrentPage("dashboard");
   }
 
   const renderCurrentPage = () => {
