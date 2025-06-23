@@ -17,9 +17,11 @@ import { Badge } from "@/components/ui/badge"
 interface TopBarProps {
   darkMode: boolean
   setDarkMode: (darkMode: boolean) => void
+  user: { name: string; email: string; role: string } | null
+  onLogout: () => void
 }
 
-export function TopBar({ darkMode, setDarkMode }: TopBarProps) {
+export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 w-full">
       <div className="flex items-center gap-4">
@@ -50,17 +52,28 @@ export function TopBar({ darkMode, setDarkMode }: TopBarProps) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-gray-600 dark:text-gray-400">
+            <Button variant="ghost" className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
               <User className="h-4 w-4" />
+              <div className="text-left hidden sm:block">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.role}</p>
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Admin User</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              <div>
+                <p className="font-medium">{user?.name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
+            <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400">
+              Sign out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
