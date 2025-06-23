@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { authService } from "@/lib/auth-service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle, CheckCircle } from "lucide-react"
@@ -21,7 +22,8 @@ interface AuthPageProps {
 export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [registerData, setRegisterData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -33,72 +35,89 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [registerError, setRegisterError] = useState("")
   const [registerSuccess, setRegisterSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setLoginError("")
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      if (!loginData.email || !loginData.password) {
+        setLoginError("Please enter both email and password")
+        return;
+      }
 
-    // Simple validation - in real app, this would be API authentication
-    if (loginData.email === "admin@sports.com" && loginData.password === "admin123") {
-      onLogin({
-        name: "John Smith",
+      // Send request to the backend API
+      const response = await authService.login({
         email: loginData.email,
-        role: "Admin",
-      })
-    } else if (loginData.email === "coach@sports.com" && loginData.password === "coach123") {
+        password: loginData.password
+      });
+      
+      // Store authentication information
+      authService.storeToken(response.access_token);
+      authService.storeUser(response.user);
+      
+      // Call the onLogin callback with user information
+      const fullName = `${response.user.firstName} ${response.user.lastName}`;
       onLogin({
-        name: "Sarah Johnson",
-        email: loginData.email,
-        role: "Coach",
-      })
-    } else if (loginData.email && loginData.password) {
-      // Allow any email/password combination for demo
-      onLogin({
-        name: "Demo User",
-        email: loginData.email,
-        role: "Manager",
-      })
-    } else {
-      setLoginError("Please enter valid credentials")
-    }
-
-    setIsLoading(false)
+        name: fullName,
+        email: response.user.email,
+        role: response.user.role || "User", // Fallback to "User" if role is not provided
+      });
+      
+    } catch (error) {
+      console.error("Login error:", error);
+      setLoginError(error instanceof Error ? error.message : "Failed to login. Please check your credentials.");
+    }    setIsLoading(false)
   }
-
+  
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setRegisterError("")
     setRegisterSuccess("")
+    
+    try {
+      // Validation
+      if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
+        setRegisterError("Please fill in all required fields")
+        setIsLoading(false)
+        return
+      }
 
-    // Validation
-    if (!registerData.name || !registerData.email || !registerData.password || !registerData.role) {
-      setRegisterError("Please fill in all fields")
-      setIsLoading(false)
-      return
+      if (registerData.password !== registerData.confirmPassword) {
+        setRegisterError("Passwords do not match")
+        setIsLoading(false)
+        return
+      }
+
+      if (registerData.password.length < 6) {
+        setRegisterError("Password must be at least 6 characters long")
+        setIsLoading(false)
+        return
+      }      // Send registration request to the API
+      const response = await authService.register({
+        firstName: registerData.firstName,
+        lastName: registerData.lastName,
+        email: registerData.email,
+        password: registerData.password
+      });
+
+      setRegisterSuccess("Account created successfully! You can now log in.")
+        // Reset form
+      setRegisterData({ 
+        firstName: "", 
+        lastName: "", 
+        email: "", 
+        password: "", 
+        confirmPassword: "", 
+        role: "" // Keep this for type compatibility, even though not used in UI
+      })
+      
+    } catch (error) {
+      console.error("Registration error:", error);
+      setRegisterError(error instanceof Error ? error.message : "Failed to register. Please try again.");
     }
 
-    if (registerData.password !== registerData.confirmPassword) {
-      setRegisterError("Passwords do not match")
-      setIsLoading(false)
-      return
-    }
-
-    if (registerData.password.length < 6) {
-      setRegisterError("Password must be at least 6 characters long")
-      setIsLoading(false)
-      return
-    }
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    setRegisterSuccess("Account created successfully! You can now log in.")
-    setRegisterData({ name: "", email: "", password: "", confirmPassword: "", role: "" })
     setIsLoading(false)
   }
 
@@ -189,15 +208,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     disabled={isLoading}
                   >
                     {isLoading ? "Signing In..." : "Sign In"}
-                  </Button>
-
-                  {/* Demo credentials */}
+                  </Button>                  {/* API information */}
                   <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">Demo Credentials:</p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">API Connection</p>
                     <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                      <p>Admin: admin@sports.com / admin123</p>
-                      <p>Coach: coach@sports.com / coach123</p>
-                      <p>Or use any email/password combination</p>
+                      <p>Using API at: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}</p>
+                      <p>Please register a new account or use your existing credentials</p>
                     </div>
                   </div>
                 </form>
@@ -228,18 +244,29 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                         {registerSuccess}
                       </AlertDescription>
                     </Alert>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Full Name</Label>
-                    <Input
-                      id="register-name"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={registerData.name}
-                      onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
-                      required
-                    />
+                  )}                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="register-first-name">First Name</Label>
+                      <Input
+                        id="register-first-name"
+                        type="text"
+                        placeholder="Enter your first name"
+                        value={registerData.firstName}
+                        onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-last-name">Last Name</Label>
+                      <Input
+                        id="register-last-name"
+                        type="text"
+                        placeholder="Enter your last name"
+                        value={registerData.lastName}
+                        onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -254,7 +281,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="register-role">Role</Label>
                     <Select
                       value={registerData.role}
@@ -270,7 +297,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                         <SelectItem value="player">Player</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
 
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Password</Label>
