@@ -1,11 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
+import userReducer from './userSlice';
+import roleReducer from './roleSlice';
+import permissionReducer from './permissionSlice';
 
 // Configure the Redux store
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    // Add other reducers here as needed
+    users: userReducer,
+    roles: roleReducer,
+    permissions: permissionReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

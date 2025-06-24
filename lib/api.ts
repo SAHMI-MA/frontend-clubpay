@@ -90,14 +90,52 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     });
-  },
-
-  /**
+  },  /**
    * DELETE request
    * @param endpoint - The API endpoint
    * @returns Promise with the response data
    */
   async delete<T>(endpoint: string): Promise<T> {
-    return this.fetch<T>(endpoint, { method: 'DELETE' });
+    // For DELETE requests we need to ensure we handle empty responses properly
+    const response = await fetch(`${getApiUrl(endpoint)}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
+      }
+    });
+    
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+    }
+    
+    // Handle both empty responses and JSON responses
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T;
+    }
+    
+    try {
+      return await response.json();
+    } catch (e) {
+      return {} as T;
+    }
+  },
+  
+  /**
+   * PATCH request
+   * @param endpoint - The API endpoint
+   * @param data - The data to send
+   * @returns Promise with the response data
+   */
+  async patch<T>(endpoint: string, data: any): Promise<T> {
+    return this.fetch<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   },
 };
