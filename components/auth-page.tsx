@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { loginUser, registerUser } from "@/lib/redux/authThunks"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle, CheckCircle } from "lucide-react"
 
 interface AuthPageProps {
@@ -37,19 +35,15 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [registerSuccess, setRegisterSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
-  // Use Redux
   const dispatch = useAppDispatch();
   const { loading, isAuthenticated, user } = useAppSelector(state => state.auth);
   
-  // Effect to sync Redux loading state with local loading state
   useEffect(() => {
     setIsLoading(loading);
   }, [loading]);
   
-  // Effect to handle authentication success
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Call the onLogin callback with user information
       const fullName = `${user.firstName} ${user.lastName}`;
       onLogin({
         name: fullName,
@@ -90,7 +84,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
     setRegisterError("")
     setRegisterSuccess("")
     
-    try {      // Validation
+    try {
       if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
         setRegisterError("Please fill in all required fields")
         return
@@ -219,15 +213,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     disabled={isLoading}
                   >
                     {isLoading ? "Signing In..." : "Sign In"}
-                  </Button>                  {/* API information */}
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">API Connection</p>
-                    <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                      <p>Using API at: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}</p>
-                      <p>Authentication status: {isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
-                      {!isAuthenticated && <p>Please register a new account or use your existing credentials</p>}
-                    </div>
-                  </div>
+                  </Button>
                 </form>
               </CardContent>
             </Card>

@@ -7,12 +7,14 @@ import { TopBar } from "@/components/top-bar"
 import { Dashboard } from "@/components/dashboard"
 import { UserManagement } from "@/components/user-management"
 import { ClubManagement } from "@/components/club-management"
+import { TeamManagement } from "@/components/team-management"
 import { FinancialManagement } from "@/components/financial-management"
 import { MatchManagement } from "@/components/match-management"
 import { AssociationSettings } from "@/components/association-settings"
 import { AuthPage } from "@/components/auth-page"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { logoutUser } from "@/lib/redux/authThunks"
+import { PlayerManagement } from "./player-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -46,7 +48,9 @@ export function SportsManagementApp() {
       case "users":
         return <UserManagement />
       case "clubs":
-        return <ClubManagement />
+        return <TeamManagement />
+      case "players":
+        return <PlayerManagement />
       case "financial":
         return <FinancialManagement />
       case "matches":
