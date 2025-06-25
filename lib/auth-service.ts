@@ -53,6 +53,7 @@ export const authService = {  /**
    */
   storeToken(token: string): void {
     localStorage.setItem('auth_token', token);
+    console.log('Auth token stored in localStorage');
   },
 
   /**
@@ -61,7 +62,9 @@ export const authService = {  /**
    */
   getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
+      console.log('Retrieved auth token:', token ? 'Found' : 'Not found');
+      return token;
     }
     return null;
   },
@@ -71,6 +74,7 @@ export const authService = {  /**
    */
   removeToken(): void {
     localStorage.removeItem('auth_token');
+    console.log('Auth token removed from localStorage');
   },
 
   /**

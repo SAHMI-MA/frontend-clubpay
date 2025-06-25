@@ -44,6 +44,11 @@ const menuItems = [
     id: "clubs",
   },
   {
+    title: "Player Management",
+    icon: Users,
+    id: "players",
+  },
+  {
     title: "Rental & Suppliers",
     icon: Warehouse,
     id: "rentals",

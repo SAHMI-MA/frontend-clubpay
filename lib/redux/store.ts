@@ -3,6 +3,8 @@ import authReducer from './authSlice';
 import userReducer from './userSlice';
 import roleReducer from './roleSlice';
 import permissionReducer from './permissionSlice';
+import teamReducer from './teamSlice';
+import playerReducer from './playerSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -11,6 +13,8 @@ export const store = configureStore({
     users: userReducer,
     roles: roleReducer,
     permissions: permissionReducer,
+    teams: teamReducer,
+    players: playerReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

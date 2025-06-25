@@ -72,7 +72,6 @@ export function UserManagement() {
   })
 
   const [editingUser, setEditingUser] = useState<User | null>(null)
-  // Properly define the role with permissions as number[] for editing
   const [editingRole, setEditingRole] = useState<(Omit<Role, 'permissions'> & { permissions: number[] }) | null>(null)
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false)
   const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false)
