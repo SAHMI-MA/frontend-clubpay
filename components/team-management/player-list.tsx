@@ -48,21 +48,24 @@ export function PlayerList({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
 
-  // Filter players if teamId is provided
-  const filteredPlayers = teamId 
-    ? players.filter(player => (player.teamId === teamId || (player.team && player.team.id === teamId)))
-    : players;
+  // Get unique positions for filter
+  const positions = Array.from(new Set(players.filter(p => p.position).map(p => p.position)))
 
-  // Filter based on search term and position
-  const displayedPlayers = filteredPlayers
-    .filter((player) => {
-      const fullName = `${player.firstName} ${player.lastName}`.toLowerCase();
-      return fullName.includes(searchTerm.toLowerCase());
-    })
-    .filter((player) => {
-      if (positionFilter === "all") return true;
-      return player.position.toLowerCase() === positionFilter.toLowerCase();
-    });
+  // Filter players based on search term and position
+  const filteredPlayers = players.filter(player => {
+    const matchesSearch = !searchTerm || 
+      player.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      player.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (player.team?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesPosition = positionFilter === "all" || player.position === positionFilter
+    const matchesTeam = !teamId || player.teamId === teamId
+
+    return matchesSearch && matchesPosition && matchesTeam
+  })
+
+  const playerCount = filteredPlayers.length
+  const totalPlayers = players.length
 
   const handleDeleteClick = (player: Player) => {
     setPlayerToDelete(player);
@@ -85,11 +88,6 @@ export function PlayerList({
     }
   };
 
-  // Get unique positions for filter dropdown
-  const uniquePositions = Array.from(
-    new Set(players.map((player) => player.position))
-  ).filter(position => position && position.trim() !== "");
-  
   // Calculate age from date of birth
   const calculateAge = (dateOfBirth: string): number => {
     const today = new Date();
@@ -139,35 +137,33 @@ export function PlayerList({
         )}
         <CardContent>
           {!isSimplified && (
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Search players..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search players..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               </div>
               <Select value={positionFilter} onValueChange={setPositionFilter}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by position" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Positions</SelectItem>
-                  {uniquePositions.map((position) => (
-                    position && position.trim() !== "" ? (
-                      <SelectItem key={position} value={position}>
-                        {position}
-                      </SelectItem>
-                    ) : null
+                  {positions.map(position => (
+                    <SelectItem key={position} value={position}>{position}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {displayedPlayers.length > 0 ? (
+          {filteredPlayers.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -180,7 +176,7 @@ export function PlayerList({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayedPlayers.map((player) => (
+                  {filteredPlayers.map((player) => (
                     <TableRow key={player.id}>
                       <TableCell className="font-medium flex items-center gap-3">
                         {player.playerImage ? (

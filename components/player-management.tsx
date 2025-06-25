@@ -26,6 +26,9 @@ import { authService } from "@/lib/auth-service";
 import { loginWithDemoCredentials, testApiConnection } from "@/lib/api-utils";
 import { debugAuth } from "@/lib/auth-debug";
 import { debugPlayersTeamStructure } from "@/lib/team-data-debug";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function PlayerManagement() {
   const dispatch = useAppDispatch();
@@ -33,8 +36,11 @@ export function PlayerManagement() {
   const { teams } = useAppSelector((state) => state.teams);
   const [activeTab, setActiveTab] = useState("list");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterPosition, setFilterPosition] = useState<string>("all")
+  const [filterTeam, setFilterTeam] = useState<string>("all")
 
   const [apiConnectionStatus, setApiConnectionStatus] = useState<{ 
     isServerReachable: boolean;
@@ -178,34 +184,44 @@ export function PlayerManagement() {
     }
   };
 
+  // Get unique positions from players
+  const positions = Array.from(new Set(players.map(p => p.position))).filter(Boolean)
+
+  // Filter players based on search query, position, and team
+  const filteredPlayers = players.filter(player => {
+    const matchesSearch = searchQuery.toLowerCase() === "" ||
+      player.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      player.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      player.team?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesPosition = filterPosition === "all" || player.position === filterPosition
+    const matchesTeam = filterTeam === "all" || player.teamId?.toString() === filterTeam
+
+    return matchesSearch && matchesPosition && matchesTeam
+  })
+
   const handleCreatePlayer = () => {
-    setIsCreating(true);
-    setSelectedPlayer(null);
-    setIsEditing(false);
-    setActiveTab("form");
-  };
+    setIsCreateDialogOpen(true)
+  }
 
   const handleEditPlayer = (player: Player) => {
-    setSelectedPlayer(player);
-    setIsEditing(true);
-    setIsCreating(false);
-    setActiveTab("form");
-  };
+    setSelectedPlayer(player)
+    setIsEditDialogOpen(true)
+  }
 
-  const handleViewPlayerDetails = (player: Player) => {
-    setSelectedPlayer(player);
-    setActiveTab("details");
-  };
+  const handleCreateSuccess = () => {
+    setIsCreateDialogOpen(false)
+    dispatch(fetchAllPlayers())
+    toast.success("Player created successfully")
+  }
 
-  const handleFormCancel = () => {
-    setIsCreating(false);
-    setIsEditing(false);
-    setActiveTab("list");
-  };
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false)
+    dispatch(fetchAllPlayers())
+    toast.success("Player updated successfully")
+  }
 
   const handleFormSuccess = () => {
-    setIsCreating(false);
-    setIsEditing(false);
     setActiveTab("list");
     
     // Refresh players and debug team structure after form submission
@@ -240,6 +256,11 @@ export function PlayerManagement() {
     return team ? team.name : 'Unknown';
   };
 
+  const handleViewPlayerDetails = (player: Player) => {
+    setSelectedPlayer(player)
+    setActiveTab("details")
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -269,57 +290,102 @@ export function PlayerManagement() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <UserCircle className="h-4 w-4" />
-            Player Roster
-          </TabsTrigger>
-          <TabsTrigger value="details" disabled={!selectedPlayer && !isCreating} className="flex items-center gap-2">
-            <UserCog className="h-4 w-4" />
-            {selectedPlayer ? `${selectedPlayer.firstName} ${selectedPlayer.lastName}` : "Player Details"}
-          </TabsTrigger>
-        </TabsList>
+      {/* Create Player Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Player</DialogTitle>
+            <DialogDescription>Add a new player to your organization</DialogDescription>
+          </DialogHeader>
+          <PlayerForm 
+            isCreating={true}
+            onSuccess={handleCreateSuccess}
+            onCancel={() => setIsCreateDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-        {/* Players List Tab */}
-        <TabsContent value="list">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-800" />
-            </div>
-          ) : (
-            <PlayerList 
-              players={players}
-              teams={teams}
-              onViewDetails={handleViewPlayerDetails}
-              onEditPlayer={handleEditPlayer}
-              onAddNew={handleCreatePlayer}
-              isSimplified={false}
-            />
-          )}
-        </TabsContent>
+      {/* Edit Player Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Player</DialogTitle>
+            <DialogDescription>Update player information</DialogDescription>
+          </DialogHeader>
+          <PlayerForm 
+            player={selectedPlayer}
+            isEditing={true}
+            onSuccess={handleEditSuccess}
+            onCancel={() => setIsEditDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-        {/* Player Details Tab */}
-        <TabsContent value="details">
-          {selectedPlayer && (
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Input
+          placeholder="Search players or teams..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={filterPosition} onValueChange={setFilterPosition}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by position" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Positions</SelectItem>
+            {Array.from(new Set(players.map(p => p.position))).filter(Boolean).map(position => (
+              <SelectItem key={position} value={position}>{position}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterTeam} onValueChange={setFilterTeam}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by team" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {teams.filter(team => team && team.id && team.name).map(team => (
+              <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Player List */}
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-800" />
+        </div>
+      ) : (
+        <PlayerList 
+          players={filteredPlayers}
+          teams={teams}
+          onViewDetails={handleViewPlayerDetails}
+          onEditPlayer={handleEditPlayer}
+          onAddNew={handleCreatePlayer}
+          isSimplified={false}
+        />
+      )}
+      
+      {/* Player Details Dialog */}
+      {selectedPlayer && activeTab === "details" && (
+        <Dialog open={true} onOpenChange={(open) => !open && setActiveTab("list")}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Player Details</DialogTitle>
+              <DialogDescription>
+                {`${selectedPlayer.firstName} ${selectedPlayer.lastName}`}
+              </DialogDescription>
+            </DialogHeader>
             <PlayerDetails 
               player={selectedPlayer}
               onEditPlayer={handleEditPlayer}
             />
-          )}
-        </TabsContent>
-
-        {/* Player Form Tab */}
-        <TabsContent value="form">
-          <PlayerForm 
-            player={isEditing ? selectedPlayer : null}
-            isCreating={isCreating}
-            isEditing={isEditing}
-            onCancel={handleFormCancel}
-            onSuccess={handleFormSuccess}
-          />
-        </TabsContent>
-      </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
