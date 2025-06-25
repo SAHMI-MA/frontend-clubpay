@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Team, Player, Match } from "@/lib/types/team-management"
+import { useState, useEffect } from "react"
+import { Team, Player, Match, Staff } from "@/lib/types/team-management"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,11 +17,12 @@ import {
   UserPlus,
   PlusCircle,
   MapPin,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react"
 import { fetchTeamById } from "@/lib/redux/teamSlice"
-import { useAppDispatch } from "@/lib/redux/hooks"
-import { useEffect } from "react"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import { toast } from "sonner"
 
 interface TeamDetailsProps {
@@ -31,12 +32,17 @@ interface TeamDetailsProps {
 
 export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
   const dispatch = useAppDispatch()
+  const { staff: allStaff, loading: staffLoading } = useAppSelector((state) => state.staff)
   const [activeTab, setActiveTab] = useState("overview")
 
   // Fetch detailed team data when viewing
   useEffect(() => {
     dispatch(fetchTeamById(team.id))
+    dispatch(fetchAllStaff())
   }, [team.id, dispatch])
+
+  // Staff members for this team
+  const staffList: Staff[] = allStaff.filter((s: Staff) => s.teamId === team.id)
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -115,10 +121,14 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="players" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Players
+          </TabsTrigger>
+          <TabsTrigger value="staff" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Staff
           </TabsTrigger>
           <TabsTrigger value="matches" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -192,6 +202,56 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="staff" className="space-y-4 mt-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Team Staff</h3>
+            <Button size="sm" className="gap-2 flex items-center">
+              <PlusCircle className="h-4 w-4" />
+              Add Staff
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              {staffLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-800" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {staffList.length > 0 ? (
+                      staffList.map((staffMember: Staff) => (
+                        <TableRow key={staffMember.id}>
+                          <TableCell>{staffMember.firstName} {staffMember.lastName}</TableCell>
+                          <TableCell>{staffMember.role}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-10 text-gray-500">
+                          No staff assigned to this team
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

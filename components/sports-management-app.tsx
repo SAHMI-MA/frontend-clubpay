@@ -15,6 +15,7 @@ import { AuthPage } from "@/components/auth-page"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { logoutUser } from "@/lib/redux/authThunks"
 import { PlayerManagement } from "./player-management"
+import { StaffManagement } from "./team-management/staff-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -51,6 +52,8 @@ export function SportsManagementApp() {
         return <TeamManagement />
       case "players":
         return <PlayerManagement />
+      case "staff":
+        return <StaffManagement />
       case "financial":
         return <FinancialManagement />
       case "matches":

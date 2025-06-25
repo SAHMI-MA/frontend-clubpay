@@ -5,6 +5,7 @@ import roleReducer from './roleSlice';
 import permissionReducer from './permissionSlice';
 import teamReducer from './teamSlice';
 import playerReducer from './playerSlice';
+import staffReducer from './staffSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -15,6 +16,7 @@ export const store = configureStore({
     permissions: permissionReducer,
     teams: teamReducer,
     players: playerReducer,
+    staff: staffReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

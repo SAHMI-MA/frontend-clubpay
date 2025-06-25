@@ -23,10 +23,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle
 } from "@/components/ui/dialog"
 
 export function TeamManagement() {
@@ -89,16 +87,30 @@ export function TeamManagement() {
     toast.success("Team updated successfully")
   }
 
-  // Calculate stats for the dashboard
-  const totalPlayers = teams.reduce((acc, team) => acc + (team.players?.length || 0), 0)
-  const totalTeams = teams.length
-  const upcomingMatches = teams.reduce((acc, team) => {
+  // Calculate stats for the dashboard using valid teams only
+  const totalPlayers = teamsWithFallbackCategory.reduce((acc, team) => {
+    // Only count valid players that belong to this team
+    const validPlayers = team.players?.filter(player => 
+      player && player.id && player.teamId === team.id
+    ) || []
+    return acc + validPlayers.length
+  }, 0)
+
+  const totalTeams = teamsWithFallbackCategory.length
+
+  const upcomingMatches = teamsWithFallbackCategory.reduce((acc, team) => {
+    // Only count valid upcoming matches
     const upcoming = team.matches?.filter(match => 
-      new Date(match.dateTime) > new Date() && match.status === 'scheduled'
+      match && match.id && match.dateTime &&
+      new Date(match.dateTime) > new Date() && 
+      match.status === 'scheduled'
     ).length || 0
     return acc + upcoming
   }, 0)
-  const totalBudget = teams.reduce((acc, team) => acc + team.budget, 0)
+
+  const totalBudget = teamsWithFallbackCategory.reduce((acc, team) => 
+    acc + (typeof team.budget === 'number' ? team.budget : 0)
+  , 0)
 
   return (
     <div className="space-y-6">

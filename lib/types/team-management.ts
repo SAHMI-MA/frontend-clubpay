@@ -9,6 +9,9 @@ export interface Team {
   matches?: Match[];
   logoUrl?: string;
   description?: string;
+  numberOfPlayers?: number;
+  numberOfStaff?: number;
+  numberOfMatches?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -157,4 +160,69 @@ export interface UpdateContractDto {
   hasBonus?: boolean;
   signatureBonus?: number;
   description?: string;
+}
+
+export enum StaffRole {
+  HEAD_COACH = "Head Coach",
+  ASSISTANT_COACH = "Assistant Coach",
+  FITNESS_COACH = "Fitness Coach",
+  PHYSIOTHERAPIST = "Physiotherapist",
+  TEAM_MANAGER = "Team Manager",
+  SCOUT = "Scout",
+  ANALYST = "Analyst",
+  EQUIPMENT_MANAGER = "Equipment Manager",
+  MEDICAL_DOCTOR = "Medical Doctor",
+  NUTRITIONIST = "Nutritionist",
+}
+
+export interface Staff {
+  id: number;
+  firstName: string;
+  lastName: string;
+  role: StaffRole;
+  dateOfBirth: string;
+  phoneNumber?: string;
+  email?: string;
+  qualification?: string;
+  experience?: string;
+  staffImage?: string;
+  salary: number;
+  contractStartDate: string;
+  contractEndDate: string;
+  teamId: number;
+  team?: Team;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateStaffDto {
+  firstName: string;
+  lastName: string;
+  role: StaffRole;
+  dateOfBirth: string;
+  phoneNumber?: string;
+  email?: string;
+  qualification?: string;
+  experience?: string;
+  staffImage?: string;
+  salary: number;
+  contractStartDate: string;
+  contractEndDate: string;
+  teamId: number;
+}
+
+export interface UpdateStaffDto {
+  firstName?: string;
+  lastName?: string;
+  role?: StaffRole;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+  email?: string;
+  qualification?: string;
+  experience?: string;
+  staffImage?: string;
+  salary?: number;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  teamId?: number;
 }
