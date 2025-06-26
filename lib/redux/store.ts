@@ -8,6 +8,7 @@ import playerReducer from './playerSlice';
 import staffReducer from './staffSlice';
 import supplierReducer from './supplierSlice';
 import acquisitionReducer from './acquisitionSlice';
+import financialReducer from './financialSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -21,6 +22,7 @@ export const store = configureStore({
     staff: staffReducer,
     suppliers: supplierReducer,
     acquisitions: acquisitionReducer,
+    financial: financialReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

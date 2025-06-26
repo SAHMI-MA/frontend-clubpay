@@ -54,6 +54,7 @@ import {
 } from "lucide-react"
 
 
+
 const acquisitionTypeLabels = {
   [AcquisitionType.RENTAL]: "Rental",
   [AcquisitionType.PURCHASE]: "Purchase"
@@ -67,9 +68,6 @@ const statusLabels = {
   [ApprovalStatus.RETURNED]: "Returned",
   [ApprovalStatus.CANCELLED]: "Cancelled"
 }
-
-// We should fetch teams, players, and staff from Redux but for now we'll handle assignments dynamically
-// TODO: Add proper data fetching from Redux store when team/player/staff slices are implemented
 
 export function RentalSupplierManagement() {
   const [searchTerm, setSearchTerm] = useState("")
