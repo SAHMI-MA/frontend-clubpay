@@ -10,6 +10,7 @@ import {
   Settings,
   Shield,
   Trophy,
+  Truck,
   Users,
   Warehouse,
 } from "lucide-react"
@@ -57,6 +58,11 @@ const menuItems = [
     title: "Rental & Suppliers",
     icon: Warehouse,
     id: "rentals",
+  },
+  {
+    title: "Supplier Management",
+    icon: Truck,
+    id: "suppliers",
   },
   {
     title: "Financial",

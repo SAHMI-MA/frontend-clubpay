@@ -16,6 +16,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { logoutUser } from "@/lib/redux/authThunks"
 import { PlayerManagement } from "./player-management"
 import { StaffManagement } from "./team-management/staff-management"
+import { RentalSupplierManagement } from "./rental-supplies-management"
+import { SupplierManagement } from "./supplier-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -33,8 +35,6 @@ export function SportsManagementApp() {
   } : null;
 
   const handleLogin = (userData: { name: string; email: string; role: string }) => {
-    // Note: We don't need to set user here anymore as it's handled by Redux
-    // when the login action is dispatched in the AuthPage component
   }
 
   const handleLogout = () => {
@@ -54,6 +54,10 @@ export function SportsManagementApp() {
         return <PlayerManagement />
       case "staff":
         return <StaffManagement />
+      case "rentals":
+        return <RentalSupplierManagement />
+      case "suppliers":
+        return <SupplierManagement />
       case "financial":
         return <FinancialManagement />
       case "matches":
