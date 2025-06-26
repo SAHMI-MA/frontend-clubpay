@@ -6,6 +6,8 @@ import permissionReducer from './permissionSlice';
 import teamReducer from './teamSlice';
 import playerReducer from './playerSlice';
 import staffReducer from './staffSlice';
+import supplierReducer from './supplierSlice';
+import acquisitionReducer from './acquisitionSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -17,6 +19,8 @@ export const store = configureStore({
     teams: teamReducer,
     players: playerReducer,
     staff: staffReducer,
+    suppliers: supplierReducer,
+    acquisitions: acquisitionReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',
