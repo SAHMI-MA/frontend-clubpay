@@ -55,7 +55,7 @@ export function StaffManagement() {
     }
   }, [error])
   
-  const [newStaff, setNewStaff] = useState<Partial<CreateStaffDto>>({
+  const [newStaff, setNewStaff] = useState<Partial<CreateStaffDto> & { selectedTeamId: number }>({
     firstName: "",
     lastName: "",
     role: StaffRole.HEAD_COACH,
@@ -64,17 +64,16 @@ export function StaffManagement() {
     email: "",
     qualification: "",
     experience: "",
-    salary: 0,
-    contractStartDate: "",
-    contractEndDate: "",
     teamId: teams?.[0]?.id || 0,
+    // We'll use this for tracking team selection but not send it in the API call
+    selectedTeamId: teams?.[0]?.id || 0,
   })
 
   const filteredStaff = staff.filter((s) => {
     const fullName = `${s.firstName} ${s.lastName}`.toLowerCase()
     const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) || s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesTeam = selectedTeam === "all" || s.teamId.toString() === selectedTeam
+    const matchesTeam = selectedTeam === "all" || (s.team && s.team.id.toString() === selectedTeam)
     const matchesRole = selectedRole === "all" || s.role === selectedRole
     return matchesSearch && matchesTeam && matchesRole
   })
@@ -98,8 +97,14 @@ export function StaffManagement() {
     }
   }
 
-  const getTeamName = (teamId: number) => {
-    return teams.find((team) => team.id === teamId)?.name || "Unknown Team"
+  const getTeamName = (staff: Staff) => {
+    // Check if staff has a team object
+    if (staff.team && staff.team.name) {
+      return staff.team.name;
+    }
+    
+    // Fallback if no team is assigned
+    return "No team assigned";
   }
 
   const calculateAge = (dateOfBirth: string) => {
@@ -113,12 +118,7 @@ export function StaffManagement() {
     return age
   }
 
-  const isContractExpiring = (endDate: string) => {
-    const today = new Date()
-    const threeMonthsFromNow = new Date()
-    threeMonthsFromNow.setMonth(today.getMonth() + 3)
-    return new Date(endDate) <= threeMonthsFromNow
-  }
+  // Contract expiry tracking removed as it's no longer part of the API
 
   const handleAddStaff = async () => {
     await dispatch(createStaff(newStaff as CreateStaffDto))
@@ -162,8 +162,7 @@ export function StaffManagement() {
 
   // Statistics
   const totalStaff = staff.length
-  const expiringContracts = staff.filter((s) => isContractExpiring(s.contractEndDate)).length
-  const averageSalary = staff.reduce((sum, s) => sum + s.salary, 0) / staff.length
+  // No longer tracking contracts or salary in the API
   const roleDistribution = Object.values(StaffRole)
     .map((role) => ({
       role,
@@ -231,8 +230,8 @@ export function StaffManagement() {
                 <div className="space-y-2">
                   <Label htmlFor="team">Team</Label>
                   <Select
-                    value={newStaff.teamId?.toString()}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, teamId: parseInt(value) })}
+                    value={newStaff.selectedTeamId?.toString()}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, selectedTeamId: parseInt(value), teamId: parseInt(value) })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select team" />
@@ -248,7 +247,7 @@ export function StaffManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dateOfBirth">Date of Birth</Label>
                   <Input
@@ -256,16 +255,6 @@ export function StaffManagement() {
                     type="date"
                     value={newStaff.dateOfBirth}
                     onChange={(e) => setNewStaff({ ...newStaff, dateOfBirth: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salary">Salary</Label>
-                  <Input
-                    id="salary"
-                    type="number"
-                    value={newStaff.salary}
-                    onChange={(e) => setNewStaff({ ...newStaff, salary: parseInt(e.target.value) || 0 })}
-                    placeholder="Enter salary"
                   />
                 </div>
               </div>
@@ -313,26 +302,7 @@ export function StaffManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contractStart">Contract Start Date</Label>
-                  <Input
-                    id="contractStart"
-                    type="date"
-                    value={newStaff.contractStartDate}
-                    onChange={(e) => setNewStaff({ ...newStaff, contractStartDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contractEnd">Contract End Date</Label>
-                  <Input
-                    id="contractEnd"
-                    type="date"
-                    value={newStaff.contractEndDate}
-                    onChange={(e) => setNewStaff({ ...newStaff, contractEndDate: e.target.value })}
-                  />
-                </div>
-              </div>
+              {/* Contract details have been removed as requested */}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -361,25 +331,27 @@ export function StaffManagement() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Expiring Contracts</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Staff Roles</CardTitle>
             <Calendar className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{expiringContracts}</div>
-            <p className="text-xs text-orange-600 mt-1">Within 3 months</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {roleDistribution.length}
+            </div>
+            <p className="text-xs text-orange-600 mt-1">Different roles</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Salary</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Experience</CardTitle>
+            <Briefcase className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {staff.length > 0 ? `$${Math.round(averageSalary).toLocaleString()}` : '$0'}
+              {staff.filter(s => s.experience && s.experience.length > 0).length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Per year</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Staff with experience</p>
           </CardContent>
         </Card>
 
@@ -456,7 +428,7 @@ export function StaffManagement() {
                       <TableHead>Role</TableHead>
                       <TableHead>Team</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Contract Status</TableHead>
+                      <TableHead>Experience</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -493,7 +465,7 @@ export function StaffManagement() {
                           <TableCell>
                             <Badge className={getRoleColor(staff.role)}>{staff.role}</Badge>
                           </TableCell>
-                          <TableCell>{getTeamName(staff.teamId)}</TableCell>
+                          <TableCell>{getTeamName(staff)}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
                               {staff.email && (
@@ -519,11 +491,11 @@ export function StaffManagement() {
                           <TableCell>
                             <div className="flex flex-col">
                               <p className="text-sm text-gray-900 dark:text-gray-200">
-                                Until {new Date(staff.contractEndDate).toLocaleDateString()}
+                                {staff.experience || "—"}
                               </p>
-                              {isContractExpiring(staff.contractEndDate) && (
-                                <Badge variant="outline" className="mt-1 border-orange-500 text-orange-500 w-fit">
-                                  Expiring soon
+                              {staff.qualification && (
+                                <Badge variant="outline" className="mt-1 border-blue-500 text-blue-500 w-fit">
+                                  {staff.qualification}
                                 </Badge>
                               )}
                             </div>
@@ -604,16 +576,16 @@ export function StaffManagement() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Contract Expirations</CardTitle>
-                <CardDescription>Staff members with expiring contracts</CardDescription>
+                <CardTitle>Experience Overview</CardTitle>
+                <CardDescription>Staff members with notable experience</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {staff
-                    .filter((staff) => isContractExpiring(staff.contractEndDate))
+                    .filter((staff) => staff.experience && staff.experience.length > 0)
                     .sort(
                       (a, b) =>
-                        new Date(a.contractEndDate).getTime() - new Date(b.contractEndDate).getTime()
+                        a.experience!.length - b.experience!.length
                     )
                     .map((staff) => (
                       <div key={staff.id} className="flex items-center justify-between">
@@ -640,10 +612,10 @@ export function StaffManagement() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium">
-                            {new Date(staff.contractEndDate).toLocaleDateString()}
+                            {staff.qualification || "No qualification"}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {getTeamName(staff.teamId)}
+                            {getTeamName(staff)}
                           </p>
                         </div>
                       </div>
@@ -683,7 +655,7 @@ export function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Team</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{getTeamName(selectedStaff.teamId)}</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">{getTeamName(selectedStaff)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Age</p>
@@ -698,15 +670,9 @@ export function StaffManagement() {
                   <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.email || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Contract Period</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Team</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {new Date(selectedStaff.contractStartDate).toLocaleDateString()} - {new Date(selectedStaff.contractEndDate).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Salary</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">
-                    ${selectedStaff.salary != null ? selectedStaff.salary.toLocaleString() : '-'}{`/year`}
+                    {selectedStaff.team ? selectedStaff.team.name : '—'}
                   </p>
                 </div>
               </div>
@@ -775,8 +741,17 @@ export function StaffManagement() {
                 <div className="space-y-2">
                   <Label htmlFor="edit-team">Team</Label>
                   <Select
-                    value={editingStaff.teamId?.toString() ?? 0}
-                    onValueChange={(value) => setEditingStaff({ ...editingStaff, teamId: parseInt(value) })}
+                    value={(editingStaff.team?.id || 0).toString()}
+                    onValueChange={(value) => {
+                      const selectedTeam = teams.find(t => t.id.toString() === value);
+                      // When updating, we need to send teamId in the API call, but we store it in a temporary field
+                      setEditingStaff({ 
+                        ...editingStaff, 
+                        team: selectedTeam,
+                        // @ts-ignore - teamId isn't in the type but needed for API
+                        teamId: parseInt(value) 
+                      });
+                    }}
                   >
                     <SelectTrigger id="edit-team">
                       <SelectValue placeholder="Select team" />

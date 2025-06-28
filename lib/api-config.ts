@@ -15,5 +15,12 @@ export const apiConfig = {
  * @returns The full API URL
  */
 export const getApiUrl = (path: string = ''): string => {
-  return `${apiConfig.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const normalizedPath = path.trim();
+  const baseUrl = apiConfig.baseUrl.endsWith('/') 
+    ? apiConfig.baseUrl.slice(0, -1) 
+    : apiConfig.baseUrl;
+    
+  const fullUrl = `${baseUrl}${normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`}`;
+  console.log(`API URL constructed: "${fullUrl}" from base "${apiConfig.baseUrl}" and path "${path}"`);
+  return fullUrl;
 };

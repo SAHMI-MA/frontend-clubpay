@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
-import { Team, CreateTeamDto, UpdateTeamDto } from "@/lib/types/team-management"
+import { Team} from "@/lib/types/team-management"
 import { toast } from "sonner"
 import {
   Building2,
@@ -14,6 +14,7 @@ import {
   Users,
   Loader2,
   PlusCircle,
+  Briefcase,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TeamDetails } from "./team-management/team-details"
@@ -108,9 +109,24 @@ export function TeamManagement() {
     return acc + upcoming
   }, 0)
 
-  const totalBudget = teamsWithFallbackCategory.reduce((acc, team) => 
-    acc + (typeof team.budget === 'number' ? team.budget : 0)
-  , 0)
+  // Use numberOfStaff from each team to calculate total
+  const totalStaff = teamsWithFallbackCategory.reduce((acc, team) => 
+    acc + (team.numberOfStaff || 0), 0)
+
+  // User numberOfPlayers from each team to calculate total
+  const totalPlayersCount = teamsWithFallbackCategory.reduce((acc, team) => 
+    acc + (team.numberOfPlayers || 0), 0)
+
+  const totalBudget = teamsWithFallbackCategory.reduce((acc, team) => {
+    let budget = 0;
+    if (typeof team.budget === 'number' && !isNaN(team.budget)) {
+      budget = team.budget;
+    } else if (team.budget) {
+      const parsed = parseFloat(String(team.budget));
+      budget = !isNaN(parsed) ? parsed : 0;
+    }
+    return acc + budget;
+  }, 0)
 
   return (
     <div className="space-y-6">
@@ -196,18 +212,18 @@ export function TeamManagement() {
               <CardContent>
                 <div className="flex items-center">
                   <Users className="h-5 w-5 mr-2 text-green-800" />
-                  <span className="text-3xl font-bold">{totalPlayers}</span>
+                  <span className="text-3xl font-bold">{totalPlayersCount}</span>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Matches</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Staff</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-orange-800" />
-                  <span className="text-3xl font-bold">{upcomingMatches}</span>
+                  <Briefcase className="h-5 w-5 mr-2 text-indigo-800" />
+                  <span className="text-3xl font-bold">{totalStaff}</span>
                 </div>
               </CardContent>
             </Card>

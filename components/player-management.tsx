@@ -195,7 +195,9 @@ export function PlayerManagement() {
       player.team?.name.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesPosition = filterPosition === "all" || player.position === filterPosition
-    const matchesTeam = filterTeam === "all" || player.teamId?.toString() === filterTeam
+    const matchesTeam = filterTeam === "all" || 
+      (player.teamId && player.teamId.toString() === filterTeam) ||
+      (player.team && player.team.id && player.team.id.toString() === filterTeam)
 
     return matchesSearch && matchesPosition && matchesTeam
   })
