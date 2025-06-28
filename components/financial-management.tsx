@@ -1,25 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { 
-  fetchTransactions, 
-  fetchTransactionsByFilter, 
-  updateTransactionStatus,
-  createTransaction,
-  setSelectedTransaction,
-  fetchFinancialReports,
-  generateFinancialReport
-} from "@/lib/redux/financialSlice"
-import { 
-  Transaction, 
-  TransactionType, 
-  TransactionCategory, 
-  PaymentStatus,
-  CreateTransactionDto,
-  UpdatePaymentStatusDto,
-  TransactionFilterDto
-} from "@/lib/types/financial-management"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,11 +20,72 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 import { 
-  AlertCircle, Calendar, Check, CreditCard, DollarSign, Download, Eye, Filter, 
-  Plus, Search, TrendingDown, TrendingUp, X
+  Check, 
+  CreditCard, 
+  DollarSign, 
+  Download, 
+  Eye, 
+  Filter, 
+  Plus, 
+  RefreshCcw, 
+  Search, 
+  TrendingDown, 
+  TrendingUp, 
+  X, 
+  Loader2 
 } from "lucide-react"
+import { ToastNotification, useToast, ToastType } from "@/components/ui/toast-notification"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { 
+  fetchTransactions, 
+  createTransactionFromAcquisition,
+  updateTransactionStatus
+} from "@/lib/redux/financialSlice"
+import { 
+  Transaction, 
+  TransactionType, 
+  TransactionCategory, 
+  PaymentStatus as TransactionPaymentStatus,
+  CreateTransactionFromAcquisitionDto 
+} from "@/lib/types/financial-management"
+import { 
+  fetchPendingApprovals,
+  approveOrRejectAcquisition
+} from "@/lib/redux/acquisitionSlice"
+import { 
+  Acquisition, 
+  ApprovalStatus,
+  ApprovalDto
+} from "@/lib/types/supplier-management"
+import { api } from "@/lib/api"
 
-// For chart visualization
+// Enums for legacy payment management UI
+enum PaymentType {
+  ACQUISITION = "Acquisition",
+  SALARY = "Salary",
+  UTILITY = "Utility",
+  OTHER = "Other",
+}
+
+// Interfaces
+interface PaymentRequest {
+  id: number
+  type: PaymentType
+  description: string
+  amount: number
+  requestedBy: string
+  requestDate: string
+  dueDate: string
+  status: TransactionPaymentStatus
+  approvedBy?: string
+  approvedDate?: string
+  paidDate?: string
+  notes?: string
+  category: string
+  supplier?: string
+  acquisitionId?: number
+}
+
 const monthlyData = [
   { month: "Jul", income: 15000, expenses: 12000 },
   { month: "Aug", income: 18000, expenses: 14000 },
@@ -53,146 +95,261 @@ const monthlyData = [
   { month: "Dec", income: 28000, expenses: 20000 },
 ]
 
-// Helper functions to format data for display
-const formatTransactionType = (type: TransactionType): string => {
-  switch (type) {
-    case TransactionType.INCOME:
-      return 'Income';
-    case TransactionType.EXPENSE:
-      return 'Expense';
-    default:
-      return type;
-  }
-}
-
-const formatTransactionCategory = (category: TransactionCategory): string => {
-  switch (category) {
-    case TransactionCategory.RENTAL:
-      return 'Rental';
-    case TransactionCategory.SALARY:
-      return 'Salary';
-    case TransactionCategory.DONATION:
-      return 'Donation';
-    case TransactionCategory.EQUIPMENT:
-      return 'Equipment';
-    case TransactionCategory.UTILITY:
-      return 'Utility';
-    case TransactionCategory.SPONSORSHIP:
-      return 'Sponsorship';
-    case TransactionCategory.REGISTRATION:
-      return 'Registration';
-    case TransactionCategory.OTHER:
-      return 'Other';
-    default:
-      return category;
-  }
-}
-
-const formatPaymentStatus = (status: PaymentStatus): string => {
-  switch (status) {
-    case PaymentStatus.PENDING:
-      return 'Pending';
-    case PaymentStatus.APPROVED:
-      return 'Approved';
-    case PaymentStatus.REJECTED:
-      return 'Rejected';
-    case PaymentStatus.PAID:
-      return 'Paid';
-    default:
-      return status;
-  }
-}
+// We'll replace these with real data from acquisitions
+const samplePaymentRequests: PaymentRequest[] = [
+  {
+    id: 1,
+    type: PaymentType.ACQUISITION,
+    description: "Professional Soccer Balls (Set of 20)",
+    amount: 800,
+    requestedBy: "Coach Martinez",
+    requestDate: "2024-01-15",
+    dueDate: "2024-01-25",
+    status: TransactionPaymentStatus.PENDING,
+    category: "Equipment",
+    supplier: "SportsTech Equipment",
+    acquisitionId: 1,
+    notes: "High-quality match balls for upcoming season",
+  },
+  {
+    id: 2,
+    type: PaymentType.ACQUISITION,
+    description: "Team Jerseys (Custom Design)",
+    amount: 1125,
+    requestedBy: "Team Manager",
+    requestDate: "2024-01-13",
+    dueDate: "2024-02-01",
+    status: TransactionPaymentStatus.APPROVED,
+    approvedBy: "Finance Manager",
+    approvedDate: "2024-01-14",
+    category: "Apparel",
+    supplier: "Athletic Gear Pro",
+    acquisitionId: 3,
+    notes: "New season jerseys with updated sponsor logos",
+  },
+  {
+    id: 3,
+    type: PaymentType.SALARY,
+    description: "Coach Salary - February",
+    amount: 3200,
+    requestedBy: "HR Department",
+    requestDate: "2024-01-28",
+    dueDate: "2024-02-01",
+    status: TransactionPaymentStatus.PAID,
+    approvedBy: "Finance Manager",
+    approvedDate: "2024-01-29",
+    paidDate: "2024-02-01",
+    category: "Salaries",
+  },
+  {
+    id: 4,
+    type: PaymentType.UTILITY,
+    description: "Facility Electricity Bill",
+    amount: 450,
+    requestedBy: "Facility Manager",
+    requestDate: "2024-01-20",
+    dueDate: "2024-01-30",
+    status: TransactionPaymentStatus.REJECTED,
+    category: "Utilities",
+    notes: "Rejected due to incomplete documentation",
+  },
+]
 
 export function FinancialManagement() {
-  // State for search and filters
+  const dispatch = useAppDispatch()
+  
+  // Toast notification state
+  const { toastState, showToast, hideToast } = useToast();
+  
+  // State for managing the UI
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("all")
-  const [filterStartDate, setFilterStartDate] = useState<string>("")
-  const [filterEndDate, setFilterEndDate] = useState<string>("")
+  const [viewingPayment, setViewingPayment] = useState<PaymentRequest | null>(null)
   
-  // Dialog states
-  const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = useState(false)
-  const [isGenerateReportDialogOpen, setIsGenerateReportDialogOpen] = useState(false)
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
-
-  // Form states for adding new transactions
-  const [newTransaction, setNewTransaction] = useState<CreateTransactionDto>({
-    type: TransactionType.EXPENSE,
-    category: TransactionCategory.OTHER,
-    amount: 0,
-    date: new Date().toISOString().split('T')[0],
-    description: ""
-  })
-
-  // Form states for generating reports
-  const [reportPeriod, setReportPeriod] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0],
-    endDate: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0]
-  })
+  // State for managing transactions
+  const [isCreateTransactionDialogOpen, setIsCreateTransactionDialogOpen] = useState(false)
+  const [pendingAcquisitions, setPendingAcquisitions] = useState<Acquisition[]>([])
+  const [selectedAcquisitionId, setSelectedAcquisitionId] = useState<number | null>(null)
+  const [transactionDescription, setTransactionDescription] = useState("")
+  const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false)
+  const [transactionError, setTransactionError] = useState<string | null>(null)
   
-  // Redux state
-  const dispatch = useAppDispatch()
-  const { 
-    transactions, 
-    filteredTransactions, 
-    selectedTransaction, 
-    financialReports, 
-    loading, 
-    error 
-  } = useAppSelector((state) => state.financial)
+  // Add new state for acquisition loading
+  const [isLoadingAcquisitions, setIsLoadingAcquisitions] = useState(false)
+  const [acquisitionError, setAcquisitionError] = useState<string | null>(null)
+  
+  // Get transactions from the Redux store
+  const { transactions, loading, error } = useAppSelector((state) => state.financial)
+  
+  // Legacy sample data for the payments tab until we fully migrate
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(samplePaymentRequests)
 
-  // Load data on component mount
+  // Fetch transactions and pending acquisitions on component mount
   useEffect(() => {
     dispatch(fetchTransactions())
-    dispatch(fetchFinancialReports())
+    fetchPendingAcquisitionsData()
   }, [dispatch])
   
-  // Apply filters based on search term, category, type, and status
-  useEffect(() => {
-    const filters: TransactionFilterDto = {}
+  // Function to fetch pending acquisitions
+  const fetchPendingAcquisitionsData = async () => {
+    setIsLoadingAcquisitions(true)
+    setAcquisitionError(null)
     
-    if (selectedCategory !== "all") {
-      filters.category = selectedCategory as TransactionCategory
+    try {
+      console.log("Fetching pending acquisitions...")
+      // First attempt to use the API service directly
+      try {
+        const result = await api.get<Acquisition[]>('acquisitions/pending')
+        setPendingAcquisitions(result)
+        console.log("Successfully loaded pending acquisitions:", result.length)
+        return
+      } catch (err: any) {
+        console.error("Direct API call failed:", err)
+        // If the error is related to authentication, don't try the fallback
+        if (err.message?.includes('Authentication required') || err.message?.includes('Authentication failed')) {
+          throw err // Re-throw to be caught by outer catch
+        }
+      }
+      
+      // If direct API call failed for non-auth reasons, try Redux thunk as fallback
+      console.log("Attempting to fetch acquisitions via Redux thunk...")
+      const thunkResult = await dispatch(fetchPendingApprovals()).unwrap()
+      setPendingAcquisitions(thunkResult)
+      console.log("Successfully loaded pending acquisitions via thunk:", thunkResult.length)
+    } catch (err: any) {
+      console.error("All attempts to fetch pending acquisitions failed:", err)
+      const errorMessage = err.message?.includes('Authentication') 
+        ? "Authentication failed: Please log in again to view pending acquisitions." 
+        : `Failed to load acquisitions: ${err?.message || 'Unknown error'}`;
+      
+      setAcquisitionError(errorMessage);
+      
+      // Show error toast notification
+      showToast(
+        errorMessage,
+        "error",
+        "Failed to Load Acquisitions"
+      );
+    } finally {
+      setIsLoadingAcquisitions(false)
     }
-    
-    if (selectedType !== "all") {
-      filters.type = selectedType as TransactionType
-    }
-    
-    if (selectedPaymentStatus !== "all") {
-      filters.status = selectedPaymentStatus as PaymentStatus
-    }
-    
-    if (filterStartDate) {
-      filters.startDate = filterStartDate
-    }
-    
-    if (filterEndDate) {
-      filters.endDate = filterEndDate
-    }
-    
-    // If we have any filters, fetch filtered transactions from the API
-    if (Object.keys(filters).length > 0) {
-      dispatch(fetchTransactionsByFilter(filters))
-    }
-  }, [dispatch, selectedCategory, selectedType, selectedPaymentStatus, filterStartDate, filterEndDate])
+  }
   
-  // Local filtering for search term (client-side filtering for quick search)
-  const localFilteredTransactions = searchTerm 
-    ? filteredTransactions.filter(transaction => 
-        transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (transaction.supplier?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : filteredTransactions
+  // Create transaction from acquisition
+  const handleCreateTransaction = async () => {
+    if (!selectedAcquisitionId) {
+      setTransactionError("Please select an acquisition")
+      return
+    }
     
-  // Filter expense transactions as payment requests
-  const filteredPaymentRequests = localFilteredTransactions.filter(transaction => 
-    transaction.type === TransactionType.EXPENSE && 
-    (selectedPaymentStatus === "all" || transaction.status.toLowerCase() === selectedPaymentStatus.toLowerCase())
-  )
+    // Check authentication token
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      setTransactionError("Authentication required: Please log in again to create a transaction")
+      return
+    }
+    
+    setIsSubmittingTransaction(true)
+    setTransactionError(null)
+    
+    try {
+      // First, approve the acquisition
+      console.log("Approving acquisition:", selectedAcquisitionId)
+      const approvalData: ApprovalDto = {
+        approvalStatus: ApprovalStatus.APPROVED,
+        approverId: 1, // Using default user ID 1
+        approvalComments: "Approved for transaction creation"
+      }
+      
+      console.log("Sending approval data:", JSON.stringify(approvalData))
+      
+      try {
+        await dispatch(approveOrRejectAcquisition({ 
+          id: selectedAcquisitionId, 
+          approvalData 
+        })).unwrap()
+        
+        console.log("Acquisition approved successfully")
+      } catch (approvalError: any) {
+        console.error("Failed to approve acquisition:", approvalError)
+        throw new Error(`Failed to approve acquisition: ${approvalError.message || 'Unknown error'}`)
+      }
+      
+      // Then create the transaction
+      const transactionData: CreateTransactionFromAcquisitionDto = {
+        acquisitionId: selectedAcquisitionId,
+        createdById: 1, // Using a default userId of 1 since we don't have user context
+        customDescription: transactionDescription || undefined
+      }
+      
+      console.log("Creating transaction with data:", transactionData)
+      
+      const result = await dispatch(createTransactionFromAcquisition(transactionData)).unwrap()
+      console.log("Transaction created successfully:", result)
+      setIsCreateTransactionDialogOpen(false)
+      
+      // Show success toast notification
+      showToast(
+        "Transaction created successfully from acquisition.",
+        "success",
+        "Transaction Created"
+      )
+      
+      // Reset form and refetch data
+      setSelectedAcquisitionId(null)
+      setTransactionDescription("")
+      
+      // Refresh transactions and acquisitions
+      dispatch(fetchTransactions())
+      fetchPendingAcquisitionsData()
+    } catch (err: any) {
+      console.error("Failed to approve acquisition or create transaction:", err)
+      
+      const errorMessage = err.message || "Failed to create transaction. Please try again."
+      
+      // Show error toast notification
+      showToast(
+        errorMessage,
+        "error",
+        "Transaction Creation Failed"
+      )
+      
+      if (err.message?.includes('401') || err.message?.includes('auth')) {
+        setTransactionError("Authentication failed: Your session may have expired. Please log in again.")
+      } else if (err.message?.includes('approve')) {
+        setTransactionError(`Failed to approve acquisition: ${err.message}`)
+      } else {
+        setTransactionError(errorMessage)
+      }
+    } finally {
+      setIsSubmittingTransaction(false)
+    }
+  }
+  
+  // Filter transactions based on search term, category, and type
+  const filteredTransactions = transactions.filter((transaction) => {
+    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory =
+      selectedCategory === "all" || transaction.category.toString().toLowerCase() === selectedCategory.toLowerCase()
+    const matchesType = selectedType === "all" || transaction.type.toString().toLowerCase() === selectedType.toLowerCase()
+    return matchesSearch && matchesCategory && matchesType
+  })
+
+  // Filter payment requests based on search term and status
+  const filteredPaymentRequests = paymentRequests.filter((payment) => {
+    const matchesSearch =
+      payment.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.requestedBy.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus =
+      selectedPaymentStatus === "all" || payment.status.toLowerCase() === selectedPaymentStatus.toLowerCase()
+    return matchesSearch && matchesStatus
+  })
 
   const getTypeColor = (type: TransactionType) => {
     return type === TransactionType.INCOME
@@ -200,172 +357,137 @@ export function FinancialManagement() {
       : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
   }
 
-  const getCategoryColor = (category: TransactionCategory) => {
-    switch (category) {
-      case TransactionCategory.RENTAL:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case TransactionCategory.SALARY:
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
-      case TransactionCategory.DONATION:
-        return "bg-teal-100 text-teal-800 dark:bg-teal-900/20 dark:text-teal-400"
-      case TransactionCategory.EQUIPMENT:
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
-      case TransactionCategory.UTILITY:
-        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400"
-      case TransactionCategory.SPONSORSHIP:
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case TransactionCategory.REGISTRATION:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-    }
-  }
-
-  const getPaymentStatusColor = (status: PaymentStatus) => {
+  const getStatusColor = (status: TransactionPaymentStatus) => {
     switch (status) {
-      case PaymentStatus.PENDING:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      case PaymentStatus.APPROVED:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case PaymentStatus.REJECTED:
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-      case PaymentStatus.PAID:
+      case TransactionPaymentStatus.PAID:
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      case TransactionPaymentStatus.PENDING:
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      case TransactionPaymentStatus.APPROVED:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
     }
   }
 
-  // Handle transaction actions
-  const handleViewTransaction = (transaction: Transaction) => {
-    dispatch(setSelectedTransaction(transaction))
+  const getPaymentStatusColor = (status: TransactionPaymentStatus) => {
+    switch (status) {
+      case TransactionPaymentStatus.PENDING:
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      case TransactionPaymentStatus.APPROVED:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+      case TransactionPaymentStatus.REJECTED:
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+      case TransactionPaymentStatus.PAID:
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+    }
   }
 
   const handleApprovePayment = (id: number) => {
-    dispatch(updateTransactionStatus({ 
-      id, 
-      status: PaymentStatus.APPROVED,
-      notes: "Approved by Finance Manager" 
-    }))
+    // Find the payment to get its name for the toast message
+    const paymentToApprove = paymentRequests.find(payment => payment.id === id);
+    const paymentName = paymentToApprove?.description || `Payment #${id}`;
+    
+    setPaymentRequests(
+      paymentRequests.map((payment) =>
+        payment.id === id
+          ? {
+              ...payment,
+              status: TransactionPaymentStatus.APPROVED,
+              approvedBy: "Finance Manager",
+              approvedDate: new Date().toISOString().split("T")[0],
+            }
+          : payment,
+      ),
+    )
+    
+    // Show success toast notification
+    showToast(
+      `${paymentName} has been approved successfully.`,
+      "success",
+      "Payment Approved"
+    );
   }
 
   const handleRejectPayment = (id: number) => {
-    dispatch(updateTransactionStatus({ 
-      id, 
-      status: PaymentStatus.REJECTED,
-      notes: "Rejected by Finance Manager" 
-    }))
+    // Find the payment to get its name for the toast message
+    const paymentToReject = paymentRequests.find(payment => payment.id === id);
+    const paymentName = paymentToReject?.description || `Payment #${id}`;
+    
+    setPaymentRequests(
+      paymentRequests.map((payment) =>
+        payment.id === id
+          ? {
+              ...payment,
+              status: TransactionPaymentStatus.REJECTED,
+              notes: "Rejected by Finance Manager",
+            }
+          : payment,
+      ),
+    )
+    
+    // Show info toast notification
+    showToast(
+      `${paymentName} has been rejected.`,
+      "info",
+      "Payment Rejected"
+    );
   }
 
   const handleMarkAsPaid = (id: number) => {
-    dispatch(updateTransactionStatus({ 
-      id, 
-      status: PaymentStatus.PAID,
-      notes: "Marked as paid by Finance Manager" 
-    }))
+    // Find the payment to get its name for the toast message
+    const paymentToPaid = paymentRequests.find(payment => payment.id === id);
+    const paymentName = paymentToPaid?.description || `Payment #${id}`;
+    
+    setPaymentRequests(
+      paymentRequests.map((payment) =>
+        payment.id === id
+          ? {
+              ...payment,
+              status: TransactionPaymentStatus.PAID,
+              paidDate: new Date().toISOString().split("T")[0],
+            }
+          : payment,
+      ),
+    )
+    
+    // Show success toast notification
+    showToast(
+      `${paymentName} has been marked as paid.`,
+      "success",
+      "Payment Completed"
+    );
   }
 
-  const handleAddTransaction = () => {
-    dispatch(createTransaction(newTransaction))
-      .unwrap()
-      .then(() => {
-        setIsAddTransactionDialogOpen(false)
-        setNewTransaction({
-          type: TransactionType.EXPENSE,
-          category: TransactionCategory.OTHER,
-          amount: 0,
-          date: new Date().toISOString().split('T')[0],
-          description: ""
-        })
-      })
-      .catch(error => {
-        console.error("Failed to add transaction:", error)
-      })
-  }
-
-  const handleGenerateReport = () => {
-    dispatch(generateFinancialReport({
-      periodStart: reportPeriod.startDate,
-      periodEnd: reportPeriod.endDate
-    }))
-      .unwrap()
-      .then(() => {
-        setIsGenerateReportDialogOpen(false)
-      })
-      .catch(error => {
-        console.error("Failed to generate report:", error)
-      })
-  }
-
-  const handleApplyFilters = () => {
-    const filters: TransactionFilterDto = {}
-    
-    if (selectedCategory !== "all") {
-      filters.category = selectedCategory as TransactionCategory
-    }
-    
-    if (selectedType !== "all") {
-      filters.type = selectedType as TransactionType
-    }
-    
-    if (selectedPaymentStatus !== "all") {
-      filters.status = selectedPaymentStatus as PaymentStatus
-    }
-    
-    if (filterStartDate) {
-      filters.startDate = filterStartDate
-    }
-    
-    if (filterEndDate) {
-      filters.endDate = filterEndDate
-    }
-    
-    dispatch(fetchTransactionsByFilter(filters))
-    setIsFilterDialogOpen(false)
-  }
-
-  // Calculate statistics from transactions data
-  const totalIncome = localFilteredTransactions
-    .filter(t => t.type === TransactionType.INCOME)
-    .reduce((sum, t) => sum + t.amount, 0)
-  
-  const totalExpenses = localFilteredTransactions
-    .filter(t => t.type === TransactionType.EXPENSE)
-    .reduce((sum, t) => sum + t.amount, 0)
-  
+  const totalIncome = transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0)
+  const totalExpenses = Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0))
   const netProfit = totalIncome - totalExpenses
 
-  const pendingPayments = localFilteredTransactions
-    .filter(t => t.status === PaymentStatus.PENDING && t.type === TransactionType.EXPENSE)
-  
-  const approvedPayments = localFilteredTransactions
-    .filter(t => t.status === PaymentStatus.APPROVED && t.type === TransactionType.EXPENSE)
-  
-  const totalPendingAmount = pendingPayments.reduce((sum, t) => sum + t.amount, 0)
-  const totalApprovedAmount = approvedPayments.reduce((sum, t) => sum + t.amount, 0)
+  const pendingPayments = paymentRequests.filter((p) => p.status === TransactionPaymentStatus.PENDING)
+  const approvedPayments = paymentRequests.filter((p) => p.status === TransactionPaymentStatus.APPROVED)
+  const totalPendingAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0)
+  const totalApprovedAmount = approvedPayments.reduce((sum, p) => sum + p.amount, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Toast Notification */}
+      <ToastNotification toast={toastState} onClose={hideToast} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financial Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track income, expenses, and financial reports</p>
+          <p className="text-gray-600 dark:text-gray-400">Track and manage all financial transactions</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            className="bg-white dark:bg-gray-800" 
-            onClick={() => setIsExportDialogOpen(true)}
-          >
+          <Button variant="outline" className="bg-white dark:bg-gray-800">
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
-          <Button 
-            className="bg-blue-800 hover:bg-blue-900 text-white"
-            onClick={() => setIsAddTransactionDialogOpen(true)}
-          >
+          <Button className="bg-blue-800 hover:bg-blue-900 text-white" onClick={() => setIsCreateTransactionDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
+            Approve & Create Transaction
           </Button>
         </div>
       </div>
@@ -451,10 +573,14 @@ export function FinancialManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="salaries">Salaries</SelectItem>
-                    <SelectItem value="sponsorship">Sponsorship</SelectItem>
+                    <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
+                    <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
+                    <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
+                    <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
+                    <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
+                    <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
+                    <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
+                    <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedType} onValueChange={setSelectedType}>
@@ -463,24 +589,13 @@ export function FinancialManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                    <SelectItem value="debit">Debit</SelectItem>
+                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Transactions Table */}
-              <div className="flex justify-end mb-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsFilterDialogOpen(true)}
-                  className="flex items-center gap-1"
-                >
-                  <Filter className="h-4 w-4" />
-                  Advanced Filters
-                </Button>
-              </div>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -491,94 +606,38 @@ export function FinancialManagement() {
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          Loading transactions...
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
+                            <span>Loading transactions...</span>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ) : localFilteredTransactions.length === 0 ? (
+                    ) : filteredTransactions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          No transactions found
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          No transactions found.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      localFilteredTransactions.map((transaction) => (
+                      filteredTransactions.map((transaction) => (
                         <TableRow key={transaction.id}>
-                          <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span>{transaction.description}</span>
-                              {transaction.supplier && (
-                                <span className="text-xs text-gray-500">
-                                  Supplier: {transaction.supplier.name}
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
+                          <TableCell>{transaction.date}</TableCell>
+                          <TableCell className="font-medium">{transaction.description}</TableCell>
+                          <TableCell>{transaction.category}</TableCell>
                           <TableCell>
-                            <Badge className={getCategoryColor(transaction.category)}>
-                              {formatTransactionCategory(transaction.category)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getTypeColor(transaction.type)}>
-                              {formatTransactionType(transaction.type)}
-                            </Badge>
+                            <Badge className={getTypeColor(transaction.type)}>{transaction.type}</Badge>
                           </TableCell>
                           <TableCell className={transaction.type === TransactionType.INCOME ? "text-green-600" : "text-red-600"}>
                             ${Math.abs(transaction.amount).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getPaymentStatusColor(transaction.status)}>
-                              {formatPaymentStatus(transaction.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewTransaction(transaction)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {transaction.status === PaymentStatus.PENDING && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleApprovePayment(transaction.id)}
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRejectPayment(transaction.id)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {transaction.status === PaymentStatus.APPROVED && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMarkAsPaid(transaction.id)}
-                                  className="text-blue-600 hover:text-blue-700"
-                                >
-                                  Mark Paid
-                                </Button>
-                              )}
-                            </div>
+                            <Badge className={getStatusColor(transaction.status)}>{transaction.status}</Badge>
                           </TableCell>
                         </TableRow>
                       ))
@@ -632,97 +691,69 @@ export function FinancialManagement() {
                       <TableHead>Description</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Due Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          Loading payment requests...
+                    {filteredPaymentRequests.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{payment.description}</span>
+                            {payment.supplier && (
+                              <span className="text-xs text-gray-500">Supplier: {payment.supplier}</span>
+                            )}
+                          </div>
                         </TableCell>
-                      </TableRow>
-                    ) : filteredPaymentRequests.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          No payment requests found
+                        <TableCell>{payment.type}</TableCell>
+                        <TableCell className="font-medium">${payment.amount.toLocaleString()}</TableCell>
+                        <TableCell>{payment.requestedBy}</TableCell>
+                        <TableCell>{payment.dueDate}</TableCell>
+                        <TableCell>
+                          <Badge className={getPaymentStatusColor(payment.status)}>{payment.status}</Badge>
                         </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredPaymentRequests.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{payment.description}</span>
-                              {payment.supplier && (
-                                <span className="text-xs text-gray-500">
-                                  Supplier: {payment.supplier.name}
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getTypeColor(payment.type)}>
-                              {formatTransactionType(payment.type)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">${payment.amount.toLocaleString()}</TableCell>
-                          <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <Badge className={getCategoryColor(payment.category)}>
-                              {formatTransactionCategory(payment.category)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getPaymentStatusColor(payment.status)}>{formatPaymentStatus(payment.status)}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewTransaction(payment)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {payment.status === PaymentStatus.PENDING && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleApprovePayment(payment.id)}
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRejectPayment(payment.id)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {payment.status === PaymentStatus.APPROVED && (
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => setViewingPayment(payment)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {payment.status === TransactionPaymentStatus.PENDING && (
+                              <>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleMarkAsPaid(payment.id)}
-                                  className="text-blue-600 hover:text-blue-700"
+                                  onClick={() => handleApprovePayment(payment.id)}
+                                  className="text-green-600 hover:text-green-700"
                                 >
-                                  Mark Paid
+                                  <Check className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRejectPayment(payment.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {payment.status === TransactionPaymentStatus.APPROVED && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMarkAsPaid(payment.id)}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                Mark Paid
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
@@ -760,17 +791,14 @@ export function FinancialManagement() {
                 <CardTitle className="text-gray-900 dark:text-white">Paid This Month</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Filter expense transactions that are paid */}
                 <div className="text-2xl font-bold text-green-600">
-                  {localFilteredTransactions.filter(t => 
-                    t.type === TransactionType.EXPENSE && t.status === PaymentStatus.PAID
-                  ).length}
+                  {paymentRequests.filter((p) => p.status === TransactionPaymentStatus.PAID).length}
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Total: $
-                  {localFilteredTransactions
-                    .filter(t => t.type === TransactionType.EXPENSE && t.status === PaymentStatus.PAID)
-                    .reduce((sum, t) => sum + t.amount, 0)
+                  {paymentRequests
+                    .filter((p) => p.status === TransactionPaymentStatus.PAID)
+                    .reduce((sum, p) => sum + p.amount, 0)
                     .toLocaleString()}
                 </p>
               </CardContent>
@@ -838,71 +866,197 @@ export function FinancialManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* View Transaction Dialog */}
-      <Dialog open={!!selectedTransaction} onOpenChange={(open) => !open && dispatch(setSelectedTransaction(null))}>
+      {/* Create Transaction Dialog */}
+      <Dialog open={isCreateTransactionDialogOpen} onOpenChange={setIsCreateTransactionDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Transaction Details</DialogTitle>
-            <DialogDescription>View transaction information and approval history</DialogDescription>
+            <DialogTitle>Create Transaction from Pending Acquisition</DialogTitle>
+            <DialogDescription>
+              Select a pending acquisition to create a financial transaction.
+              The acquisition will be approved automatically when the transaction is created.
+              The transaction will use the current date and will be created with your user ID.
+            </DialogDescription>
           </DialogHeader>
-          {selectedTransaction && (
+          <div className="space-y-4">
+            {isLoadingAcquisitions ? (
+              <div className="flex flex-col justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+                <span className="text-gray-600">Loading pending acquisitions...</span>
+                <p className="text-xs text-gray-500 mt-1">Please wait while we retrieve the pending acquisitions data</p>
+              </div>
+            ) : acquisitionError ? (
+              <div className="py-4 text-center bg-red-50 p-4 rounded-md border border-red-200">
+                <p className="text-red-600 mb-3">{acquisitionError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchPendingAcquisitionsData}
+                  className="mt-2 border-red-300 hover:bg-red-100"
+                >
+                  <RefreshCcw className="h-4 w-4 mr-1" />
+                  Retry Loading Acquisitions
+                </Button>
+              </div>
+            ) : pendingAcquisitions.length === 0 ? (
+              <div className="py-4 text-center bg-blue-50 p-4 rounded-md border border-blue-200">
+                <p className="text-blue-600 mb-3">No pending acquisitions found</p>
+                <p className="text-sm text-gray-600">There are no pending acquisitions available to create transactions from.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchPendingAcquisitionsData}
+                  className="mt-3 border-blue-300 hover:bg-blue-100"
+                >
+                  <RefreshCcw className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="acquisition">Pending Acquisition</Label>
+                  <Select 
+                    value={selectedAcquisitionId?.toString() || ""} 
+                    onValueChange={(value) => setSelectedAcquisitionId(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a pending acquisition" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pendingAcquisitions.map((acq) => (
+                        <SelectItem key={acq.id} value={acq.id.toString()}>
+                          {acq.description} - ${acq.cost} ({acq.itemType})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Custom Description (Optional)</Label>
+                  <Textarea 
+                    id="description" 
+                    placeholder="Additional details about this transaction"
+                    value={transactionDescription}
+                    onChange={(e) => setTransactionDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            </div>
+
+          {transactionError && (
+            <div className="bg-red-50 p-3 rounded-md border border-red-200">
+              <p className="text-red-600 text-sm font-medium">{transactionError}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateTransactionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateTransaction} 
+              disabled={!selectedAcquisitionId || isSubmittingTransaction}
+              className="bg-blue-800 hover:bg-blue-900 text-white min-w-[150px]"
+            >
+              {isSubmittingTransaction ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Approve & Create Transaction"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* View Payment Dialog */}
+      <Dialog open={!!viewingPayment} onOpenChange={() => setViewingPayment(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Payment Request Details</DialogTitle>
+            <DialogDescription>View payment request information and approval history</DialogDescription>
+          </DialogHeader>
+          {viewingPayment && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</Label>
-                  <p className="text-sm font-medium">{selectedTransaction.description}</p>
+                  <p className="text-sm font-medium">{viewingPayment.description}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Type</Label>
-                  <p className="text-sm font-medium">{formatTransactionType(selectedTransaction.type)}</p>
+                  <p className="text-sm font-medium">{viewingPayment.type}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Amount</Label>
-                  <p className="text-sm font-medium">${selectedTransaction.amount.toLocaleString()}</p>
+                  <p className="text-sm font-medium">${viewingPayment.amount.toLocaleString()}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</Label>
-                  <Badge className={getPaymentStatusColor(selectedTransaction.status)}>
-                    {formatPaymentStatus(selectedTransaction.status)}
-                  </Badge>
+                  <Badge className={getPaymentStatusColor(viewingPayment.status)}>{viewingPayment.status}</Badge>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date</Label>
-                  <p className="text-sm font-medium">{new Date(selectedTransaction.date).toLocaleDateString()}</p>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Requested By</Label>
+                  <p className="text-sm font-medium">{viewingPayment.requestedBy}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Request Date</Label>
+                  <p className="text-sm font-medium">{viewingPayment.requestDate}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Due Date</Label>
+                  <p className="text-sm font-medium">{viewingPayment.dueDate}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Category</Label>
-                  <p className="text-sm font-medium">{formatTransactionCategory(selectedTransaction.category)}</p>
+                  <p className="text-sm font-medium">{viewingPayment.category}</p>
                 </div>
-                {selectedTransaction.createdBy && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created By</Label>
-                    <p className="text-sm font-medium">{selectedTransaction.createdBy.lastName}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</Label>
-                  <p className="text-sm font-medium">{new Date(selectedTransaction.createdAt).toLocaleDateString()}</p>
-                </div>
-                {selectedTransaction.supplier && (
+                {viewingPayment.supplier && (
                   <div>
                     <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
-                    <p className="text-sm font-medium">{selectedTransaction.supplier.name}</p>
+                    <p className="text-sm font-medium">{viewingPayment.supplier}</p>
+                  </div>
+                )}
+                {viewingPayment.approvedBy && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved By</Label>
+                    <p className="text-sm font-medium">{viewingPayment.approvedBy}</p>
+                  </div>
+                )}
+                {viewingPayment.approvedDate && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved Date</Label>
+                    <p className="text-sm font-medium">{viewingPayment.approvedDate}</p>
+                  </div>
+                )}
+                {viewingPayment.paidDate && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Paid Date</Label>
+                    <p className="text-sm font-medium">{viewingPayment.paidDate}</p>
                   </div>
                 )}
               </div>
+              {viewingPayment.notes && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</Label>
+                  <p className="text-sm mt-1">{viewingPayment.notes}</p>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => dispatch(setSelectedTransaction(null))}>
+            <Button variant="outline" onClick={() => setViewingPayment(null)}>
               Close
             </Button>
-            {selectedTransaction?.status === PaymentStatus.PENDING && (
+            {viewingPayment?.status === TransactionPaymentStatus.PENDING && (
               <div className="flex gap-2">
                 <Button
                   onClick={() => {
-                    handleApprovePayment(selectedTransaction.id)
-                    dispatch(setSelectedTransaction(null))
+                    handleApprovePayment(viewingPayment.id)
+                    setViewingPayment(null)
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
@@ -911,8 +1065,8 @@ export function FinancialManagement() {
                 </Button>
                 <Button
                   onClick={() => {
-                    handleRejectPayment(selectedTransaction.id)
-                    dispatch(setSelectedTransaction(null))
+                    handleRejectPayment(viewingPayment.id)
+                    setViewingPayment(null)
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
@@ -921,280 +1075,17 @@ export function FinancialManagement() {
                 </Button>
               </div>
             )}
-            {selectedTransaction?.status === PaymentStatus.APPROVED && (
+            {viewingPayment?.status === TransactionPaymentStatus.APPROVED && (
               <Button
                 onClick={() => {
-                  handleMarkAsPaid(selectedTransaction.id)
-                  dispatch(setSelectedTransaction(null))
+                  handleMarkAsPaid(viewingPayment.id)
+                  setViewingPayment(null)
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Mark as Paid
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Add Transaction Dialog */}
-      <Dialog open={isAddTransactionDialogOpen} onOpenChange={setIsAddTransactionDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Transaction</DialogTitle>
-            <DialogDescription>Create a new financial transaction record</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="transaction-type">Transaction Type</Label>
-              <Select 
-                value={newTransaction.type} 
-                onValueChange={(value) => setNewTransaction({ ...newTransaction, type: value as TransactionType })}
-              >
-                <SelectTrigger id="transaction-type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
-                  <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="transaction-category">Category</Label>
-              <Select 
-                value={newTransaction.category} 
-                onValueChange={(value) => setNewTransaction({ ...newTransaction, category: value as TransactionCategory })}
-              >
-                <SelectTrigger id="transaction-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
-                  <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
-                  <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
-                  <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
-                  <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
-                  <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
-                  <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
-                  <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="transaction-amount">Amount</Label>
-              <Input 
-                id="transaction-amount"
-                type="number"
-                value={newTransaction.amount}
-                onChange={(e) => setNewTransaction({ 
-                  ...newTransaction, 
-                  amount: parseFloat(e.target.value) || 0 
-                })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="transaction-date">Date</Label>
-              <Input 
-                id="transaction-date"
-                type="date"
-                value={newTransaction.date}
-                onChange={(e) => setNewTransaction({ 
-                  ...newTransaction, 
-                  date: e.target.value 
-                })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="transaction-description">Description</Label>
-              <Textarea 
-                id="transaction-description"
-                value={newTransaction.description}
-                onChange={(e) => setNewTransaction({ 
-                  ...newTransaction, 
-                  description: e.target.value 
-                })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddTransactionDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddTransaction}>Add Transaction</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Generate Report Dialog */}
-      <Dialog open={isGenerateReportDialogOpen} onOpenChange={setIsGenerateReportDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Generate Financial Report</DialogTitle>
-            <DialogDescription>Create a financial report for a specific period</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="report-start-date">Start Date</Label>
-              <Input 
-                id="report-start-date"
-                type="date"
-                value={reportPeriod.startDate}
-                onChange={(e) => setReportPeriod({ 
-                  ...reportPeriod, 
-                  startDate: e.target.value 
-                })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="report-end-date">End Date</Label>
-              <Input 
-                id="report-end-date"
-                type="date"
-                value={reportPeriod.endDate}
-                onChange={(e) => setReportPeriod({ 
-                  ...reportPeriod, 
-                  endDate: e.target.value 
-                })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsGenerateReportDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleGenerateReport}>Generate Report</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Export Dialog */}
-      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Export Financial Data</DialogTitle>
-            <DialogDescription>Export financial data to various formats</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="export-format">Format</Label>
-              <Select defaultValue="csv">
-                <SelectTrigger id="export-format">
-                  <SelectValue placeholder="Select format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="excel">Excel</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="export-date-range">Date Range</Label>
-              <Select defaultValue="current-month">
-                <SelectTrigger id="export-date-range">
-                  <SelectValue placeholder="Select date range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current-month">Current Month</SelectItem>
-                  <SelectItem value="previous-month">Previous Month</SelectItem>
-                  <SelectItem value="current-quarter">Current Quarter</SelectItem>
-                  <SelectItem value="current-year">Current Year</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => setIsExportDialogOpen(false)}>Export</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Advanced Filter Dialog */}
-      <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Advanced Filters</DialogTitle>
-            <DialogDescription>Filter transactions by various criteria</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="filter-start-date">Start Date</Label>
-              <Input 
-                id="filter-start-date"
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="filter-end-date">End Date</Label>
-              <Input 
-                id="filter-end-date"
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="filter-category">Category</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger id="filter-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {Object.values(TransactionCategory).map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {formatTransactionCategory(category as TransactionCategory)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="filter-type">Type</Label>
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger id="filter-type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {Object.values(TransactionType).map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {formatTransactionType(type as TransactionType)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="filter-status">Status</Label>
-              <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
-                <SelectTrigger id="filter-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {Object.values(PaymentStatus).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {formatPaymentStatus(status as PaymentStatus)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFilterDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleApplyFilters}>Apply Filters</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

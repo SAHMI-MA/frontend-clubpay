@@ -7,6 +7,7 @@ export interface Team {
   budget: number;
   players?: Player[];
   matches?: Match[];
+  staff?: Staff[];
   logoUrl?: string;
   description?: string;
   numberOfPlayers?: number;
@@ -185,11 +186,7 @@ export interface Staff {
   email?: string;
   qualification?: string;
   experience?: string;
-  staffImage?: string;
-  salary: number;
-  contractStartDate: string;
-  contractEndDate: string;
-  teamId: number;
+  staffImage?: string | null;
   team?: Team;
   createdAt?: string;
   updatedAt?: string;
@@ -205,10 +202,7 @@ export interface CreateStaffDto {
   qualification?: string;
   experience?: string;
   staffImage?: string;
-  salary: number;
-  contractStartDate: string;
-  contractEndDate: string;
-  teamId: number;
+  teamId: number; // We still use teamId when creating staff
 }
 
 export interface UpdateStaffDto {
@@ -221,8 +215,5 @@ export interface UpdateStaffDto {
   qualification?: string;
   experience?: string;
   staffImage?: string;
-  salary?: number;
-  contractStartDate?: string;
-  contractEndDate?: string;
-  teamId?: number;
+  teamId?: number; // We still use teamId when updating staff
 }

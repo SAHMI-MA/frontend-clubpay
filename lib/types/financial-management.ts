@@ -106,8 +106,8 @@ export interface CreateTransactionDto {
 
 export interface CreateTransactionFromAcquisitionDto {
   acquisitionId: number;
-  date: string;
-  description?: string;
+  createdById: number;
+  customDescription?: string;
 }
 
 export interface CreateRentalDto {

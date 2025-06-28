@@ -49,7 +49,7 @@ export const fetchTransactions = createAsyncThunk(
   'financial/fetchTransactions',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await api.get<Transaction[]>('accounting/transactions');
+      const data = await api.get<Transaction[]>('/accounting/transactions');
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch transactions');
@@ -82,7 +82,7 @@ export const fetchTransactionById = createAsyncThunk(
   'financial/fetchTransactionById',
   async (id: number, { rejectWithValue }) => {
     try {
-      const data = await api.get<Transaction>(`accounting/transactions/${id}`);
+      const data = await api.get<Transaction>(`/accounting/transactions/${id}`);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch transaction details');
@@ -94,7 +94,7 @@ export const createTransaction = createAsyncThunk(
   'financial/createTransaction',
   async (transactionData: CreateTransactionDto, { rejectWithValue }) => {
     try {
-      const data = await api.post<Transaction>('accounting/transactions', transactionData);
+      const data = await api.post<Transaction>('/accounting/transactions', transactionData);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create transaction');
@@ -106,9 +106,23 @@ export const createTransactionFromAcquisition = createAsyncThunk(
   'financial/createTransactionFromAcquisition',
   async (data: CreateTransactionFromAcquisitionDto, { rejectWithValue }) => {
     try {
-      const response = await api.post<Transaction>('accounting/transactions/from-acquisition', data);
+      // Check for authentication token
+      let authToken;
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token');
+      }
+
+      if (!authToken) {
+        return rejectWithValue('Authentication required: No token found. Please log in again.');
+      }
+
+      console.log("Making transaction creation request with authorization token");
+      console.log("Request endpoint: /accounting/transactions/from-acquisition");
+      console.log("Request payload:", JSON.stringify(data));
+      const response = await api.post<Transaction>('/accounting/transactions/from-acquisition', data);
       return response;
     } catch (error: any) {
+      console.error("Transaction creation failed:", error);
       return rejectWithValue(error.message || 'Failed to create transaction from acquisition');
     }
   }
@@ -144,7 +158,7 @@ export const fetchRentals = createAsyncThunk(
   'financial/fetchRentals',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await api.get<Rental[]>('accounting/rentals');
+      const data = await api.get<Rental[]>('/accounting/rentals');
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch rentals');
@@ -156,7 +170,7 @@ export const fetchRentalById = createAsyncThunk(
   'financial/fetchRentalById',
   async (id: number, { rejectWithValue }) => {
     try {
-      const data = await api.get<Rental>(`accounting/rentals/${id}`);
+      const data = await api.get<Rental>(`/accounting/rentals/${id}`);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch rental details');
@@ -168,7 +182,7 @@ export const createRental = createAsyncThunk(
   'financial/createRental',
   async (rentalData: CreateRentalDto, { rejectWithValue }) => {
     try {
-      const data = await api.post<Rental>('accounting/rentals', rentalData);
+      const data = await api.post<Rental>('/accounting/rentals', rentalData);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create rental');
@@ -180,7 +194,7 @@ export const createRentalFromAcquisition = createAsyncThunk(
   'financial/createRentalFromAcquisition',
   async (acquisitionId: number, { rejectWithValue }) => {
     try {
-      const data = await api.post<Rental>('accounting/rentals/from-acquisition', { acquisitionId });
+      const data = await api.post<Rental>('/accounting/rentals/from-acquisition', { acquisitionId });
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create rental from acquisition');
@@ -193,7 +207,7 @@ export const fetchSalaryPayments = createAsyncThunk(
   'financial/fetchSalaryPayments',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await api.get<SalaryPayment[]>('accounting/salary-payments');
+      const data = await api.get<SalaryPayment[]>('/accounting/salary-payments');
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch salary payments');
@@ -205,7 +219,7 @@ export const fetchSalaryPaymentById = createAsyncThunk(
   'financial/fetchSalaryPaymentById',
   async (id: number, { rejectWithValue }) => {
     try {
-      const data = await api.get<SalaryPayment>(`accounting/salary-payments/${id}`);
+      const data = await api.get<SalaryPayment>(`/accounting/salary-payments/${id}`);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch salary payment details');
@@ -217,7 +231,7 @@ export const createSalaryPayment = createAsyncThunk(
   'financial/createSalaryPayment',
   async (paymentData: CreateSalaryPaymentDto, { rejectWithValue }) => {
     try {
-      const data = await api.post<SalaryPayment>('accounting/salary-payments', paymentData);
+      const data = await api.post<SalaryPayment>('/accounting/salary-payments', paymentData);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create salary payment');
@@ -242,7 +256,7 @@ export const fetchFinancialReports = createAsyncThunk(
   'financial/fetchFinancialReports',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await api.get<FinancialReport[]>('accounting/financial-reports');
+      const data = await api.get<FinancialReport[]>('/accounting/financial-reports');
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch financial reports');
@@ -254,7 +268,7 @@ export const fetchFinancialReportById = createAsyncThunk(
   'financial/fetchFinancialReportById',
   async (id: number, { rejectWithValue }) => {
     try {
-      const data = await api.get<FinancialReport>(`accounting/financial-reports/${id}`);
+      const data = await api.get<FinancialReport>(`/accounting/financial-reports/${id}`);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch financial report details');
@@ -266,7 +280,7 @@ export const generateFinancialReport = createAsyncThunk(
   'financial/generateFinancialReport',
   async (reportData: GenerateReportDto, { rejectWithValue }) => {
     try {
-      const data = await api.post<FinancialReport>('accounting/financial-reports/generate', reportData);
+      const data = await api.post<FinancialReport>('/accounting/financial-reports/generate', reportData);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to generate financial report');

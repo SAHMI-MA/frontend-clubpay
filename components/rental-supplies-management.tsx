@@ -11,6 +11,9 @@ import {
   setSelectedAcquisition  
 } from "@/lib/redux/acquisitionSlice"
 import { fetchAllSuppliers } from "@/lib/redux/supplierSlice"
+import { fetchAllTeams } from "@/lib/redux/teamSlice"
+import { fetchAllPlayers } from "@/lib/redux/playerSlice"
+import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import { 
   Acquisition, 
   AcquisitionType, 
@@ -51,6 +54,10 @@ import {
   User,
   Users,
   Eye,
+  CheckCircle,
+  AlertCircle,
+  X,
+  Info,
 } from "lucide-react"
 
 
@@ -87,11 +94,37 @@ export function RentalSupplierManagement() {
   const dispatch = useAppDispatch()
   const { acquisitions: acquisitionsList, selectedAcquisition, loading, error } = useAppSelector((state) => state.acquisitions)
   const { suppliers: suppliersList } = useAppSelector((state) => state.suppliers)
+  const { teams } = useAppSelector((state) => state.teams)
+  const { players } = useAppSelector((state) => state.players)
+  const { staff } = useAppSelector((state) => state.staff)
+  
+  // Custom toast state
+  const [toastState, setToastState] = useState<ToastState>({
+    show: false,
+    message: "",
+    type: "info"
+  })
+  
+  const showToast = (message: string, type: ToastType = "info", title?: string) => {
+    setToastState({
+      show: true,
+      message,
+      type,
+      title
+    })
+  }
+  
+  const hideToast = () => {
+    setToastState(prev => ({ ...prev, show: false }))
+  }
 
   // Load data on component mount
   useEffect(() => {
     dispatch(fetchAllAcquisitions())
     dispatch(fetchAllSuppliers())
+    dispatch(fetchAllTeams())
+    dispatch(fetchAllPlayers())
+    dispatch(fetchAllStaff())
   }, [dispatch])
 
   // Form states
@@ -117,6 +150,9 @@ export function RentalSupplierManagement() {
     notes: ""
   })
 
+  // Approving state - track which acquisition is being approved
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+
   // Filter functions
   const filteredAcquisitions = acquisitionsList.filter((acquisition) => {
     const matchesSearch =
@@ -136,8 +172,24 @@ export function RentalSupplierManagement() {
   })
 
   // Helper functions
-  const getSupplierName = (supplierId: number) => {
-    return suppliersList.find((s) => s.id === supplierId)?.name || "Unknown Supplier"
+  const getSupplierName = (acquisition: Acquisition | null) => {
+    if (!acquisition) return "Unknown Supplier";
+    
+    // First, check if the acquisition has a supplier object
+    if (acquisition.supplier && acquisition.supplier.name) {
+      return acquisition.supplier.name;
+    }
+    
+    // If we don't have a supplier object or it doesn't have a name, try to find it in the suppliers list
+    // Note: This is a fallback for backward compatibility and should be rare if the API is returning nested supplier objects
+    if (acquisition.supplier && acquisition.supplier.id) {
+      const supplier = suppliersList.find((s) => s.id === acquisition.supplier?.id);
+      if (supplier) {
+        return supplier.name;
+      }
+    }
+    
+    return "Unknown Supplier";
   }
 
   const getAssigneeName = (acquisition: Acquisition | null): string => {
@@ -197,15 +249,31 @@ export function RentalSupplierManagement() {
   }
   
   const getAcquisitionTotal = (acquisition: Acquisition | null): number => {
-    return acquisition?.cost || 0;
+    if (!acquisition) return 0;
+    
+    // Calculate the total cost based on cost and quantity
+    const cost = acquisition.cost || 0;
+    const quantity = acquisition.quantity || 1;
+    return cost * quantity;
   }
   
   const getAcquisitionDate = (acquisition: Acquisition | null): Date => {
-    return acquisition?.createdAt ? new Date(acquisition.createdAt) : new Date();
+    if (!acquisition) return new Date();
+    
+    // Try to use createdAt if available, fall back to current date
+    try {
+      return acquisition.createdAt ? new Date(acquisition.createdAt) : new Date();
+    } catch (e) {
+      console.error("Error parsing date:", e);
+      return new Date();
+    }
   }
   
   const getAcquisitionStatus = (acquisition: Acquisition | null): ApprovalStatus => {
-    return acquisition?.approvalStatus || ApprovalStatus.PENDING;
+    if (!acquisition) return ApprovalStatus.PENDING;
+    
+    // Use the approvalStatus or default to PENDING
+    return acquisition.approvalStatus || ApprovalStatus.PENDING;
   }
 
   // Helper for mapping between assignee type and corresponding ID field
@@ -257,6 +325,7 @@ export function RentalSupplierManagement() {
   }
 
   const resetNewAcquisition = () => {
+    // Reset with empty values instead of dummy data
     setNewAcquisition({
       acquisitionType: AcquisitionType.RENTAL,
       itemType: ItemType.EQUIPMENT,
@@ -264,11 +333,11 @@ export function RentalSupplierManagement() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: undefined,
       cost: 0,
-      supplierId: 0,
+      supplierId: 0, // Keep default as 0, will need user selection
       quantity: 1,
       // UI fields
       itemName: "",
-      unitPrice: 0,
+      unitPrice: 0,  // Keep default as 0, but clear in UI
       notes: ""
     })
   }
@@ -327,22 +396,40 @@ export function RentalSupplierManagement() {
   }
   
   // Handle acquisition approval or rejection
-  const handleApproveAcquisition = (acquisition: Acquisition, isApproved: boolean) => {
-    if (!acquisition.id) return;
-    
+  const handleApproveAcquisition = (acquisition: Acquisition) => {
+    // Create approval data
     const approvalData = {
-      approvalStatus: isApproved ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED,
+      approvalStatus: ApprovalStatus.APPROVED,
       approverId: 1, // This would typically come from the current user's context
-      approvalComments: isApproved ? "Approved by manager" : "Rejected by manager"
+      approvalComments: "Approved from rental & supplies management"
     };
     
+    // Show loading state for this specific acquisition
+    setApprovingId(acquisition.id);
+    
+    // Dispatch approve action with correct PUT endpoint format
+    console.log(`Sending approval request for acquisition ID ${acquisition.id}:`, JSON.stringify(approvalData));
     dispatch(approveOrRejectAcquisition({ id: acquisition.id, approvalData }))
       .unwrap()
       .then(() => {
-        // Success notification could be shown here
+        // Show success notification
+        console.log(`Successfully approved acquisition ID ${acquisition.id}`);
+        showToast(
+          `${getAcquisitionDisplayName(acquisition)} has been approved.`,
+          "success",
+          "Acquisition Approved"
+        );
       })
       .catch((error) => {
-        console.error("Failed to update approval status:", error)
+        console.error(`Error approving acquisition ID ${acquisition.id}:`, error);
+        showToast(
+          `Failed to approve ${getAcquisitionDisplayName(acquisition)}: ${error.message || 'Unknown error'}`,
+          "error",
+          "Approval Failed"
+        );
+      })
+      .finally(() => {
+        setApprovingId(null);
       });
   }
 
@@ -356,6 +443,9 @@ export function RentalSupplierManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Custom Toast Notification */}
+      <ToastNotification toast={toastState} onClose={hideToast} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Rental & Acquisitions Management</h1>
@@ -554,20 +644,32 @@ export function RentalSupplierManagement() {
                             <SelectContent>
                               {newAcquisition.assigneeType === AssigneeType.TEAM && (
                                 <>
-                                  <SelectItem value="1">Team 1</SelectItem>
-                                  <SelectItem value="2">Team 2</SelectItem>
+                                  {teams.map(team => (
+                                    <SelectItem key={team.id} value={team.id.toString()}>
+                                      {team.name}
+                                    </SelectItem>
+                                  ))}
+                                  {teams.length === 0 && <SelectItem value="" disabled>No teams found</SelectItem>}
                                 </>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.PLAYER && (
                                 <>
-                                  <SelectItem value="1">Player 1</SelectItem>
-                                  <SelectItem value="2">Player 2</SelectItem>
+                                  {players.map(player => (
+                                    <SelectItem key={player.id} value={player.id.toString()}>
+                                      {player.firstName} {player.lastName}
+                                    </SelectItem>
+                                  ))}
+                                  {players.length === 0 && <SelectItem value="" disabled>No players found</SelectItem>}
                                 </>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.STAFF && (
                                 <>
-                                  <SelectItem value="1">Coach</SelectItem>
-                                  <SelectItem value="2">Physiotherapist</SelectItem>
+                                  {staff.map(staffMember => (
+                                    <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                                      {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
+                                    </SelectItem>
+                                  ))}
+                                  {staff.length === 0 && <SelectItem value="" disabled>No staff found</SelectItem>}
                                 </>
                               )}
                             </SelectContent>
@@ -673,7 +775,7 @@ export function RentalSupplierManagement() {
                             <span className="text-sm">{getAssigneeName(acquisition)}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{acquisition.supplier ? acquisition.supplier.name : getSupplierName(acquisition.supplierId)}</TableCell>
+                        <TableCell>{getSupplierName(acquisition)}</TableCell>
                         <TableCell>{acquisition.quantity || 1}</TableCell>
                         <TableCell className="font-medium">${getAcquisitionTotal(acquisition).toLocaleString()}</TableCell>
                         <TableCell>
@@ -682,6 +784,22 @@ export function RentalSupplierManagement() {
                         <TableCell>{getAcquisitionDate(acquisition).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            {acquisition.approvalStatus === ApprovalStatus.PENDING && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700"
+                                onClick={() => handleApproveAcquisition(acquisition)}
+                                title="Approve Acquisition"
+                                disabled={approvingId === acquisition.id}
+                              >
+                                {approvingId === acquisition.id ? (
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-e-transparent align-[-0.125em]"></span>
+                                ) : (
+                                  <CheckCircle className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -719,7 +837,9 @@ export function RentalSupplierManagement() {
       </Tabs>
 
       {/* View Acquisition Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+      <Dialog open={isViewDialogOpen && selectedAcquisition !== null} onOpenChange={(open) => {
+        if (!open) setIsViewDialogOpen(false);
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Acquisition Details</DialogTitle>
@@ -771,7 +891,7 @@ export function RentalSupplierManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
-                  <p>{selectedAcquisition.supplier ? selectedAcquisition.supplier.name : getSupplierName(selectedAcquisition.supplierId)}</p>
+                  <p>{getSupplierName(selectedAcquisition)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned To</Label>
@@ -782,12 +902,12 @@ export function RentalSupplierManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created Date</Label>
-                  <p>{selectedAcquisition.createdAt && new Date(selectedAcquisition.createdAt).toLocaleDateString()}</p>
+                  <p>{selectedAcquisition.createdAt ? new Date(selectedAcquisition.createdAt).toLocaleDateString() : "N/A"}</p>
                 </div>
                 {selectedAcquisition.startDate && (
                   <div>
                     <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Start Date</Label>
-                    <p>{new Date(selectedAcquisition.startDate).toLocaleDateString()}</p>
+                    <p>{selectedAcquisition.startDate ? new Date(selectedAcquisition.startDate).toLocaleDateString() : "N/A"}</p>
                   </div>
                 )}
               </div>
@@ -795,7 +915,7 @@ export function RentalSupplierManagement() {
               {selectedAcquisition.endDate && (
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">End Date</Label>
-                  <p>{new Date(selectedAcquisition.endDate).toLocaleDateString()}</p>
+                  <p>{selectedAcquisition.endDate ? new Date(selectedAcquisition.endDate).toLocaleDateString() : "N/A"}</p>
                 </div>
               )}
 
@@ -811,7 +931,9 @@ export function RentalSupplierManagement() {
       </Dialog>
 
       {/* Edit Acquisition Dialog */}
-      <Dialog open={isEditAcquisitionDialogOpen} onOpenChange={setIsEditAcquisitionDialogOpen}>
+      <Dialog open={isEditAcquisitionDialogOpen && selectedAcquisition !== null} onOpenChange={(open) => {
+        if (!open) setIsEditAcquisitionDialogOpen(false);
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Acquisition</DialogTitle>
@@ -893,6 +1015,58 @@ export function RentalSupplierManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
+}
+
+// Custom Toast Notification Component
+type ToastType = 'success' | 'error' | 'info';
+interface ToastState {
+  show: boolean;
+  message: string;
+  title?: string;
+  type: ToastType;
+}
+
+function ToastNotification({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 4000); // Auto-dismiss after 4 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show, onClose]);
+
+  if (!toast.show) return null;
+
+  const bgColor = toast.type === 'success' 
+    ? 'bg-green-100 border-green-500 text-green-800' 
+    : toast.type === 'error' 
+      ? 'bg-red-100 border-red-500 text-red-800'
+      : 'bg-blue-100 border-blue-500 text-blue-800';
+
+  const IconComponent = toast.type === 'success' 
+    ? CheckCircle 
+    : toast.type === 'error' 
+      ? AlertCircle
+      : Info;
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 max-w-md rounded-md border p-4 shadow-md ${bgColor}`}>
+      <div className="flex items-start gap-3">
+        <IconComponent className="h-5 w-5 mt-0.5" />
+        <div className="flex-1">
+          {toast.title && (
+            <h4 className="font-medium">{toast.title}</h4>
+          )}
+          <p className="text-sm">{toast.message}</p>
+        </div>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
 }

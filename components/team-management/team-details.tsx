@@ -41,8 +41,10 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
     dispatch(fetchAllStaff())
   }, [team.id, dispatch])
 
-  // Staff members for this team
-  const staffList: Staff[] = allStaff.filter((s: Staff) => s.teamId === team.id)
+  // Get staff for this team from the global staff list
+  const staffList: Staff[] = allStaff.filter((s: Staff) => 
+    s && s.id && s.team && s.team.id === team.id
+  )
 
   // Format date for display
   const formatDate = (dateString: string) => {

@@ -84,9 +84,20 @@ export const fetchPendingApprovals = createAsyncThunk(
   'acquisitions/fetchPendingApprovals',
   async (_, { rejectWithValue }) => {
     try {
+      // Check if there's a token before making the request
+      let authToken;
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token');
+      }
+
+      if (!authToken) {
+        return rejectWithValue('No authentication token found. Please log in again.');
+      }
+
       const data = await api.get<Acquisition[]>('acquisitions/pending');
       return data;
     } catch (error: any) {
+      console.error("Fetch pending approvals failed:", error);
       return rejectWithValue(error.message || 'Failed to fetch pending approvals');
     }
   }
@@ -96,9 +107,27 @@ export const approveOrRejectAcquisition = createAsyncThunk(
   'acquisitions/approveOrReject',
   async ({ id, approvalData }: { id: number; approvalData: ApprovalDto }, { rejectWithValue }) => {
     try {
+      // Debug log to ensure we have the correct data
+      console.log(`Approving acquisition ${id} with data:`, JSON.stringify(approvalData));
+      
+      // Verify that approvalData contains expected fields
+      if (!approvalData.approvalStatus) {
+        console.error('Missing approvalStatus in approval data');
+        return rejectWithValue('Invalid approval data: missing approvalStatus');
+      }
+
+      // Import the debug utility from the api file
+      const { debugApproveAcquisition } = await import('@/lib/api');
+      
+      // Run the debug test first to verify the request
+      await debugApproveAcquisition(id, approvalData);
+      
+      // Then make the actual API call
       const updatedData = await api.put<Acquisition>(`acquisitions/${id}/approve`, approvalData);
+      console.log(`Successfully approved acquisition ${id}`);
       return updatedData;
     } catch (error: any) {
+      console.error(`Failed to approve/reject acquisition ID ${id}:`, error);
       return rejectWithValue(error.message || 'Failed to approve/reject acquisition');
     }
   }
