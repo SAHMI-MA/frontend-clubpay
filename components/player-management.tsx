@@ -12,12 +12,9 @@ import { fetchAllTeams } from "@/lib/redux/teamSlice";
 import { Player } from "@/lib/types/team-management";
 import { toast } from "sonner";
 import {
-  UserCircle,
-  BarChart3,
   User,
   Loader2,
   UserPlus,
-  UserCog,
   AlertTriangle,
   RefreshCw
 } from "lucide-react";

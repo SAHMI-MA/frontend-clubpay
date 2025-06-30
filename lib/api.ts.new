@@ -17,10 +17,7 @@ const isValidJwtFormat = (token: string): boolean => {
  */
 const getAuthToken = (): string | undefined => {
   if (typeof window !== 'undefined') {
-    // Try both possible token storage keys for compatibility
-    let token = localStorage.getItem('auth_token') || 
-                localStorage.getItem('authToken') || 
-                sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('auth_token');
     
     // If token exists but is not a valid JWT format, log warning
     if (token && !isValidJwtFormat(token)) {
@@ -38,9 +35,7 @@ const getAuthToken = (): string | undefined => {
  */
 const setAuthToken = (token: string): void => {
   if (typeof window !== 'undefined') {
-    // Store in both locations for compatibility
     localStorage.setItem('auth_token', token);
-    localStorage.setItem('authToken', token);
   }
 };
 
@@ -49,10 +44,7 @@ const setAuthToken = (token: string): void => {
  */
 const removeAuthToken = (): void => {
   if (typeof window !== 'undefined') {
-    // Remove from both possible storage locations
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
   }
 };
 
@@ -62,15 +54,6 @@ const removeAuthToken = (): void => {
  */
 const hasAuthToken = (): boolean => {
   return !!getAuthToken();
-};
-
-// Export the token utility functions as tokenUtils
-export const tokenUtils = {
-  isValidJwtFormat,
-  getAuthToken,
-  setAuthToken,
-  removeAuthToken,
-  hasAuthToken
 };
 
 /**
@@ -97,17 +80,14 @@ export const api = {
       // Add authorization header if token exists
       if (authToken) {
         defaultHeaders['Authorization'] = `Bearer ${authToken}`;
-        console.log(`✅ Adding auth token to request: ${endpoint}`);
+        console.log(`Adding auth token to request: ${endpoint} (token: ${authToken.substring(0, 10)}...)`);
       } else {
-        console.warn('⚠️ No auth token available for request:', endpoint);
+        console.error('⚠️ No auth token available for request:', endpoint);
+        console.error('This may cause authentication failures. Check if user is logged in.');
         
-        // For protected endpoints, explicitly require authentication
-        const protectedEndpoints = ['contracts', 'players', 'staff', 'teams', 'users', 'financial'];
-        const isProtectedEndpoint = protectedEndpoints.some(path => endpoint.includes(path));
-        
-        if (isProtectedEndpoint) {
-          console.error('🚫 Authentication required for protected endpoint:', endpoint);
-          throw new Error(`Authentication required: No token found for accessing ${endpoint}. Please login again.`);
+        // For contract-related endpoints, explicitly require authentication
+        if (endpoint.includes('contracts')) {
+          throw new Error('Authentication required: No token found for accessing contracts. Please login again.');
         }
       }
       
@@ -243,4 +223,10 @@ export const api = {
   async delete<T>(endpoint: string): Promise<T> {
     return this.fetch<T>(endpoint, { method: 'DELETE' });
   },
+
+  // Auth helpers
+  getAuthToken,
+  setAuthToken,
+  removeAuthToken,
+  hasAuthToken,
 };

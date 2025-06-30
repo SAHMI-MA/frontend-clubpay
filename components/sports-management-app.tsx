@@ -6,7 +6,6 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { TopBar } from "@/components/top-bar"
 import { Dashboard } from "@/components/dashboard"
 import { UserManagement } from "@/components/user-management"
-import { ClubManagement } from "@/components/club-management"
 import { TeamManagement } from "@/components/team-management"
 import { FinancialManagement } from "@/components/financial-management"
 import { MatchManagement } from "@/components/match-management"
@@ -18,6 +17,7 @@ import { PlayerManagement } from "./player-management"
 import { StaffManagement } from "./team-management/staff-management"
 import { RentalSupplierManagement } from "./rental-supplies-management"
 import { SupplierManagement } from "./supplier-management"
+import { ContractManagement } from "./contract-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -60,6 +60,8 @@ export function SportsManagementApp() {
         return <SupplierManagement />
       case "financial":
         return <FinancialManagement />
+      case "contracts":
+        return <ContractManagement />
       case "matches":
         return <MatchManagement />
       case "settings":
