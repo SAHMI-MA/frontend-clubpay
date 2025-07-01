@@ -25,6 +25,7 @@ import {
   DollarSign, 
   Download, 
   Eye, 
+  FileText,
   Filter, 
   Plus, 
   RefreshCcw, 
@@ -36,56 +37,40 @@ import {
 } from "lucide-react"
 import { ToastNotification, useToast, ToastType } from "@/components/ui/toast-notification"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { RootState } from "@/lib/redux/store"
 import { 
   fetchTransactions, 
   createTransactionFromAcquisition,
-  updateTransactionStatus
+  createTransactionFromSalaryPayment,
+  updateTransactionStatus,
+  fetchSalaryPayments,
+  createSalaryPayment
 } from "@/lib/redux/financialSlice"
 import { 
   Transaction, 
   TransactionType, 
   TransactionCategory, 
   PaymentStatus as TransactionPaymentStatus,
-  CreateTransactionFromAcquisitionDto 
+  CreateTransactionFromAcquisitionDto,
+  CreateTransactionFromSalaryPaymentDto,
+  CreateSalaryPaymentDto,
+  SalaryPayment
 } from "@/lib/types/financial-management"
 import { 
   fetchPendingApprovals,
   approveOrRejectAcquisition
 } from "@/lib/redux/acquisitionSlice"
+import { fetchAllPlayers } from "@/lib/redux/playerSlice"
+import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import { 
   Acquisition, 
   ApprovalStatus,
   ApprovalDto
 } from "@/lib/types/supplier-management"
+import { Player, Staff } from "@/lib/types/team-management"
 import { api } from "@/lib/api"
 
-// Enums for legacy payment management UI
-enum PaymentType {
-  ACQUISITION = "Acquisition",
-  SALARY = "Salary",
-  UTILITY = "Utility",
-  OTHER = "Other",
-}
-
-// Interfaces
-interface PaymentRequest {
-  id: number
-  type: PaymentType
-  description: string
-  amount: number
-  requestedBy: string
-  requestDate: string
-  dueDate: string
-  status: TransactionPaymentStatus
-  approvedBy?: string
-  approvedDate?: string
-  paidDate?: string
-  notes?: string
-  category: string
-  supplier?: string
-  acquisitionId?: number
-}
-
+// Monthly data for reports
 const monthlyData = [
   { month: "Jul", income: 15000, expenses: 12000 },
   { month: "Aug", income: 18000, expenses: 14000 },
@@ -95,65 +80,7 @@ const monthlyData = [
   { month: "Dec", income: 28000, expenses: 20000 },
 ]
 
-// We'll replace these with real data from acquisitions
-const samplePaymentRequests: PaymentRequest[] = [
-  {
-    id: 1,
-    type: PaymentType.ACQUISITION,
-    description: "Professional Soccer Balls (Set of 20)",
-    amount: 800,
-    requestedBy: "Coach Martinez",
-    requestDate: "2024-01-15",
-    dueDate: "2024-01-25",
-    status: TransactionPaymentStatus.PENDING,
-    category: "Equipment",
-    supplier: "SportsTech Equipment",
-    acquisitionId: 1,
-    notes: "High-quality match balls for upcoming season",
-  },
-  {
-    id: 2,
-    type: PaymentType.ACQUISITION,
-    description: "Team Jerseys (Custom Design)",
-    amount: 1125,
-    requestedBy: "Team Manager",
-    requestDate: "2024-01-13",
-    dueDate: "2024-02-01",
-    status: TransactionPaymentStatus.APPROVED,
-    approvedBy: "Finance Manager",
-    approvedDate: "2024-01-14",
-    category: "Apparel",
-    supplier: "Athletic Gear Pro",
-    acquisitionId: 3,
-    notes: "New season jerseys with updated sponsor logos",
-  },
-  {
-    id: 3,
-    type: PaymentType.SALARY,
-    description: "Coach Salary - February",
-    amount: 3200,
-    requestedBy: "HR Department",
-    requestDate: "2024-01-28",
-    dueDate: "2024-02-01",
-    status: TransactionPaymentStatus.PAID,
-    approvedBy: "Finance Manager",
-    approvedDate: "2024-01-29",
-    paidDate: "2024-02-01",
-    category: "Salaries",
-  },
-  {
-    id: 4,
-    type: PaymentType.UTILITY,
-    description: "Facility Electricity Bill",
-    amount: 450,
-    requestedBy: "Facility Manager",
-    requestDate: "2024-01-20",
-    dueDate: "2024-01-30",
-    status: TransactionPaymentStatus.REJECTED,
-    category: "Utilities",
-    notes: "Rejected due to incomplete documentation",
-  },
-]
+// No sample data needed
 
 export function FinancialManagement() {
   const dispatch = useAppDispatch()
@@ -165,8 +92,6 @@ export function FinancialManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("all")
-  const [viewingPayment, setViewingPayment] = useState<PaymentRequest | null>(null)
   
   // State for managing transactions
   const [isCreateTransactionDialogOpen, setIsCreateTransactionDialogOpen] = useState(false)
@@ -180,15 +105,39 @@ export function FinancialManagement() {
   const [isLoadingAcquisitions, setIsLoadingAcquisitions] = useState(false)
   const [acquisitionError, setAcquisitionError] = useState<string | null>(null)
   
-  // Get transactions from the Redux store
-  const { transactions, loading, error } = useAppSelector((state) => state.financial)
+  // State for managing salary payments
+  const [isCreateSalaryPaymentDialogOpen, setIsCreateSalaryPaymentDialogOpen] = useState(false)
+  const [isSubmittingSalaryPayment, setIsSubmittingSalaryPayment] = useState(false)
+  const [salaryPaymentError, setSalaryPaymentError] = useState<string | null>(null)
+  const [salaryPaymentForm, setSalaryPaymentForm] = useState({
+    amount: "",
+    paymentDate: "",
+    periodStart: "",
+    periodEnd: "",
+    bonus: "",
+    taxAmount: "",
+    netAmount: "",
+    recipientType: "player" as "player" | "staff",
+    playerId: null as number | null,
+    staffId: null as number | null,
+  })
   
-  // Legacy sample data for the payments tab until we fully migrate
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>(samplePaymentRequests)
+  // Get data from Redux store
+  const { transactions, loading, error, salaryPayments } = useAppSelector((state) => state.financial)
+  const players = useAppSelector((state) => state.players?.players || [])
+  const staff = useAppSelector((state) => state.staff?.staff || [])
+  const playersLoading = useAppSelector((state) => state.players?.loading || false)
+  const staffLoading = useAppSelector((state) => state.staff?.loading || false)
+  const authUser = useAppSelector((state: RootState) => state.auth.user)
+  
+  // No legacy sample data needed
 
-  // Fetch transactions and pending acquisitions on component mount
+  // Fetch transactions, salary payments, and pending acquisitions on component mount
   useEffect(() => {
     dispatch(fetchTransactions())
+    dispatch(fetchSalaryPayments())
+    dispatch(fetchAllPlayers())
+    dispatch(fetchAllStaff())
     fetchPendingAcquisitionsData()
   }, [dispatch])
   
@@ -255,6 +204,33 @@ export function FinancialManagement() {
       return
     }
     
+    // Check if we have a valid authenticated user
+    let userId: number | null = null;
+    
+    if (authUser && authUser.id) {
+      userId = authUser.id;
+    } else {
+      // Fallback: Try to get user ID from localStorage if not in Redux state
+      const userDataString = localStorage.getItem('user_data');
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          if (userData && userData.id) {
+            userId = userData.id;
+            console.log("Retrieved user ID from localStorage:", userId);
+          }
+        } catch (e) {
+          console.error("Failed to parse user data from localStorage:", e);
+        }
+      }
+      
+      if (!userId) {
+        setTransactionError("Authentication issue: Cannot retrieve your user information");
+        console.error("User ID not found in auth state or localStorage");
+        return;
+      }
+    }
+    
     setIsSubmittingTransaction(true)
     setTransactionError(null)
     
@@ -263,7 +239,7 @@ export function FinancialManagement() {
       console.log("Approving acquisition:", selectedAcquisitionId)
       const approvalData: ApprovalDto = {
         approvalStatus: ApprovalStatus.APPROVED,
-        approverId: 1, // Using default user ID 1
+        approverId: userId, // Using authenticated user's ID
         approvalComments: "Approved for transaction creation"
       }
       
@@ -284,7 +260,7 @@ export function FinancialManagement() {
       // Then create the transaction
       const transactionData: CreateTransactionFromAcquisitionDto = {
         acquisitionId: selectedAcquisitionId,
-        createdById: 1, // Using a default userId of 1 since we don't have user context
+        createdById: userId, // Using authenticated user's ID
         customDescription: transactionDescription || undefined
       }
       
@@ -332,6 +308,230 @@ export function FinancialManagement() {
     }
   }
   
+  // Create salary payment
+  const handleCreateSalaryPayment = async () => {
+    // Validation
+    if (!salaryPaymentForm.amount || !salaryPaymentForm.paymentDate || 
+        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd ||
+        !salaryPaymentForm.taxAmount || !salaryPaymentForm.netAmount) {
+      setSalaryPaymentError("Please fill in all required fields")
+      return
+    }
+
+    if (salaryPaymentForm.recipientType === "player" && !salaryPaymentForm.playerId) {
+      setSalaryPaymentError("Please select a player")
+      return
+    }
+
+    if (salaryPaymentForm.recipientType === "staff" && !salaryPaymentForm.staffId) {
+      setSalaryPaymentError("Please select a staff member")
+      return
+    }
+
+    // Check authentication token
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      setSalaryPaymentError("Authentication required: Please log in again to create a salary payment")
+      return
+    }
+
+    setIsSubmittingSalaryPayment(true)
+    setSalaryPaymentError(null)
+
+    try {
+      const salaryPaymentData: CreateSalaryPaymentDto = {
+        amount: parseFloat(salaryPaymentForm.amount),
+        paymentDate: salaryPaymentForm.paymentDate,
+        periodStart: salaryPaymentForm.periodStart,
+        periodEnd: salaryPaymentForm.periodEnd,
+        bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
+        taxAmount: parseFloat(salaryPaymentForm.taxAmount),
+        netAmount: parseFloat(salaryPaymentForm.netAmount),
+        playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
+        staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
+      }
+
+      console.log("Creating salary payment with data:", salaryPaymentData)
+      
+      const result = await dispatch(createSalaryPayment(salaryPaymentData)).unwrap()
+      console.log("Salary payment created successfully:", result)
+      
+      setIsCreateSalaryPaymentDialogOpen(false)
+      
+      // Show success toast notification
+      showToast(
+        "Salary payment created successfully.",
+        "success",
+        "Salary Payment Created"
+      )
+      
+      // Reset form
+      setSalaryPaymentForm({
+        amount: "",
+        paymentDate: "",
+        periodStart: "",
+        periodEnd: "",
+        bonus: "",
+        taxAmount: "",
+        netAmount: "",
+        recipientType: "player",
+        playerId: null,
+        staffId: null,
+      })
+      
+      // Refresh data
+      dispatch(fetchSalaryPayments())
+      dispatch(fetchTransactions()) // Salary payments may create transactions
+    } catch (err: any) {
+      console.error("Failed to create salary payment:", err)
+      
+      const errorMessage = err.message || "Failed to create salary payment. Please try again."
+      
+      // Show error toast notification
+      showToast(
+        errorMessage,
+        "error",
+        "Salary Payment Creation Failed"
+      )
+      
+      if (err.message?.includes('401') || err.message?.includes('auth')) {
+        setSalaryPaymentError("Authentication failed: Your session may have expired. Please log in again.")
+      } else {
+        setSalaryPaymentError(errorMessage)
+      }
+    } finally {
+      setIsSubmittingSalaryPayment(false)
+    }
+  }
+  
+  // Create transaction from salary payment
+  const handleCreateTransactionFromSalaryPayment = async (salaryPaymentId: number) => {
+    // Check authentication token and user
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      showToast(
+        "Authentication required: Please log in again to create a transaction",
+        "error",
+        "Authentication Failed"
+      )
+      return
+    }
+    
+    // Check if we have a valid authenticated user
+    let userId: number | null = null;
+    
+    if (authUser && authUser.id) {
+      userId = authUser.id;
+    } else {
+      // Fallback: Try to get user ID from localStorage if not in Redux state
+      const userDataString = localStorage.getItem('user_data');
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          if (userData && userData.id) {
+            userId = userData.id;
+            console.log("Retrieved user ID from localStorage:", userId);
+          }
+        } catch (e) {
+          console.error("Failed to parse user data from localStorage:", e);
+        }
+      }
+      
+      if (!userId) {
+        showToast(
+          "Authentication issue: Cannot retrieve your user information",
+          "error",
+          "User ID Not Found"
+        );
+        console.error("User ID not found in auth state or localStorage");
+        return;
+      }
+    }
+    
+    try {
+      // Create the transaction from salary payment
+      // First, find the salary payment to get recipient details for description
+      const paymentDetails = salaryPayments.find(p => p.id === salaryPaymentId);
+      let customDescription = "Salary payment transaction";
+      
+      if (paymentDetails) {
+        const playerInfo = paymentDetails.player || (paymentDetails.playerId ? players.find(p => p.id === paymentDetails.playerId) : null);
+        const staffInfo = paymentDetails.staff || (paymentDetails.staffId ? staff.find(s => s.id === paymentDetails.staffId) : null);
+        const recipientName = playerInfo 
+          ? `${playerInfo.firstName} ${playerInfo.lastName} (Player)` 
+          : staffInfo 
+            ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})` 
+            : 'Unknown recipient';
+            
+        const paymentDate = new Date(paymentDetails.paymentDate).toLocaleDateString();
+        const periodStart = new Date(paymentDetails.periodStart).toLocaleDateString();
+        const periodEnd = new Date(paymentDetails.periodEnd).toLocaleDateString();
+        
+        customDescription = `Salary payment for ${recipientName} - Period: ${periodStart} to ${periodEnd}`;
+      }
+      
+      // Use the authenticated user's ID instead of a hardcoded value
+      const transactionData: CreateTransactionFromSalaryPaymentDto = {
+        salaryPaymentId: salaryPaymentId,
+        createdById: userId, // Use the retrieved user ID
+        customDescription: customDescription
+      }
+      
+      console.log("Creating transaction with authenticated user ID:", userId)
+      
+      console.log("Creating transaction from salary payment with data:", transactionData)
+      
+      const result = await dispatch(createTransactionFromSalaryPayment(transactionData)).unwrap()
+      console.log("Transaction created successfully from salary payment:", result)
+      
+      // Show success toast notification
+      showToast(
+        "Transaction created successfully from salary payment.",
+        "success",
+        "Transaction Created"
+      )
+      
+      // Refresh transactions and salary payments
+      dispatch(fetchTransactions())
+      dispatch(fetchSalaryPayments())
+    } catch (err: any) {
+      console.error("Failed to create transaction from salary payment:", err)
+      
+      // Log detailed error information to help diagnose the issue
+      console.error("Error details:", {
+        response: err.response,
+        status: err.status || err.statusCode,
+        data: err.data,
+        message: err.message,
+        userId,
+        fullError: err
+      });
+      
+      // Try to get more detailed error message from the response if available
+      const serverErrorMessage = err.response?.data?.message || err.data?.message;
+      const detailedError = serverErrorMessage || err.message || "Failed to create transaction. Please try again.";
+      
+      console.log("Detailed API error:", detailedError);
+      // Log the actual data that was attempted to be sent to the API
+      console.log("Request data that was being sent to the API endpoint:");
+      
+      // Show error toast notification with more details if available
+      showToast(
+        `Error: ${detailedError}`,
+        "error",
+        "Transaction Creation Failed"
+      )
+    }
+  }
+  
   // Filter transactions based on search term, category, and type
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -341,15 +541,7 @@ export function FinancialManagement() {
     return matchesSearch && matchesCategory && matchesType
   })
 
-  // Filter payment requests based on search term and status
-  const filteredPaymentRequests = paymentRequests.filter((payment) => {
-    const matchesSearch =
-      payment.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.requestedBy.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus =
-      selectedPaymentStatus === "all" || payment.status.toLowerCase() === selectedPaymentStatus.toLowerCase()
-    return matchesSearch && matchesStatus
-  })
+  // No filteredPaymentRequests needed
 
   const getTypeColor = (type: TransactionType) => {
     return type === TransactionType.INCOME
@@ -370,105 +562,11 @@ export function FinancialManagement() {
     }
   }
 
-  const getPaymentStatusColor = (status: TransactionPaymentStatus) => {
-    switch (status) {
-      case TransactionPaymentStatus.PENDING:
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      case TransactionPaymentStatus.APPROVED:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case TransactionPaymentStatus.REJECTED:
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-      case TransactionPaymentStatus.PAID:
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-    }
-  }
-
-  const handleApprovePayment = (id: number) => {
-    // Find the payment to get its name for the toast message
-    const paymentToApprove = paymentRequests.find(payment => payment.id === id);
-    const paymentName = paymentToApprove?.description || `Payment #${id}`;
-    
-    setPaymentRequests(
-      paymentRequests.map((payment) =>
-        payment.id === id
-          ? {
-              ...payment,
-              status: TransactionPaymentStatus.APPROVED,
-              approvedBy: "Finance Manager",
-              approvedDate: new Date().toISOString().split("T")[0],
-            }
-          : payment,
-      ),
-    )
-    
-    // Show success toast notification
-    showToast(
-      `${paymentName} has been approved successfully.`,
-      "success",
-      "Payment Approved"
-    );
-  }
-
-  const handleRejectPayment = (id: number) => {
-    // Find the payment to get its name for the toast message
-    const paymentToReject = paymentRequests.find(payment => payment.id === id);
-    const paymentName = paymentToReject?.description || `Payment #${id}`;
-    
-    setPaymentRequests(
-      paymentRequests.map((payment) =>
-        payment.id === id
-          ? {
-              ...payment,
-              status: TransactionPaymentStatus.REJECTED,
-              notes: "Rejected by Finance Manager",
-            }
-          : payment,
-      ),
-    )
-    
-    // Show info toast notification
-    showToast(
-      `${paymentName} has been rejected.`,
-      "info",
-      "Payment Rejected"
-    );
-  }
-
-  const handleMarkAsPaid = (id: number) => {
-    // Find the payment to get its name for the toast message
-    const paymentToPaid = paymentRequests.find(payment => payment.id === id);
-    const paymentName = paymentToPaid?.description || `Payment #${id}`;
-    
-    setPaymentRequests(
-      paymentRequests.map((payment) =>
-        payment.id === id
-          ? {
-              ...payment,
-              status: TransactionPaymentStatus.PAID,
-              paidDate: new Date().toISOString().split("T")[0],
-            }
-          : payment,
-      ),
-    )
-    
-    // Show success toast notification
-    showToast(
-      `${paymentName} has been marked as paid.`,
-      "success",
-      "Payment Completed"
-    );
-  }
+  // No payment-related functions needed
 
   const totalIncome = transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0)
   const totalExpenses = Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0))
   const netProfit = totalIncome - totalExpenses
-
-  const pendingPayments = paymentRequests.filter((p) => p.status === TransactionPaymentStatus.PENDING)
-  const approvedPayments = paymentRequests.filter((p) => p.status === TransactionPaymentStatus.APPROVED)
-  const totalPendingAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0)
-  const totalApprovedAmount = approvedPayments.reduce((sum, p) => sum + p.amount, 0)
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -485,9 +583,19 @@ export function FinancialManagement() {
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
-          <Button className="bg-blue-800 hover:bg-blue-900 text-white" onClick={() => setIsCreateTransactionDialogOpen(true)}>
+          <Button 
+            className="bg-green-600 hover:bg-green-700 text-white" 
+            onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
-            Approve & Create Transaction
+            Create Salary Payment
+          </Button>
+          <Button 
+            className="bg-blue-800 hover:bg-blue-900 text-white" 
+            onClick={() => setIsCreateTransactionDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create from Acquisition
           </Button>
         </div>
       </div>
@@ -529,14 +637,14 @@ export function FinancialManagement() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Payments</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Latest Transactions</CardTitle>
             <CreditCard className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              ${totalPendingAmount.toLocaleString()}
+              {transactions.length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{pendingPayments.length} pending requests</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total recorded transactions</p>
           </CardContent>
         </Card>
       </div>
@@ -544,7 +652,7 @@ export function FinancialManagement() {
       <Tabs defaultValue="transactions" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="salary-payments">Salary Payments</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
         </TabsList>
@@ -648,162 +756,112 @@ export function FinancialManagement() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="payments" className="space-y-4">
+        
+        <TabsContent value="salary-payments" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Payment Requests</CardTitle>
-              <CardDescription>
-                Approve and manage payment requests from acquisitions and other expenses
-              </CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Salary Payments</CardTitle>
+              <CardDescription>View and manage salary payments for players and staff</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Payment Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
+              {/* Filters */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search payment requests..."
+                    placeholder="Search salary payments..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white ml-2" 
+                  onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Salary Payment
+                </Button>
               </div>
 
-              {/* Payment Requests Table */}
+              {/* Salary Payments Table */}
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Requested By</TableHead>
-                      <TableHead>Due Date</TableHead>
+                      <TableHead>Payment Date</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Gross Amount</TableHead>
+                      <TableHead>Tax Amount</TableHead>
+                      <TableHead>Net Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPaymentRequests.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{payment.description}</span>
-                            {payment.supplier && (
-                              <span className="text-xs text-gray-500">Supplier: {payment.supplier}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{payment.type}</TableCell>
-                        <TableCell className="font-medium">${payment.amount.toLocaleString()}</TableCell>
-                        <TableCell>{payment.requestedBy}</TableCell>
-                        <TableCell>{payment.dueDate}</TableCell>
-                        <TableCell>
-                          <Badge className={getPaymentStatusColor(payment.status)}>{payment.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => setViewingPayment(payment)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {payment.status === TransactionPaymentStatus.PENDING && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleApprovePayment(payment.id)}
-                                  className="text-green-600 hover:text-green-700"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRejectPayment(payment.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {payment.status === TransactionPaymentStatus.APPROVED && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMarkAsPaid(payment.id)}
-                                className="text-blue-600 hover:text-blue-700"
-                              >
-                                Mark Paid
-                              </Button>
-                            )}
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
+                            <span>Loading salary payments...</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : !salaryPayments || salaryPayments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          No salary payments found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      salaryPayments.map((payment) => {
+                        // Use recipient details directly from API response if available
+                        // Fall back to our local state if not available
+                        const playerInfo = payment.player || (payment.playerId ? players.find(p => p.id === payment.playerId) : null);
+                        const staffInfo = payment.staff || (payment.staffId ? staff.find(s => s.id === payment.staffId) : null);
+                        const recipientName = playerInfo 
+                          ? `${playerInfo.firstName} ${playerInfo.lastName} (Player)` 
+                          : staffInfo 
+                            ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})` 
+                            : 'Unknown';
+                        
+                        return (
+                          <TableRow key={payment.id}>
+                            <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
+                            <TableCell className="font-medium">{recipientName}</TableCell>
+                            <TableCell>
+                              {new Date(payment.periodStart).toLocaleDateString()} - {new Date(payment.periodEnd).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>${payment.amount.toLocaleString()}</TableCell>
+                            <TableCell>${payment.taxAmount.toLocaleString()}</TableCell>
+                            <TableCell>${payment.netAmount.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {payment.status === TransactionPaymentStatus.PENDING && (
+                                <Button 
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-blue-300 hover:bg-blue-100"
+                                  onClick={() => handleCreateTransactionFromSalaryPayment(payment.id)}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  Create Transaction
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
             </CardContent>
           </Card>
-
-          {/* Payment Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Pending Approvals</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{pendingPayments.length}</div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total: ${totalPendingAmount.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Approved Payments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{approvedPayments.length}</div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total: ${totalApprovedAmount.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Paid This Month</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {paymentRequests.filter((p) => p.status === TransactionPaymentStatus.PAID).length}
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total: $
-                  {paymentRequests
-                    .filter((p) => p.status === TransactionPaymentStatus.PAID)
-                    .reduce((sum, p) => sum + p.amount, 0)
-                    .toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
@@ -972,120 +1030,262 @@ export function FinancialManagement() {
         </DialogContent>
       </Dialog>
       
-      {/* View Payment Dialog */}
-      <Dialog open={!!viewingPayment} onOpenChange={() => setViewingPayment(null)}>
-        <DialogContent className="max-w-2xl">
+      {/* Create Salary Payment Dialog */}
+      <Dialog open={isCreateSalaryPaymentDialogOpen} onOpenChange={setIsCreateSalaryPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Payment Request Details</DialogTitle>
-            <DialogDescription>View payment request information and approval history</DialogDescription>
+            <DialogTitle>Create New Salary Payment</DialogTitle>
+            <DialogDescription>
+              Create a new salary payment for a player or staff member.
+            </DialogDescription>
           </DialogHeader>
-          {viewingPayment && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</Label>
-                  <p className="text-sm font-medium">{viewingPayment.description}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Type</Label>
-                  <p className="text-sm font-medium">{viewingPayment.type}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Amount</Label>
-                  <p className="text-sm font-medium">${viewingPayment.amount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</Label>
-                  <Badge className={getPaymentStatusColor(viewingPayment.status)}>{viewingPayment.status}</Badge>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Requested By</Label>
-                  <p className="text-sm font-medium">{viewingPayment.requestedBy}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Request Date</Label>
-                  <p className="text-sm font-medium">{viewingPayment.requestDate}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Due Date</Label>
-                  <p className="text-sm font-medium">{viewingPayment.dueDate}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Category</Label>
-                  <p className="text-sm font-medium">{viewingPayment.category}</p>
-                </div>
-                {viewingPayment.supplier && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
-                    <p className="text-sm font-medium">{viewingPayment.supplier}</p>
-                  </div>
-                )}
-                {viewingPayment.approvedBy && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved By</Label>
-                    <p className="text-sm font-medium">{viewingPayment.approvedBy}</p>
-                  </div>
-                )}
-                {viewingPayment.approvedDate && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved Date</Label>
-                    <p className="text-sm font-medium">{viewingPayment.approvedDate}</p>
-                  </div>
-                )}
-                {viewingPayment.paidDate && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Paid Date</Label>
-                    <p className="text-sm font-medium">{viewingPayment.paidDate}</p>
-                  </div>
-                )}
-              </div>
-              {viewingPayment.notes && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</Label>
-                  <p className="text-sm mt-1">{viewingPayment.notes}</p>
-                </div>
-              )}
+          
+          {salaryPaymentError && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 mb-4">
+              <p className="text-sm">{salaryPaymentError}</p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingPayment(null)}>
-              Close
-            </Button>
-            {viewingPayment?.status === TransactionPaymentStatus.PENDING && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    handleApprovePayment(viewingPayment.id)
-                    setViewingPayment(null)
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleRejectPayment(viewingPayment.id)
-                    setViewingPayment(null)
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
+          
+          <div className="grid gap-4 py-4">
+            {/* Recipient Type */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="recipientType" className="text-right">
+                Recipient Type*
+              </Label>
+              <div className="col-span-3 flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="playerType"
+                    name="recipientType"
+                    value="player"
+                    checked={salaryPaymentForm.recipientType === "player"}
+                    onChange={() => setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null })}
+                    className="h-4 w-4 border-gray-300 text-blue-600"
+                  />
+                  <Label htmlFor="playerType" className="cursor-pointer">Player</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="staffType"
+                    name="recipientType"
+                    value="staff"
+                    checked={salaryPaymentForm.recipientType === "staff"}
+                    onChange={() => setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "staff", playerId: null })}
+                    className="h-4 w-4 border-gray-300 text-blue-600"
+                  />
+                  <Label htmlFor="staffType" className="cursor-pointer">Staff</Label>
+                </div>
               </div>
-            )}
-            {viewingPayment?.status === TransactionPaymentStatus.APPROVED && (
-              <Button
-                onClick={() => {
-                  handleMarkAsPaid(viewingPayment.id)
-                  setViewingPayment(null)
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Mark as Paid
-              </Button>
-            )}
+            </div>
+            
+            {/* Recipient Selection */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="recipient" className="text-right">
+                Recipient*
+              </Label>
+              <div className="col-span-3">
+                {salaryPaymentForm.recipientType === "player" ? (
+                  <Select
+                    value={salaryPaymentForm.playerId?.toString() || ""}
+                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, playerId: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a player" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {playersLoading ? (
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                          <span className="ml-2">Loading players...</span>
+                        </div>
+                      ) : players.length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">No players available</div>
+                      ) : (
+                        players.map((player) => (
+                          <SelectItem key={player.id} value={player.id.toString()}>
+                            {player.firstName} {player.lastName} ({player.position})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={salaryPaymentForm.staffId?.toString() || ""}
+                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, staffId: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffLoading ? (
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                          <span className="ml-2">Loading staff...</span>
+                        </div>
+                      ) : staff.length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">No staff available</div>
+                      ) : (
+                        staff.map((staffMember) => (
+                          <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                            {staffMember.firstName} {staffMember.lastName} ({staffMember.role})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            {/* Payment Amount */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">
+                Gross Amount*
+              </Label>
+              <div className="col-span-3 relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={salaryPaymentForm.amount}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, amount: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Payment Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="paymentDate" className="text-right">
+                Payment Date*
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={salaryPaymentForm.paymentDate}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, paymentDate: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Period Start */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="periodStart" className="text-right">
+                Period Start*
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="periodStart"
+                  type="date"
+                  value={salaryPaymentForm.periodStart}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, periodStart: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Period End */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="periodEnd" className="text-right">
+                Period End*
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="periodEnd"
+                  type="date"
+                  value={salaryPaymentForm.periodEnd}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, periodEnd: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Bonus (optional) */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="bonus" className="text-right">
+                Bonus
+              </Label>
+              <div className="col-span-3 relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <Input
+                  id="bonus"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={salaryPaymentForm.bonus}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, bonus: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Tax Amount */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taxAmount" className="text-right">
+                Tax Amount*
+              </Label>
+              <div className="col-span-3 relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <Input
+                  id="taxAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={salaryPaymentForm.taxAmount}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, taxAmount: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Net Amount */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="netAmount" className="text-right">
+                Net Amount*
+              </Label>
+              <div className="col-span-3 relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <Input
+                  id="netAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={salaryPaymentForm.netAmount}
+                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, netAmount: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateSalaryPaymentDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateSalaryPayment}
+              disabled={isSubmittingSalaryPayment}
+            >
+              {isSubmittingSalaryPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Salary Payment"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
