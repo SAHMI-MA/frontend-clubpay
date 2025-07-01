@@ -1,6 +1,7 @@
 import { User } from '../auth-service';
 import { Supplier } from './supplier-management';
 import { Acquisition } from './supplier-management';
+import { Player, Staff } from './team-management';
 
 export enum TransactionType {
   INCOME = 'INCOME',
@@ -70,6 +71,9 @@ export interface SalaryPayment {
   status: PaymentStatus;
   staffId?: number;
   playerId?: number;
+  staff?: Staff | null;
+  player?: Player | null;
+  notes?: string;
   createdAt: string; // ISO format date string
   updatedAt: string; // ISO format date string
 }
@@ -106,6 +110,12 @@ export interface CreateTransactionDto {
 
 export interface CreateTransactionFromAcquisitionDto {
   acquisitionId: number;
+  createdById: number;
+  customDescription?: string;
+}
+
+export interface CreateTransactionFromSalaryPaymentDto {
+  salaryPaymentId: number;
   createdById: number;
   customDescription?: string;
 }

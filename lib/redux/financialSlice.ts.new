@@ -146,21 +146,7 @@ export const createTransactionFromSalaryPayment = createAsyncThunk(
       console.log("Making transaction creation from salary payment request with authorization token");
       console.log("Request endpoint: /accounting/transactions/from-salary-payment");
       console.log("Request payload:", JSON.stringify(data));
-      
-      // Make sure data contains all required fields
-      if (!data.salaryPaymentId || !data.createdById) {
-        console.error("Missing required fields in payload:", data);
-        throw new Error("Missing required fields: salaryPaymentId and createdById are required");
-      }
-      
-      // Ensure customDescription is present - it's required by the API
-      const finalPayload = {
-        ...data,
-        customDescription: data.customDescription || `Salary payment transaction for payment ID: ${data.salaryPaymentId}`
-      };
-      
-      console.log("Final request payload:", JSON.stringify(finalPayload));
-      const response = await api.post<Transaction>('/accounting/transactions/from-salary-payment', finalPayload);
+      const response = await api.post<Transaction>('/accounting/transactions/from-salary-payment', data);
       
       // Update the salary payment status to APPROVED
       if (response && response.id) {
@@ -173,24 +159,7 @@ export const createTransactionFromSalaryPayment = createAsyncThunk(
       return response;
     } catch (error: any) {
       console.error("Transaction creation from salary payment failed:", error);
-      
-      // Log detailed error information
-      console.error("API Error Details:", {
-        status: error.status || error.statusCode || error.response?.status,
-        data: error.response?.data || error.data,
-        message: error.message,
-        fullError: error
-      });
-      
-      // Extract more detailed error message if available
-      const serverErrorMessage = error.response?.data?.message || 
-                               error.response?.data?.error ||
-                               error.data?.message;
-      
-      const errorMessage = serverErrorMessage || error.message || 'Failed to create transaction from salary payment';
-      console.error("Final error message:", errorMessage);
-      
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.message || 'Failed to create transaction from salary payment');
     }
   }
 );
