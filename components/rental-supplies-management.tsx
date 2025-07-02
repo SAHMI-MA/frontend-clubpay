@@ -38,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { useToast, ToastNotification } from "@/components/ui/toast-notification"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,7 +81,7 @@ export function RentalSupplierManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSupplierId, setSelectedSupplierId] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
-
+  
   // Dialog states
   const [isAddAcquisitionDialogOpen, setIsAddAcquisitionDialogOpen] = useState(false)
   const [isEditAcquisitionDialogOpen, setIsEditAcquisitionDialogOpen] = useState(false)
@@ -97,26 +98,10 @@ export function RentalSupplierManagement() {
   const { teams } = useAppSelector((state) => state.teams)
   const { players } = useAppSelector((state) => state.players)
   const { staff } = useAppSelector((state) => state.staff)
+  const { user: currentUser } = useAppSelector((state) => state.auth)
   
-  // Custom toast state
-  const [toastState, setToastState] = useState<ToastState>({
-    show: false,
-    message: "",
-    type: "info"
-  })
-  
-  const showToast = (message: string, type: ToastType = "info", title?: string) => {
-    setToastState({
-      show: true,
-      message,
-      type,
-      title
-    })
-  }
-  
-  const hideToast = () => {
-    setToastState(prev => ({ ...prev, show: false }))
-  }
+  // Toast notifications
+  const { toastState, showToast, hideToast } = useToast()
 
   // Load data on component mount
   useEffect(() => {
@@ -376,17 +361,38 @@ export function RentalSupplierManagement() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete?.type === "acquisition" && selectedAcquisition?.id) {
-      dispatch(deleteAcquisition(selectedAcquisition.id))
-        .unwrap()
-        .then(() => {
-          setIsDeleteDialogOpen(false)
-          setItemToDelete(null)
-        })
-        .catch((error) => {
-          console.error("Failed to delete acquisition:", error)
-        })
+      try {
+        console.log(`Attempting to delete acquisition with ID: ${selectedAcquisition.id}`);
+        // Using unwrap() will throw an error if the action is rejected
+        await dispatch(deleteAcquisition(selectedAcquisition.id)).unwrap();
+        
+        console.log(`Successfully deleted acquisition ${selectedAcquisition.id}`);
+        
+        // Clear UI state after successful deletion
+        setIsDeleteDialogOpen(false);
+        setItemToDelete(null);
+        
+        // Show success toast
+        showToast(
+          "Acquisition successfully deleted", 
+          "success", 
+          "Success"
+        );
+        
+        // Refresh acquisitions list
+        dispatch(fetchAllAcquisitions());
+      } catch (error: any) {
+        console.error("Failed to delete acquisition:", error);
+        
+        // Show error toast with more detailed message
+        showToast(
+          `Failed to delete acquisition: ${error.message || "Unknown error"}`, 
+          "error",
+          "Error"
+        );
+      }
     }
   }
 
@@ -397,10 +403,44 @@ export function RentalSupplierManagement() {
   
   // Handle acquisition approval or rejection
   const handleApproveAcquisition = (acquisition: Acquisition) => {
-    // Create approval data
+    // Get the authenticated user ID from Redux or localStorage
+    let approverId: number;
+    
+    if (currentUser?.id) {
+      // Use the authenticated user from Redux state
+      approverId = currentUser.id;
+      console.log(`Using authenticated user ID from Redux: ${approverId}`);
+    } else {
+      // Fallback: Try to get user from localStorage
+      const localStorageUser = localStorage.getItem('user');
+      if (localStorageUser) {
+        try {
+          const parsedUser = JSON.parse(localStorageUser);
+          approverId = parsedUser.id;
+          console.log(`Using authenticated user ID from localStorage: ${approverId}`);
+        } catch (error) {
+          console.error('Failed to parse user from localStorage', error);
+          showToast(
+            `Cannot approve acquisition: You need to be logged in.`,
+            "error",
+            "Authentication Error"
+          );
+          return; // Exit early if we can't get a valid user ID
+        }
+      } else {
+        showToast(
+          `Cannot approve acquisition: You need to be logged in.`,
+          "error",
+          "Authentication Error"
+        );
+        return; // Exit early if we can't get a valid user ID
+      }
+    }
+    
+    // Create approval data with the authenticated user's ID
     const approvalData = {
       approvalStatus: ApprovalStatus.APPROVED,
-      approverId: 1, // This would typically come from the current user's context
+      approverId, // Use the current user's ID
       approvalComments: "Approved from rental & supplies management"
     };
     
@@ -408,7 +448,7 @@ export function RentalSupplierManagement() {
     setApprovingId(acquisition.id);
     
     // Dispatch approve action with correct PUT endpoint format
-    console.log(`Sending approval request for acquisition ID ${acquisition.id}:`, JSON.stringify(approvalData));
+    console.log(`Sending approval request for acquisition ID ${acquisition.id} with approverId ${approverId}:`, JSON.stringify(approvalData));
     dispatch(approveOrRejectAcquisition({ id: acquisition.id, approvalData }))
       .unwrap()
       .then(() => {
@@ -443,7 +483,7 @@ export function RentalSupplierManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Custom Toast Notification */}
+      {/* Toast Notification */}
       <ToastNotification toast={toastState} onClose={hideToast} />
       
       <div className="flex items-center justify-between">
@@ -1020,53 +1060,6 @@ export function RentalSupplierManagement() {
   )
 }
 
-// Custom Toast Notification Component
-type ToastType = 'success' | 'error' | 'info';
-interface ToastState {
-  show: boolean;
-  message: string;
-  title?: string;
-  type: ToastType;
-}
+// Using imported toast types from the toast-notification component
 
-function ToastNotification({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
-  useEffect(() => {
-    if (toast.show) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 4000); // Auto-dismiss after 4 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [toast.show, onClose]);
-
-  if (!toast.show) return null;
-
-  const bgColor = toast.type === 'success' 
-    ? 'bg-green-100 border-green-500 text-green-800' 
-    : toast.type === 'error' 
-      ? 'bg-red-100 border-red-500 text-red-800'
-      : 'bg-blue-100 border-blue-500 text-blue-800';
-
-  const IconComponent = toast.type === 'success' 
-    ? CheckCircle 
-    : toast.type === 'error' 
-      ? AlertCircle
-      : Info;
-
-  return (
-    <div className={`fixed top-4 right-4 z-50 max-w-md rounded-md border p-4 shadow-md ${bgColor}`}>
-      <div className="flex items-start gap-3">
-        <IconComponent className="h-5 w-5 mt-0.5" />
-        <div className="flex-1">
-          {toast.title && (
-            <h4 className="font-medium">{toast.title}</h4>
-          )}
-          <p className="text-sm">{toast.message}</p>
-        </div>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
+// Using imported ToastNotification component

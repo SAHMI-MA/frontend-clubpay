@@ -33,13 +33,27 @@ import {
   TrendingDown, 
   TrendingUp, 
   X, 
-  Loader2 
+  Loader2,
+  Calendar,
+  BarChart3,
+  PieChart
 } from "lucide-react"
-import { ToastNotification, useToast, ToastType } from "@/components/ui/toast-notification"
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+import { addPDFHeader, addPDFFooter, formatCurrency, getFileNameWithDate, PDF_STYLES } from '@/lib/pdf-utils'
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => void;
+  }
+}
+import { ToastNotification, useToast } from "@/components/ui/toast-notification"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { RootState } from "@/lib/redux/store"
 import { 
   fetchTransactions, 
+  createTransaction,
   createTransactionFromAcquisition,
   createTransactionFromSalaryPayment,
   updateTransactionStatus,
@@ -51,11 +65,60 @@ import {
   TransactionType, 
   TransactionCategory, 
   PaymentStatus as TransactionPaymentStatus,
+  CreateTransactionDto,
   CreateTransactionFromAcquisitionDto,
   CreateTransactionFromSalaryPaymentDto,
   CreateSalaryPaymentDto,
   SalaryPayment
 } from "@/lib/types/financial-management"
+
+// Add new types for financial reports
+interface FinancialReport {
+  id: number
+  periodStart: string
+  periodEnd: string
+  totalIncome: number
+  totalExpenses: number
+  netProfit: number
+  title: string
+  incomeBreakdown?: Record<string, number>
+  expenseBreakdown?: Record<string, number>
+  generatedBy: {
+    id: number
+    username: string
+    firstName?: string
+    lastName?: string
+  }
+  createdAt: string
+  notes?: string
+}
+
+interface TransactionStatistics {
+  totalIncome: number
+  totalExpenses: number
+  netProfit: number
+  byCategory: Record<string, number>
+  byPeriod: Array<{
+    period: string
+    income: number
+    expenses: number
+    net: number
+  }>
+}
+
+interface CreateFinancialReportDto {
+  periodStart: string
+  periodEnd: string
+  title: string
+  notes?: string
+  generatedById: number
+}
+
+interface TransactionStatisticsRequest {
+  startDate: string
+  endDate: string
+  groupBy?: 'day' | 'week' | 'month' | 'category'
+}
 import { 
   fetchPendingApprovals,
   approveOrRejectAcquisition
@@ -70,16 +133,6 @@ import {
 import { Player, Staff } from "@/lib/types/team-management"
 import { api } from "@/lib/api"
 
-// Monthly data for reports
-const monthlyData = [
-  { month: "Jul", income: 15000, expenses: 12000 },
-  { month: "Aug", income: 18000, expenses: 14000 },
-  { month: "Sep", income: 22000, expenses: 16000 },
-  { month: "Oct", income: 19000, expenses: 15000 },
-  { month: "Nov", income: 25000, expenses: 18000 },
-  { month: "Dec", income: 28000, expenses: 20000 },
-]
-
 // No sample data needed
 
 export function FinancialManagement() {
@@ -92,10 +145,28 @@ export function FinancialManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  
+  // State for financial reports
+  const [isGenerateReportDialogOpen, setIsGenerateReportDialogOpen] = useState(false)
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [financialReports, setFinancialReports] = useState<FinancialReport[]>([])
+  const [isLoadingReports, setIsLoadingReports] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<FinancialReport | null>(null)
+  const [isReportDetailDialogOpen, setIsReportDetailDialogOpen] = useState(false)
+  const [reportForm, setReportForm] = useState({
+    periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // January 1st
+    periodEnd: new Date().toISOString().split('T')[0], // Today
+    title: "",
+    notes: ""
+  })
+  const [transactionStats, setTransactionStats] = useState<TransactionStatistics | null>(null)
+  const [isLoadingStats, setIsLoadingStats] = useState(false)
   
   // State for managing transactions
   const [isCreateTransactionDialogOpen, setIsCreateTransactionDialogOpen] = useState(false)
-  const [pendingAcquisitions, setPendingAcquisitions] = useState<Acquisition[]>([])
+  const [approvedAcquisitions, setApprovedAcquisitions] = useState<Acquisition[]>([])
   const [selectedAcquisitionId, setSelectedAcquisitionId] = useState<number | null>(null)
   const [transactionDescription, setTransactionDescription] = useState("")
   const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false)
@@ -109,6 +180,20 @@ export function FinancialManagement() {
   const [isCreateSalaryPaymentDialogOpen, setIsCreateSalaryPaymentDialogOpen] = useState(false)
   const [isSubmittingSalaryPayment, setIsSubmittingSalaryPayment] = useState(false)
   const [salaryPaymentError, setSalaryPaymentError] = useState<string | null>(null)
+  
+  // State for transaction type dialog
+  const [isTransactionTypeDialogOpen, setIsTransactionTypeDialogOpen] = useState(false)
+  const [selectedSalaryPaymentId, setSelectedSalaryPaymentId] = useState<number | null>(null)
+  const [selectedTransactionType, setSelectedTransactionType] = useState<TransactionType>(TransactionType.EXPENSE)
+  const [selectedTransactionCategory, setSelectedTransactionCategory] = useState<TransactionCategory | "">(TransactionCategory.SALARY)
+  const [isCustomTransactionDialogOpen, setIsCustomTransactionDialogOpen] = useState(false)
+  const [customTransactionForm, setCustomTransactionForm] = useState({
+    amount: "",
+    date: new Date().toISOString().split('T')[0],
+    description: "",
+    type: TransactionType.INCOME as TransactionType,
+    category: TransactionCategory.SPONSORSHIP as TransactionCategory
+  })
   const [salaryPaymentForm, setSalaryPaymentForm] = useState({
     amount: "",
     paymentDate: "",
@@ -132,27 +217,657 @@ export function FinancialManagement() {
   
   // No legacy sample data needed
 
-  // Fetch transactions, salary payments, and pending acquisitions on component mount
+  // Fetch transactions, salary payments, and approved acquisitions on component mount
   useEffect(() => {
     dispatch(fetchTransactions())
     dispatch(fetchSalaryPayments())
     dispatch(fetchAllPlayers())
     dispatch(fetchAllStaff())
-    fetchPendingAcquisitionsData()
+    fetchApprovedAcquisitionsData()
+    fetchFinancialReports()
+    fetchTransactionStatistics()
   }, [dispatch])
   
-  // Function to fetch pending acquisitions
-  const fetchPendingAcquisitionsData = async () => {
+  // Function to fetch financial reports
+  const fetchFinancialReports = async () => {
+    setIsLoadingReports(true)
+    try {
+      const reports = await api.get<FinancialReport[]>('accounting/financial-reports')
+      setFinancialReports(reports)
+    } catch (err: any) {
+      console.error("Failed to fetch financial reports:", err)
+      showToast(
+        "Failed to load financial reports",
+        "error",
+        "Error"
+      )
+    } finally {
+      setIsLoadingReports(false)
+    }
+  }
+  
+  // Function to fetch transaction statistics
+  const fetchTransactionStatistics = async () => {
+    setIsLoadingStats(true)
+    try {
+      console.log(`Preparing to fetch statistics for year ${selectedYear}`);
+      
+      // Use the exact URL format from your example, replacing only the year
+      const exactUrl = `accounting/transactions/statistics?startDate=${selectedYear}-01-01&endDate=${selectedYear}-12-31&startYear=${selectedYear}&startMonth=1&startDay=1&endYear=${selectedYear}&endMonth=12&endDay=31&groupBy=month`;
+      
+      // Using the API utility to maintain consistent auth headers
+      console.log(`Fetching transaction statistics with exact working URL format: ${exactUrl}`);
+      
+      const stats = await api.get<TransactionStatistics>(exactUrl);
+      console.log("Received transaction statistics:", stats);
+      
+      if (!stats || typeof stats !== 'object') {
+        throw new Error("Invalid response format from API");
+      }
+      
+      setTransactionStats(stats);
+      showToast("Transaction statistics loaded successfully", "success");
+    } catch (apiError: any) {
+      console.error("Exact URL format approach failed:", apiError);
+      
+      // Log the error message for debugging
+      if (apiError.message) {
+        console.error("Error message:", apiError.message);
+      }
+      
+      // Try with a simplified approach
+      try {
+        console.log("Falling back to simplified approach with just groupBy");
+        
+        // According to docs, this endpoint can work with just groupBy
+        const simpleEndpoint = `accounting/transactions/statistics?groupBy=month`;
+        console.log(`Trying with simplified format: ${simpleEndpoint}`);
+        
+        const simpleStats = await api.get<TransactionStatistics>(simpleEndpoint);
+        console.log("Simplified approach successful:", simpleStats);
+        
+        setTransactionStats(simpleStats);
+        showToast("Transaction statistics loaded successfully", "success");
+      } catch (simpleError: any) {
+        console.error("Simplified approach failed:", simpleError);
+        
+        // Create helpful error message with more details
+        const errorDetails = apiError.message || 'Unknown error';
+        const errorMessage = `Failed to load transaction statistics: ${errorDetails}`;
+        showToast(errorMessage, "error");
+        
+        // Set empty stats to prevent crash but provide some mock data for UI to work
+        setTransactionStats({
+          totalIncome: 0,
+          totalExpenses: 0,
+          netProfit: 0,
+          byCategory: {},
+          byPeriod: []
+        });
+      }
+    } finally {
+      setIsLoadingStats(false)
+    }
+  }
+  
+  // Function to generate financial report
+  const handleGenerateReport = async () => {
+    if (!reportForm.periodStart || !reportForm.periodEnd || !reportForm.title) {
+      showToast(
+        "Please fill in all required fields",
+        "error",
+        "Validation Error"
+      )
+      return
+    }
+    
+    // Check authentication
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      showToast(
+        "Authentication required: Please log in again",
+        "error",
+        "Authentication Failed"
+      )
+      return
+    }
+    
+    // Get user ID
+    let userId: number | null = null;
+    if (authUser && authUser.id) {
+      userId = authUser.id;
+    } else {
+      const userDataString = localStorage.getItem('user_data');
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          if (userData && userData.id) {
+            userId = userData.id;
+          }
+        } catch (e) {
+          console.error("Failed to parse user data from localStorage:", e);
+        }
+      }
+      
+      if (!userId) {
+        showToast(
+          "Authentication issue: Cannot retrieve your user information",
+          "error",
+          "User ID Not Found"
+        );
+        return;
+      }
+    }
+    
+    setIsGeneratingReport(true)
+    setReportError(null)
+    
+    try {
+      const reportData: CreateFinancialReportDto = {
+        periodStart: reportForm.periodStart,
+        periodEnd: reportForm.periodEnd,
+        title: reportForm.title,
+        notes: reportForm.notes || "",
+        generatedById: userId
+      }
+      
+      const result = await api.post<FinancialReport>('accounting/financial-reports/generate', reportData)
+      
+      showToast(
+        "Financial report generated successfully",
+        "success",
+        "Report Generated"
+      )
+      
+      // Reset form and close dialog
+      setReportForm({
+        periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+        periodEnd: new Date().toISOString().split('T')[0],
+        title: "",
+        notes: ""
+      })
+      setIsGenerateReportDialogOpen(false)
+      
+      // Refresh reports
+      fetchFinancialReports()
+    } catch (err: any) {
+      console.error("Failed to generate report:", err)
+      const errorMessage = err.message || "Failed to generate report. Please try again."
+      setReportError(errorMessage)
+      showToast(
+        errorMessage,
+        "error",
+        "Report Generation Failed"
+      )
+    } finally {
+      setIsGeneratingReport(false)
+    }
+  }
+  
+  // Function to view report details
+  const handleViewReport = async (reportId: number) => {
+    try {
+      const report = await api.get<FinancialReport>(`accounting/financial-reports/${reportId}`)
+      setSelectedReport(report)
+      setIsReportDetailDialogOpen(true)
+    } catch (err: any) {
+      console.error("Failed to fetch report details:", err)
+      showToast(
+        "Failed to load report details",
+        "error",
+        "Error"
+      )
+    }
+  }
+  
+  // Update stats when year changes
+  useEffect(() => {
+    fetchTransactionStatistics()
+  }, [selectedYear])
+  
+  // PDF Export Functions
+  const exportReportAsPDF = async (report: FinancialReport) => {
+    try {
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.width
+      const pageHeight = doc.internal.pageSize.height
+      
+      // Add company header
+      doc.setFontSize(20)
+      doc.setTextColor(40, 40, 40)
+      doc.text('Sports Club Management', pageWidth / 2, 25, { align: 'center' })
+      
+      doc.setFontSize(16)
+      doc.text(report.title, pageWidth / 2, 35, { align: 'center' })
+      
+      // Add period information
+      doc.setFontSize(12)
+      doc.setTextColor(80, 80, 80)
+      const periodText = `Period: ${new Date(report.periodStart).toLocaleDateString()} - ${new Date(report.periodEnd).toLocaleDateString()}`
+      doc.text(periodText, pageWidth / 2, 45, { align: 'center' })
+      
+      // Add generated info
+      const generatedText = `Generated by: ${report.generatedBy.firstName} ${report.generatedBy.lastName} on ${new Date(report.createdAt).toLocaleString()}`
+      doc.text(generatedText, pageWidth / 2, 55, { align: 'center' })
+      
+      let currentY = 70
+      
+      // Financial Summary Section
+      doc.setFontSize(14)
+      doc.setTextColor(40, 40, 40)
+      doc.text('Financial Summary', 20, currentY)
+      currentY += 10
+      
+      // Summary table
+      const summaryData = [
+        ['Total Income', `$${report.totalIncome.toLocaleString()}`],
+        ['Total Expenses', `$${report.totalExpenses.toLocaleString()}`],
+        ['Net Profit/Loss', `$${report.netProfit.toLocaleString()}`]
+      ]
+      
+      doc.autoTable({
+        startY: currentY,
+        head: [['Metric', 'Amount']],
+        body: summaryData,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255
+        },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 60, halign: 'right' }
+        }
+      })
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15
+      
+      // Income Breakdown Section
+      if (report.incomeBreakdown && Object.keys(report.incomeBreakdown).length > 0) {
+        doc.setFontSize(14)
+        doc.text('Income Breakdown', 20, currentY)
+        currentY += 10
+        
+        const incomeData = Object.entries(report.incomeBreakdown).map(([category, amount]) => [
+          category,
+          `$${(amount as number).toLocaleString()}`
+        ])
+        
+        doc.autoTable({
+          startY: currentY,
+          head: [['Category', 'Amount']],
+          body: incomeData,
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 3
+          },
+          headStyles: {
+            fillColor: [92, 184, 92],
+            textColor: 255
+          },
+          columnStyles: {
+            0: { cellWidth: 80 },
+            1: { cellWidth: 60, halign: 'right' }
+          }
+        })
+        
+        currentY = (doc as any).lastAutoTable.finalY + 15
+      }
+      
+      // Expense Breakdown Section
+      if (report.expenseBreakdown && Object.keys(report.expenseBreakdown).length > 0) {
+        // Check if we need a new page
+        if (currentY > pageHeight - 60) {
+          doc.addPage()
+          currentY = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.text('Expense Breakdown', 20, currentY)
+        currentY += 10
+        
+        const expenseData = Object.entries(report.expenseBreakdown).map(([category, amount]) => [
+          category,
+          `$${(amount as number).toLocaleString()}`
+        ])
+        
+        doc.autoTable({
+          startY: currentY,
+          head: [['Category', 'Amount']],
+          body: expenseData,
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 3
+          },
+          headStyles: {
+            fillColor: [217, 83, 79],
+            textColor: 255
+          },
+          columnStyles: {
+            0: { cellWidth: 80 },
+            1: { cellWidth: 60, halign: 'right' }
+          }
+        })
+        
+        currentY = (doc as any).lastAutoTable.finalY + 15
+      }
+      
+      // Notes Section
+      if (report.notes) {
+        // Check if we need a new page
+        if (currentY > pageHeight - 40) {
+          doc.addPage()
+          currentY = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.text('Notes', 20, currentY)
+        currentY += 10
+        
+        doc.setFontSize(10)
+        doc.setTextColor(80, 80, 80)
+        const splitNotes = doc.splitTextToSize(report.notes, pageWidth - 40)
+        doc.text(splitNotes, 20, currentY)
+      }
+      
+      // Add footer
+      const footerY = pageHeight - 20
+      doc.setFontSize(8)
+      doc.setTextColor(120, 120, 120)
+      doc.text('Generated by Sports Club Management System', pageWidth / 2, footerY, { align: 'center' })
+      
+      // Save the PDF
+      const fileName = `${report.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`
+      doc.save(fileName)
+      
+      showToast(
+        "Report exported successfully as PDF",
+        "success",
+        "Export Complete"
+      )
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      showToast(
+        "Failed to export report as PDF",
+        "error",
+        "Export Failed"
+      )
+    }
+  }
+  
+  const exportTransactionsAsPDF = () => {
+    try {
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.width
+      
+      // Add header
+      doc.setFontSize(20)
+      doc.setTextColor(40, 40, 40)
+      doc.text('Financial Transactions Report', pageWidth / 2, 25, { align: 'center' })
+      
+      doc.setFontSize(12)
+      doc.setTextColor(80, 80, 80)
+      const dateText = `Generated on: ${new Date().toLocaleString()}`
+      doc.text(dateText, pageWidth / 2, 35, { align: 'center' })
+      
+      // Summary section
+      doc.setFontSize(14)
+      doc.setTextColor(40, 40, 40)
+      doc.text('Summary', 20, 50)
+      
+      const summaryData = [
+        ['Total Income', `$${totalIncome.toLocaleString()}`],
+        ['Total Expenses', `$${totalExpenses.toLocaleString()}`],
+        ['Net Profit/Loss', `$${netProfit.toLocaleString()}`],
+        ['Total Transactions', filteredTransactions.length.toString()]
+      ]
+      
+      doc.autoTable({
+        startY: 55,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255
+        }
+      })
+      
+      let currentY = (doc as any).lastAutoTable.finalY + 15
+      
+      // Transactions table
+      doc.setFontSize(14)
+      doc.text('Transaction Details', 20, currentY)
+      currentY += 5
+      
+      const transactionData = filteredTransactions.map(transaction => [
+        new Date(transaction.date).toLocaleDateString(),
+        transaction.description.substring(0, 40) + (transaction.description.length > 40 ? '...' : ''),
+        transaction.category,
+        transaction.type,
+        `$${Math.abs(transaction.amount).toLocaleString()}`,
+        transaction.status
+      ])
+      
+      doc.autoTable({
+        startY: currentY,
+        head: [['Date', 'Description', 'Category', 'Type', 'Amount', 'Status']],
+        body: transactionData,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255
+        },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 25, halign: 'right' },
+          5: { cellWidth: 25 }
+        }
+      })
+      
+      // Save the PDF
+      const fileName = `transactions_report_${new Date().toISOString().split('T')[0]}.pdf`
+      doc.save(fileName)
+      
+      showToast(
+        "Transactions exported successfully as PDF",
+        "success",
+        "Export Complete"
+      )
+    } catch (error) {
+      console.error('Error exporting transactions PDF:', error)
+      showToast(
+        "Failed to export transactions as PDF",
+        "error",
+        "Export Failed"
+      )
+    }
+  }
+  
+  const exportAnalyticsAsPDF = () => {
+    try {
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.width
+      
+      // Add header
+      doc.setFontSize(20)
+      doc.setTextColor(40, 40, 40)
+      doc.text('Financial Analytics Report', pageWidth / 2, 25, { align: 'center' })
+      
+      doc.setFontSize(14)
+      doc.setTextColor(80, 80, 80)
+      doc.text(`Year: ${selectedYear}`, pageWidth / 2, 35, { align: 'center' })
+      
+      doc.setFontSize(12)
+      const dateText = `Generated on: ${new Date().toLocaleString()}`
+      doc.text(dateText, pageWidth / 2, 45, { align: 'center' })
+      
+      let currentY = 60
+      
+      // Statistics Summary
+      if (transactionStats) {
+        doc.setFontSize(14)
+        doc.setTextColor(40, 40, 40)
+        doc.text('Financial Summary', 20, currentY)
+        currentY += 10
+        
+        const statsData = [
+          ['Total Income', `$${transactionStats.totalIncome?.toLocaleString() || 0}`],
+          ['Total Expenses', `$${Math.abs(transactionStats.totalExpenses)?.toLocaleString() || 0}`],
+          ['Net Profit/Loss', `$${transactionStats.netProfit?.toLocaleString() || 0}`]
+        ]
+        
+        doc.autoTable({
+          startY: currentY,
+          head: [['Metric', 'Amount']],
+          body: statsData,
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 3
+          },
+          headStyles: {
+            fillColor: [66, 139, 202],
+            textColor: 255
+          }
+        })
+        
+        currentY = (doc as any).lastAutoTable.finalY + 15
+      }
+      
+      // Monthly breakdown
+      doc.setFontSize(14)
+      doc.text('Monthly Breakdown', 20, currentY)
+      currentY += 10
+      
+      const monthlyTableData = monthlyData.map(month => [
+        month.month,
+        `$${month.income.toLocaleString()}`,
+        `$${month.expenses.toLocaleString()}`,
+        `$${month.profit.toLocaleString()}`
+      ])
+      
+      doc.autoTable({
+        startY: currentY,
+        head: [['Month', 'Income', 'Expenses', 'Profit/Loss']],
+        body: monthlyTableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255
+        },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 40, halign: 'right' },
+          2: { cellWidth: 40, halign: 'right' },
+          3: { cellWidth: 40, halign: 'right' }
+        }
+      })
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15
+      
+      // Category breakdown if available
+      if (transactionStats && transactionStats.byCategory) {
+        // Check if we need a new page
+        if (currentY > doc.internal.pageSize.height - 60) {
+          doc.addPage()
+          currentY = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.text('Category Breakdown', 20, currentY)
+        currentY += 10
+        
+        const categoryData = Object.entries(transactionStats.byCategory).map(([category, amount]) => [
+          category,
+          `$${Math.abs(amount as number).toLocaleString()}`,
+          (amount as number) >= 0 ? 'Income' : 'Expense'
+        ])
+        
+        doc.autoTable({
+          startY: currentY,
+          head: [['Category', 'Amount', 'Type']],
+          body: categoryData,
+          theme: 'grid',
+          styles: {
+            fontSize: 9,
+            cellPadding: 3
+          },
+          headStyles: {
+            fillColor: [66, 139, 202],
+            textColor: 255
+          },
+          columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 40, halign: 'right' },
+            2: { cellWidth: 30 }
+          }
+        })
+      }
+      
+      // Add footer
+      const footerY = doc.internal.pageSize.height - 20
+      doc.setFontSize(8)
+      doc.setTextColor(120, 120, 120)
+      doc.text('Generated by Sports Club Management System', pageWidth / 2, footerY, { align: 'center' })
+      
+      // Save the PDF
+      const fileName = `financial_analytics_${selectedYear}_${new Date().toISOString().split('T')[0]}.pdf`
+      doc.save(fileName)
+      
+      showToast(
+        "Analytics report exported successfully as PDF",
+        "success",
+        "Export Complete"
+      )
+    } catch (error) {
+      console.error('Error exporting analytics PDF:', error)
+      showToast(
+        "Failed to export analytics as PDF",
+        "error",
+        "Export Failed"
+      )
+    }
+  }
+  
+  // Function to fetch approved acquisitions
+  const fetchApprovedAcquisitionsData = async () => {
     setIsLoadingAcquisitions(true)
     setAcquisitionError(null)
     
     try {
-      console.log("Fetching pending acquisitions...")
+      console.log("Fetching approved acquisitions...")
       // First attempt to use the API service directly
       try {
-        const result = await api.get<Acquisition[]>('acquisitions/pending')
-        setPendingAcquisitions(result)
-        console.log("Successfully loaded pending acquisitions:", result.length)
+        // Use the acquisitions endpoint with a query parameter for approved status
+        const result = await api.get<Acquisition[]>(`acquisitions?status=${ApprovalStatus.APPROVED}`)
+        setApprovedAcquisitions(result) // Still using the same state variable for now
+        console.log("Successfully loaded approved acquisitions:", result.length)
         return
       } catch (err: any) {
         console.error("Direct API call failed:", err)
@@ -162,15 +877,24 @@ export function FinancialManagement() {
         }
       }
       
-      // If direct API call failed for non-auth reasons, try Redux thunk as fallback
-      console.log("Attempting to fetch acquisitions via Redux thunk...")
-      const thunkResult = await dispatch(fetchPendingApprovals()).unwrap()
-      setPendingAcquisitions(thunkResult)
-      console.log("Successfully loaded pending acquisitions via thunk:", thunkResult.length)
+      // If direct API call failed for non-auth reasons, try to get all acquisitions and filter
+      console.log("Attempting to fetch all acquisitions and filter for approved ones...")
+      try {
+        const allAcquisitions = await api.get<Acquisition[]>('acquisitions')
+        const approvedAcquisitions = allAcquisitions.filter(
+          acquisition => acquisition.approvalStatus === ApprovalStatus.APPROVED
+        )
+        setApprovedAcquisitions(approvedAcquisitions) // Still using the same state variable
+        console.log("Successfully filtered approved acquisitions:", approvedAcquisitions.length)
+        return
+      } catch (err) {
+        console.error("Failed to fetch all acquisitions:", err)
+        throw err
+      }
     } catch (err: any) {
-      console.error("All attempts to fetch pending acquisitions failed:", err)
+      console.error("All attempts to fetch approved acquisitions failed:", err)
       const errorMessage = err.message?.includes('Authentication') 
-        ? "Authentication failed: Please log in again to view pending acquisitions." 
+        ? "Authentication failed: Please log in again to view approved acquisitions." 
         : `Failed to load acquisitions: ${err?.message || 'Unknown error'}`;
       
       setAcquisitionError(errorMessage);
@@ -186,6 +910,111 @@ export function FinancialManagement() {
     }
   }
   
+  // Create custom transaction
+  const handleCreateCustomTransaction = async () => {
+    // Check if all required fields are filled
+    if (!customTransactionForm.amount || !customTransactionForm.date || !customTransactionForm.description) {
+      showToast(
+        "Please fill in all required fields for the transaction",
+        "error",
+        "Validation Error"
+      )
+      return
+    }
+    
+    // Check authentication token and get user ID
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      showToast(
+        "Authentication required: Please log in again to create a transaction",
+        "error",
+        "Authentication Failed"
+      )
+      return
+    }
+    
+    // Get user ID
+    let userId: number | null = null;
+    
+    if (authUser && authUser.id) {
+      userId = authUser.id;
+    } else {
+      // Fallback: Try to get user ID from localStorage if not in Redux state
+      const userDataString = localStorage.getItem('user_data');
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          if (userData && userData.id) {
+            userId = userData.id;
+          }
+        } catch (e) {
+          console.error("Failed to parse user data from localStorage:", e);
+        }
+      }
+      
+      if (!userId) {
+        showToast(
+          "Authentication issue: Cannot retrieve your user information",
+          "error",
+          "User ID Not Found"
+        );
+        return;
+      }
+    }
+    
+    try {
+      // Create the transaction
+      const transactionData: CreateTransactionDto = {
+        type: customTransactionForm.type,
+        category: customTransactionForm.category,
+        amount: parseFloat(customTransactionForm.amount),
+        date: customTransactionForm.date,
+        description: customTransactionForm.description
+      }
+      
+      console.log("Creating custom transaction with data:", transactionData)
+      
+      // Use the Redux thunk to create the transaction
+      const result = await dispatch(createTransaction(transactionData)).unwrap();
+      
+      console.log("Custom transaction created successfully:", result)
+      
+      // Show success toast notification
+      showToast(
+        `${customTransactionForm.type === TransactionType.INCOME ? 'Income' : 'Expense'} transaction created successfully.`,
+        "success",
+        "Transaction Created"
+      )
+      
+      // Reset form and close dialog
+      setCustomTransactionForm({
+        amount: "",
+        date: new Date().toISOString().split('T')[0],
+        description: "",
+        type: TransactionType.INCOME,
+        category: TransactionCategory.SPONSORSHIP
+      })
+      setIsCustomTransactionDialogOpen(false)
+      
+      // Refresh transactions
+      dispatch(fetchTransactions())
+    } catch (err: any) {
+      console.error("Failed to create custom transaction:", err)
+      
+      const errorMessage = err.message || "Failed to create transaction. Please try again."
+      
+      showToast(
+        errorMessage,
+        "error",
+        "Transaction Creation Failed"
+      )
+    }
+  }
+
   // Create transaction from acquisition
   const handleCreateTransaction = async () => {
     if (!selectedAcquisitionId) {
@@ -197,6 +1026,14 @@ export function FinancialManagement() {
     let authToken
     if (typeof window !== 'undefined') {
       authToken = localStorage.getItem('auth_token')
+    }
+    
+    // Default transaction type and category for acquisitions
+    if (!selectedTransactionType) {
+      setSelectedTransactionType(TransactionType.EXPENSE)
+    }
+    if (!selectedTransactionCategory) {
+      setSelectedTransactionCategory(TransactionCategory.EQUIPMENT)
     }
     
     if (!authToken) {
@@ -261,7 +1098,9 @@ export function FinancialManagement() {
       const transactionData: CreateTransactionFromAcquisitionDto = {
         acquisitionId: selectedAcquisitionId,
         createdById: userId, // Using authenticated user's ID
-        customDescription: transactionDescription || undefined
+        customDescription: transactionDescription || undefined,
+        transactionType: selectedTransactionType || TransactionType.EXPENSE,
+        transactionCategory: selectedTransactionCategory as TransactionCategory || TransactionCategory.EQUIPMENT
       }
       
       console.log("Creating transaction with data:", transactionData)
@@ -283,7 +1122,7 @@ export function FinancialManagement() {
       
       // Refresh transactions and acquisitions
       dispatch(fetchTransactions())
-      fetchPendingAcquisitionsData()
+      fetchApprovedAcquisitionsData()
     } catch (err: any) {
       console.error("Failed to approve acquisition or create transaction:", err)
       
@@ -408,19 +1247,28 @@ export function FinancialManagement() {
     }
   }
   
-  // Create transaction from salary payment
-  const handleCreateTransactionFromSalaryPayment = async (salaryPaymentId: number) => {
+  // Open transaction type selection dialog for a salary payment
+  const openTransactionTypeDialog = (salaryPaymentId: number) => {
+    setSelectedSalaryPaymentId(salaryPaymentId);
+    // Default to expense and salary category for salary payments
+    setSelectedTransactionType(TransactionType.EXPENSE);
+    setSelectedTransactionCategory(TransactionCategory.SALARY);
+    setIsTransactionTypeDialogOpen(true);
+  }
+  
+  // Create transaction from salary payment with specified type
+  const handleCreateTransactionFromSalaryPayment = async () => {
     // Check authentication token and user
     let authToken
     if (typeof window !== 'undefined') {
       authToken = localStorage.getItem('auth_token')
     }
     
-    if (!authToken) {
+    if (!authToken || !selectedSalaryPaymentId) {
       showToast(
-        "Authentication required: Please log in again to create a transaction",
+        "Authentication required or invalid salary payment",
         "error",
-        "Authentication Failed"
+        "Transaction Creation Failed"
       )
       return
     }
@@ -459,7 +1307,7 @@ export function FinancialManagement() {
     try {
       // Create the transaction from salary payment
       // First, find the salary payment to get recipient details for description
-      const paymentDetails = salaryPayments.find(p => p.id === salaryPaymentId);
+      const paymentDetails = salaryPayments.find(p => p.id === selectedSalaryPaymentId);
       let customDescription = "Salary payment transaction";
       
       if (paymentDetails) {
@@ -475,14 +1323,16 @@ export function FinancialManagement() {
         const periodStart = new Date(paymentDetails.periodStart).toLocaleDateString();
         const periodEnd = new Date(paymentDetails.periodEnd).toLocaleDateString();
         
-        customDescription = `Salary payment for ${recipientName} - Period: ${periodStart} to ${periodEnd}`;
+        customDescription = `${selectedTransactionType === TransactionType.INCOME ? 'Income' : 'Expense'} for ${recipientName} - Period: ${periodStart} to ${periodEnd}`;
       }
       
       // Use the authenticated user's ID instead of a hardcoded value
       const transactionData: CreateTransactionFromSalaryPaymentDto = {
-        salaryPaymentId: salaryPaymentId,
+        salaryPaymentId: selectedSalaryPaymentId,
         createdById: userId, // Use the retrieved user ID
-        customDescription: customDescription
+        customDescription: customDescription,
+        transactionType: selectedTransactionType,
+        transactionCategory: selectedTransactionCategory as TransactionCategory || TransactionCategory.SALARY
       }
       
       console.log("Creating transaction with authenticated user ID:", userId)
@@ -494,10 +1344,14 @@ export function FinancialManagement() {
       
       // Show success toast notification
       showToast(
-        "Transaction created successfully from salary payment.",
+        `${selectedTransactionType === TransactionType.INCOME ? 'Income' : 'Expense'} transaction created successfully from salary payment.`,
         "success",
         "Transaction Created"
       )
+      
+      // Close the dialog
+      setIsTransactionTypeDialogOpen(false)
+      setSelectedSalaryPaymentId(null)
       
       // Refresh transactions and salary payments
       dispatch(fetchTransactions())
@@ -564,9 +1418,123 @@ export function FinancialManagement() {
 
   // No payment-related functions needed
 
-  const totalIncome = transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0)
-  const totalExpenses = Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0))
+  const totalIncome = transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0) || 0
+  const totalExpenses = Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0)) || 0
   const netProfit = totalIncome - totalExpenses
+
+  // Calculate monthly data from API statistics or fall back to local calculation
+  const calculateMonthlyData = () => {
+    // If we have API statistics data, use it
+    if (transactionStats && transactionStats.byPeriod) {
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      
+      // Create a map from API data
+      const apiDataMap = new Map();
+      
+      console.log("Processing byPeriod data:", transactionStats.byPeriod);
+      
+      transactionStats.byPeriod.forEach(period => {
+        let monthIndex = -1;
+        const periodStr = period.period ? period.period.toString() : '';
+        
+        // Handle different possible period formats from the API
+        if (periodStr.includes('-')) {
+          // Format: "2025-1", "2025-2", etc. or "2025-01", "2025-02", etc.
+          const [year, month] = periodStr.split('-');
+          if (parseInt(year) === selectedYear) {
+            monthIndex = parseInt(month) - 1; // Convert to 0-based index
+          }
+        } else if (periodStr.length === 6) {
+          // Format: "202501", "202502", etc. (YYYYMM)
+          const year = parseInt(periodStr.substring(0, 4));
+          const month = parseInt(periodStr.substring(4, 6));
+          if (year === selectedYear) {
+            monthIndex = month - 1;
+          }
+        } else if (periodStr.length === 1 || periodStr.length === 2) {
+          // Format: Just month number "1", "2", etc.
+          monthIndex = parseInt(periodStr) - 1;
+        } else if (periodStr.toLowerCase().includes('jan') || 
+                  periodStr.toLowerCase().includes('feb') || 
+                  periodStr.toLowerCase().includes('mar')) {
+          // Format: Month name like "Jan", "February", etc.
+          monthIndex = monthNames.findIndex(m => 
+            periodStr.toLowerCase().includes(m.toLowerCase())
+          );
+        }
+        
+        // If we successfully parsed a valid month index, add the data
+        if (monthIndex >= 0 && monthIndex < 12) {
+          console.log(`Mapped period ${periodStr} to month ${monthNames[monthIndex]}`);
+          apiDataMap.set(monthNames[monthIndex], {
+            income: period.income || 0,
+            expenses: Math.abs(period.expenses || 0), // Ensure positive for display
+            profit: period.net || 0
+          });
+        }
+      });
+      
+      // Return data for all 12 months, filling missing months with zeros
+      return monthNames.map(month => {
+        const data = apiDataMap.get(month) || { income: 0, expenses: 0, profit: 0 };
+        return {
+          month,
+          income: data.income,
+          expenses: data.expenses,
+          profit: data.profit
+        };
+      });
+    }
+    
+    // Fallback to local calculation from transactions
+    const monthlyMap = new Map<string, { income: number; expenses: number }>();
+    
+    // Initialize all 12 months for the selected year
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    
+    monthNames.forEach(month => {
+      monthlyMap.set(month, { income: 0, expenses: 0 });
+    });
+    
+    // Aggregate transactions by month for the selected year
+    transactions.forEach((transaction) => {
+      const transactionDate = new Date(transaction.date);
+      const transactionYear = transactionDate.getFullYear();
+      
+      // Only include transactions from the selected year
+      if (transactionYear === selectedYear) {
+        const monthKey = transactionDate.toLocaleDateString('en-US', { month: 'short' });
+        
+        if (monthlyMap.has(monthKey)) {
+          const monthData = monthlyMap.get(monthKey)!;
+          if (transaction.type === TransactionType.INCOME) {
+            monthData.income += transaction.amount;
+          } else {
+            monthData.expenses += Math.abs(transaction.amount);
+          }
+        }
+      }
+    });
+    
+    // Convert to array format for charts (maintain month order)
+    return monthNames.map(month => {
+      const data = monthlyMap.get(month)!;
+      return {
+        month,
+        income: data.income,
+        expenses: data.expenses,
+        profit: data.income - data.expenses
+      };
+    });
+  };
+
+  const monthlyData = calculateMonthlyData();
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -579,9 +1547,20 @@ export function FinancialManagement() {
           <p className="text-gray-600 dark:text-gray-400">Track and manage all financial transactions</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="bg-white dark:bg-gray-800">
+          <Button 
+            variant="outline" 
+            className="bg-white dark:bg-gray-800"
+            onClick={exportTransactionsAsPDF}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export Report
+          </Button>
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700 text-white" 
+            onClick={() => setIsCustomTransactionDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Custom Transaction
           </Button>
           <Button 
             className="bg-green-600 hover:bg-green-700 text-white" 
@@ -650,11 +1629,10 @@ export function FinancialManagement() {
       </div>
 
       <Tabs defaultValue="transactions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="salary-payments">Salary Payments</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="reports">Reports & Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions" className="space-y-4">
@@ -846,7 +1824,7 @@ export function FinancialManagement() {
                                   size="sm"
                                   variant="outline"
                                   className="border-blue-300 hover:bg-blue-100"
-                                  onClick={() => handleCreateTransactionFromSalaryPayment(payment.id)}
+                                  onClick={() => openTransactionTypeDialog(payment.id)}
                                 >
                                   <FileText className="h-3 w-3 mr-1" />
                                   Create Transaction
@@ -865,59 +1843,217 @@ export function FinancialManagement() {
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
+          {/* Header with Year Selector and Generate Report Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Financial Reports & Analytics</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Generate reports and view financial performance trends</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="year-select" className="text-sm font-medium">Year:</Label>
+                <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  className="bg-white dark:bg-gray-800"
+                  onClick={exportAnalyticsAsPDF}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Analytics
+                </Button>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setIsGenerateReportDialogOpen(true)}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Financial Statistics Cards */}
+          {transactionStats && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income ({selectedYear})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">${transactionStats.totalIncome?.toLocaleString() || 0}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-red-500">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses ({selectedYear})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">${Math.abs(transactionStats.totalExpenses)?.toLocaleString() || 0}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Profit ({selectedYear})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${transactionStats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${transactionStats.netProfit?.toLocaleString() || 0}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
+          {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Monthly Income vs Expenses</CardTitle>
-                <CardDescription>Financial performance over the last 6 months</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Monthly Income vs Expenses ({selectedYear})</CardTitle>
+                <CardDescription>Financial performance for {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="income" fill="#10B981" name="Income" />
-                    <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {isLoadingStats ? (
+                  <div className="flex justify-center items-center h-[300px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="income" fill="#10B981" name="Income" />
+                      <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Profit Trend</CardTitle>
-                <CardDescription>Net profit trend over time</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Profit Trend ({selectedYear})</CardTitle>
+                <CardDescription>Net profit trend for {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="income" stroke="#1E3A8A" strokeWidth={2} name="Profit" />
-                  </LineChart>
-                </ResponsiveContainer>
+                {isLoadingStats ? (
+                  <div className="flex justify-center items-center h-[300px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="profit" 
+                        stroke="#1E3A8A" 
+                        strokeWidth={2} 
+                        name="Profit" 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="budgets" className="space-y-4">
+          
+          {/* Generated Reports Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Budget Planning</CardTitle>
-              <CardDescription>Set and track budgets for different categories</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Generated Financial Reports</CardTitle>
+              <CardDescription>View and manage previously generated financial reports</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400">Budget planning features coming soon...</p>
-                <Button className="mt-4 bg-blue-800 hover:bg-blue-900 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Budget
-                </Button>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Total Income</TableHead>
+                      <TableHead>Total Expenses</TableHead>
+                      <TableHead>Net Profit</TableHead>
+                      <TableHead>Generated By</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingReports ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
+                            <span>Loading reports...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : financialReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          No financial reports found. Generate your first report above.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      financialReports.map((report) => (
+                        <TableRow key={report.id}>
+                          <TableCell className="font-medium">{report.title}</TableCell>
+                          <TableCell>
+                            {new Date(report.periodStart).toLocaleDateString()} - {new Date(report.periodEnd).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-green-600">${report.totalIncome?.toLocaleString()}</TableCell>
+                          <TableCell className="text-red-600">${report.totalExpenses?.toLocaleString()}</TableCell>
+                          <TableCell className={report.netProfit >= 0 ? "text-green-600" : "text-red-600"}>
+                            ${report.netProfit?.toLocaleString()}
+                          </TableCell>
+                          <TableCell>{report.generatedBy?.username || 'Unknown'}</TableCell>
+                          <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewReport(report.id)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => exportReportAsPDF(report)}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                PDF
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
@@ -928,10 +2064,10 @@ export function FinancialManagement() {
       <Dialog open={isCreateTransactionDialogOpen} onOpenChange={setIsCreateTransactionDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Transaction from Pending Acquisition</DialogTitle>
+            <DialogTitle>Create Transaction from Approved Acquisition</DialogTitle>
             <DialogDescription>
-              Select a pending acquisition to create a financial transaction.
-              The acquisition will be approved automatically when the transaction is created.
+              Select an approved acquisition to create a financial transaction.
+              This will record the financial transaction associated with the acquisition.
               The transaction will use the current date and will be created with your user ID.
             </DialogDescription>
           </DialogHeader>
@@ -948,21 +2084,21 @@ export function FinancialManagement() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={fetchPendingAcquisitionsData}
+                  onClick={fetchApprovedAcquisitionsData}
                   className="mt-2 border-red-300 hover:bg-red-100"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
                   Retry Loading Acquisitions
                 </Button>
               </div>
-            ) : pendingAcquisitions.length === 0 ? (
+            ) : approvedAcquisitions.length === 0 ? (
               <div className="py-4 text-center bg-blue-50 p-4 rounded-md border border-blue-200">
-                <p className="text-blue-600 mb-3">No pending acquisitions found</p>
-                <p className="text-sm text-gray-600">There are no pending acquisitions available to create transactions from.</p>
+                <p className="text-blue-600 mb-3">No approved acquisitions found</p>
+                <p className="text-sm text-gray-600">There are no approved acquisitions available to create transactions from.</p>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={fetchPendingAcquisitionsData}
+                  onClick={fetchApprovedAcquisitionsData}
                   className="mt-3 border-blue-300 hover:bg-blue-100"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
@@ -972,22 +2108,73 @@ export function FinancialManagement() {
             ) : (
               <div className="grid gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="acquisition">Pending Acquisition</Label>
+                  <Label htmlFor="acquisition">Approved Acquisition</Label>
                   <Select 
                     value={selectedAcquisitionId?.toString() || ""} 
                     onValueChange={(value) => setSelectedAcquisitionId(Number(value))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a pending acquisition" />
+                      <SelectValue placeholder="Select an approved acquisition" />
                     </SelectTrigger>
                     <SelectContent>
-                      {pendingAcquisitions.map((acq) => (
+                      {approvedAcquisitions.map((acq) => (
                         <SelectItem key={acq.id} value={acq.id.toString()}>
                           {acq.description} - ${acq.cost} ({acq.itemType})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Transaction Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="transactionType">Transaction Type*</Label>
+                    <Select 
+                      value={selectedTransactionType} 
+                      onValueChange={(value) => setSelectedTransactionType(value as TransactionType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select transaction type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
+                        <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">Most acquisitions are expenses</p>
+                  </div>
+                  
+                  {/* Transaction Category */}
+                  <div className="space-y-2">
+                    <Label htmlFor="transactionCategory">Category*</Label>
+                    <Select 
+                      value={selectedTransactionCategory} 
+                      onValueChange={(value) => setSelectedTransactionCategory(value as TransactionCategory)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedTransactionType === TransactionType.EXPENSE ? (
+                          <>
+                            <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
+                            <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
+                            <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
+                            <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
+                            <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
+                            <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
+                            <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
+                            <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -1285,6 +2472,445 @@ export function FinancialManagement() {
               ) : (
                 "Create Salary Payment"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Transaction Type Selection Dialog */}
+      <Dialog open={isTransactionTypeDialogOpen} onOpenChange={setIsTransactionTypeDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Transaction from Salary Payment</DialogTitle>
+            <DialogDescription>
+              Select the transaction type and category for this salary payment.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="transactionType" className="text-right">
+                Transaction Type*
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={selectedTransactionType} 
+                  onValueChange={(value) => setSelectedTransactionType(value as TransactionType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transaction type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
+                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Category*
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={selectedTransactionCategory} 
+                  onValueChange={(value) => setSelectedTransactionCategory(value as TransactionCategory)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedTransactionType === TransactionType.EXPENSE ? (
+                      <>
+                        <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
+                        <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
+                        <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
+                        <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
+                        <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
+                        <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="col-span-3 text-xs text-gray-500 mt-2">
+              <p className="mb-1">Transaction types:</p>
+              <ul className="pl-5 list-disc space-y-1">
+                <li><b>Expense:</b> Money going out (salary payments, equipment purchases, utilities, etc.)</li>
+                <li><b>Income:</b> Money coming in (sponsorships, donations, registration fees, etc.)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTransactionTypeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateTransactionFromSalaryPayment}
+              className="bg-blue-800 hover:bg-blue-900 text-white"
+            >
+              Create Transaction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Custom Transaction Dialog */}
+      <Dialog open={isCustomTransactionDialogOpen} onOpenChange={setIsCustomTransactionDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Custom Transaction</DialogTitle>
+            <DialogDescription>
+              Create a custom income or expense transaction.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {/* Transaction type */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customTransactionType" className="text-right">
+                Transaction Type*
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={customTransactionForm.type} 
+                  onValueChange={(value) => setCustomTransactionForm({
+                    ...customTransactionForm,
+                    type: value as TransactionType,
+                    // Reset category when type changes to ensure it's appropriate for the type
+                    category: value === TransactionType.INCOME ? TransactionCategory.SPONSORSHIP : TransactionCategory.UTILITY
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transaction type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Category */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customCategory" className="text-right">
+                Category*
+              </Label>
+              <div className="col-span-3">
+                <Select 
+                  value={customTransactionForm.category} 
+                  onValueChange={(value) => setCustomTransactionForm({
+                    ...customTransactionForm,
+                    category: value as TransactionCategory
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customTransactionForm.type === TransactionType.INCOME ? (
+                      <>
+                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
+                        <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
+                        <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
+                        <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
+                        <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
+                        <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Amount */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customAmount" className="text-right">
+                Amount*
+              </Label>
+              <div className="col-span-3 relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
+                <Input
+                  id="customAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={customTransactionForm.amount}
+                  onChange={(e) => setCustomTransactionForm({
+                    ...customTransactionForm,
+                    amount: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+            
+            {/* Date */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customDate" className="text-right">
+                Date*
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="customDate"
+                  type="date"
+                  value={customTransactionForm.date}
+                  onChange={(e) => setCustomTransactionForm({
+                    ...customTransactionForm,
+                    date: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+            
+            {/* Description */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customDescription" className="text-right">
+                Description*
+              </Label>
+              <div className="col-span-3">
+                <Textarea
+                  id="customDescription"
+                  placeholder="Describe the transaction..."
+                  value={customTransactionForm.description}
+                  onChange={(e) => setCustomTransactionForm({
+                    ...customTransactionForm,
+                    description: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomTransactionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateCustomTransaction}
+              className="bg-blue-800 hover:bg-blue-900 text-white"
+            >
+              Create Transaction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Generate Report Dialog */}
+      <Dialog open={isGenerateReportDialogOpen} onOpenChange={setIsGenerateReportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Generate Financial Report</DialogTitle>
+            <DialogDescription>
+              Create a comprehensive financial report for a specified time period.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {reportError && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 mb-4">
+              <p className="text-sm">{reportError}</p>
+            </div>
+          )}
+          
+          <div className="grid gap-4 py-4">
+            {/* Report Title */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="reportTitle" className="text-right">Title*</Label>
+              <div className="col-span-3">
+                <Input
+                  id="reportTitle"
+                  placeholder="e.g., Q2 2025 Financial Report"
+                  value={reportForm.title}
+                  onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Period Start */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="periodStart" className="text-right">Start Date*</Label>
+              <div className="col-span-3">
+                <Input
+                  id="periodStart"
+                  type="date"
+                  value={reportForm.periodStart}
+                  onChange={(e) => setReportForm({ ...reportForm, periodStart: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Period End */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="periodEnd" className="text-right">End Date*</Label>
+              <div className="col-span-3">
+                <Input
+                  id="periodEnd"
+                  type="date"
+                  value={reportForm.periodEnd}
+                  onChange={(e) => setReportForm({ ...reportForm, periodEnd: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            {/* Notes */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="reportNotes" className="text-right">Notes</Label>
+              <div className="col-span-3">
+                <Textarea
+                  id="reportNotes"
+                  placeholder="Optional notes or comments about this report"
+                  value={reportForm.notes}
+                  onChange={(e) => setReportForm({ ...reportForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenerateReportDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleGenerateReport} 
+              disabled={isGeneratingReport}
+              className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]"
+            >
+              {isGeneratingReport ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Report
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Report Detail Dialog */}
+      <Dialog open={isReportDetailDialogOpen} onOpenChange={setIsReportDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>{selectedReport?.title}</DialogTitle>
+            <DialogDescription>
+              Financial report for {selectedReport && new Date(selectedReport.periodStart).toLocaleDateString()} - {selectedReport && new Date(selectedReport.periodEnd).toLocaleDateString()}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedReport && (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="border-l-4 border-l-green-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-green-600">${selectedReport.totalIncome?.toLocaleString()}</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-red-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Expenses</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-red-600">${selectedReport.totalExpenses?.toLocaleString()}</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-xl font-bold ${selectedReport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${selectedReport.netProfit?.toLocaleString()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Breakdown Tables */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Income Breakdown */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Income Breakdown</h4>
+                  <div className="space-y-2">
+                    {selectedReport.incomeBreakdown && Object.entries(selectedReport.incomeBreakdown).map(([category, amount]) => (
+                      <div key={category} className="flex justify-between py-1 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">{category}</span>
+                        <span className="text-sm font-medium text-green-600">${(amount as number).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Expense Breakdown */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Expense Breakdown</h4>
+                  <div className="space-y-2">
+                    {selectedReport.expenseBreakdown && Object.entries(selectedReport.expenseBreakdown).map(([category, amount]) => (
+                      <div key={category} className="flex justify-between py-1 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">{category}</span>
+                        <span className="text-sm font-medium text-red-600">${(amount as number).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Report Metadata */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                  <div>
+                    <span className="font-medium">Generated by:</span> {selectedReport.generatedBy?.firstName} {selectedReport.generatedBy?.lastName}
+                  </div>
+                  <div>
+                    <span className="font-medium">Created:</span> {new Date(selectedReport.createdAt).toLocaleString()}
+                  </div>
+                </div>
+                {selectedReport.notes && (
+                  <div className="mt-2">
+                    <span className="font-medium">Notes:</span>
+                    <p className="mt-1 text-sm text-gray-600">{selectedReport.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReportDetailDialogOpen(false)}>
+              Close
+            </Button>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => selectedReport && exportReportAsPDF(selectedReport)}
+              disabled={!selectedReport}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export PDF
             </Button>
           </DialogFooter>
         </DialogContent>

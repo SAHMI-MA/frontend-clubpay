@@ -112,12 +112,16 @@ export interface CreateTransactionFromAcquisitionDto {
   acquisitionId: number;
   createdById: number;
   customDescription?: string;
+  transactionType: TransactionType; // Allow specifying whether this is an income or expense transaction
+  transactionCategory?: TransactionCategory; // Optional category override
 }
 
 export interface CreateTransactionFromSalaryPaymentDto {
   salaryPaymentId: number;
   createdById: number;
   customDescription?: string;
+  transactionType: TransactionType; // Allow specifying whether this is an income or expense transaction
+  transactionCategory?: TransactionCategory; // Optional category override
 }
 
 export interface CreateRentalDto {
@@ -166,4 +170,13 @@ export interface TransactionFilterDto {
   type?: TransactionType;
   category?: TransactionCategory;
   status?: PaymentStatus;
+}
+
+export interface CreateCustomTransactionDto {
+  amount: number;
+  date: string;
+  description: string;
+  transactionType: TransactionType; // INCOME or EXPENSE
+  category: TransactionCategory; // The category of the transaction (SPONSORSHIP, DONATION, UTILITY, etc.)
+  createdById: number;
 }

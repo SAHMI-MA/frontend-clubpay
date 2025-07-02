@@ -72,9 +72,14 @@ export const deleteAcquisition = createAsyncThunk(
   'acquisitions/delete',
   async (id: number, { rejectWithValue }) => {
     try {
+      console.log(`Attempting to delete acquisition with ID: ${id}`);
+      // The delete method returns void for 204 No Content responses
       await api.delete(`acquisitions/${id}`);
+      console.log(`Successfully deleted acquisition with ID: ${id}`);
+      // Return the ID for use in the reducer
       return id;
     } catch (error: any) {
+      console.error(`Error deleting acquisition ${id}:`, error);
       return rejectWithValue(error.message || 'Failed to delete acquisition');
     }
   }
@@ -115,19 +120,25 @@ export const approveOrRejectAcquisition = createAsyncThunk(
         console.error('Missing approvalStatus in approval data');
         return rejectWithValue('Invalid approval data: missing approvalStatus');
       }
-
-      // Import the debug utility from the api file
-      const { debugApproveAcquisition } = await import('@/lib/api');
       
-      // Run the debug test first to verify the request
-      await debugApproveAcquisition(id, approvalData);
+      // Verify that approvalData contains a valid approverId
+      if (!approvalData.approverId) {
+        console.error('Missing approverId in approval data');
+        return rejectWithValue('Invalid approval data: missing approverId. Please log in again.');
+      }
       
-      // Then make the actual API call
+      // Make the API call to approve/reject the acquisition
       const updatedData = await api.put<Acquisition>(`acquisitions/${id}/approve`, approvalData);
       console.log(`Successfully approved acquisition ${id}`);
       return updatedData;
     } catch (error: any) {
       console.error(`Failed to approve/reject acquisition ID ${id}:`, error);
+      
+      // Check if error message contains "User with ID not found"
+      if (error.message && error.message.includes('User with ID') && error.message.includes('not found')) {
+        return rejectWithValue('The user ID used for approval is invalid. Please log in again.');
+      }
+      
       return rejectWithValue(error.message || 'Failed to approve/reject acquisition');
     }
   }

@@ -179,6 +179,14 @@ export const api = {
    * @returns Promise with the response data
    */
   async get<T>(endpoint: string): Promise<T> {
+    // Log query parameters if present for better debugging
+    if (endpoint.includes('?')) {
+      const [base, queryString] = endpoint.split('?');
+      const params = new URLSearchParams(queryString);
+      console.log(`GET request to ${base} with query parameters:`, 
+        Object.fromEntries(params.entries())
+      );
+    }
     return this.fetch<T>(endpoint, { method: 'GET' });
   },
 
@@ -238,9 +246,76 @@ export const api = {
   /**
    * DELETE request
    * @param endpoint - The API endpoint
-   * @returns Promise with the response data
+   * @returns Promise with the response data or void for empty responses
    */
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.fetch<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string): Promise<T | void> {
+    try {
+      const url = getApiUrl(endpoint);
+      const authToken = getAuthToken();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authentication token if available
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+        console.log(`✅ Adding auth token to DELETE request: ${endpoint}`);
+      } else {
+        console.warn('⚠️ No auth token available for DELETE request:', endpoint);
+      }
+      
+      const requestOptions = {
+        method: 'DELETE',
+        headers
+      };
+      
+      console.log(`Deleting ${url}`);
+      const response = await fetch(url, requestOptions);
+      
+      if (!response.ok) {
+        console.error(`API error: ${response.status} ${response.statusText} for ${url}`);
+        
+        // Try to get error message from response
+        const responseText = await response.text();
+        console.error('Response content:', responseText);
+        
+        if (responseText) {
+          try {
+            const errorData = JSON.parse(responseText);
+            throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
+          } catch (parseError) {
+            throw new Error(`API error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}`);
+          }
+        } else {
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+      }
+      
+      // For DELETE operations, the response is often empty (204 No Content)
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        console.log(`Delete successful with empty response (status: ${response.status})`);
+        return;
+      }
+      
+      // Check if there's content to parse
+      const contentType = response.headers.get('content-type');
+      
+      // Only try to parse JSON if the content type is appropriate
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          return await response.json();
+        } catch (err) {
+          console.warn('Response indicated JSON but parsing failed:', err);
+          return;
+        }
+      }
+      
+      // Return void for non-JSON or empty responses
+      return;
+    } catch (error) {
+      console.error('API delete request failed:', error);
+      throw error;
+    }
   },
 };
