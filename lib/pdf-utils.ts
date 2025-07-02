@@ -72,7 +72,11 @@ export const addPDFFooter = (doc: jsPDF) => {
 }
 
 export const formatCurrency = (amount: number): string => {
-  return `$${Math.abs(amount).toLocaleString()}`
+  // Handle NaN, undefined, or other invalid values
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    amount = 0;
+  }
+  return `$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export const getFileNameWithDate = (baseName: string): string => {
