@@ -91,18 +91,6 @@ export const fetchTransactionById = createAsyncThunk(
   }
 );
 
-export const createTransaction = createAsyncThunk(
-  'financial/createTransaction',
-  async (transactionData: CreateTransactionDto, { rejectWithValue }) => {
-    try {
-      const data = await api.post<Transaction>('/accounting/transactions', transactionData);
-      return data;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to create transaction');
-    }
-  }
-);
-
 export const createTransactionFromAcquisition = createAsyncThunk(
   'financial/createTransactionFromAcquisition',
   async (data: CreateTransactionFromAcquisitionDto, { rejectWithValue }) => {
@@ -125,6 +113,42 @@ export const createTransactionFromAcquisition = createAsyncThunk(
     } catch (error: any) {
       console.error("Transaction creation failed:", error);
       return rejectWithValue(error.message || 'Failed to create transaction from acquisition');
+    }
+  }
+);
+
+export const createTransaction = createAsyncThunk(
+  'financial/createTransaction',
+  async (data: CreateTransactionDto, { rejectWithValue }) => {
+    try {
+      // Check for authentication token
+      let authToken;
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token');
+      }
+
+      if (!authToken) {
+        return rejectWithValue('Authentication required: No token found. Please log in again.');
+      }
+
+      console.log("Making transaction creation request with authorization token");
+      console.log("Request endpoint: /accounting/transactions");
+      console.log("Request payload:", JSON.stringify(data));
+      
+      // Make sure data contains all required fields
+      if (!data.type || !data.category || !data.amount || !data.date || !data.description) {
+        console.error("Missing required fields in payload:", data);
+        throw new Error("Missing required fields: all fields are required");
+      }
+      
+      const response = await api.post<Transaction>('/accounting/transactions', data);
+      
+      return response;
+    } catch (error: any) {
+      console.error("Transaction creation error:", error);
+      return rejectWithValue(
+        `API error: ${error.statusCode || error.status || ''} ${error.message || 'Unknown error'}`
+      );
     }
   }
 );
