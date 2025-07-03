@@ -12,8 +12,7 @@ import {
   Calendar, 
   Users, 
   DollarSign, 
-  Building2, 
-  Trophy, 
+  Building2,
   UserPlus,
   PlusCircle,
   MapPin,
@@ -23,7 +22,6 @@ import {
 import { fetchTeamById } from "@/lib/redux/teamSlice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllStaff } from "@/lib/redux/staffSlice"
-import { toast } from "sonner"
 
 interface TeamDetailsProps {
   team: Team

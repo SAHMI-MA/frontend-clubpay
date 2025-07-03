@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Search, Trash2, UserPlus, Users, Calendar, DollarSign, Phone, Mail, Briefcase, Eye, Loader2 } from "lucide-react"
+import { Edit, Search, Trash2, UserPlus, Users, Calendar, Phone, Mail, Briefcase, Eye} from "lucide-react"
 import { toast } from "sonner"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllStaff, createStaff, updateStaff, deleteStaff } from "@/lib/redux/staffSlice"
@@ -29,7 +29,7 @@ import { Staff, StaffRole, CreateStaffDto, UpdateStaffDto } from "@/lib/types/te
 
 export function StaffManagement() {
   const dispatch = useAppDispatch()
-  const { staff, loading, error } = useAppSelector((state) => state.staff)
+  const { staff,error } = useAppSelector((state) => state.staff)
   const { teams } = useAppSelector((state) => state.teams)
   
   const [searchTerm, setSearchTerm] = useState("")
@@ -748,7 +748,7 @@ export function StaffManagement() {
                       setEditingStaff({ 
                         ...editingStaff, 
                         team: selectedTeam,
-                        // @ts-ignore - teamId isn't in the type but needed for API
+                        // @ts-expect-error - teamId isn't in the type but needed for API
                         teamId: parseInt(value) 
                       });
                     }}

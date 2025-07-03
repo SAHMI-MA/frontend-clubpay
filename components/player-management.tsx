@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerList } from "./team-management/player-list";
 import { PlayerForm } from "./team-management/player-form";
 import { PlayerDetails } from "@/components/team-management/player-details";
@@ -12,7 +10,6 @@ import { fetchAllTeams } from "@/lib/redux/teamSlice";
 import { Player } from "@/lib/types/team-management";
 import { toast } from "sonner";
 import {
-  User,
   Loader2,
   UserPlus,
   AlertTriangle,
@@ -180,10 +177,6 @@ export function PlayerManagement() {
       console.error(err);
     }
   };
-
-  // Get unique positions from players
-  const positions = Array.from(new Set(players.map(p => p.position))).filter(Boolean)
-
   // Filter players based on search query, position, and team
   const filteredPlayers = players.filter(player => {
     const matchesSearch = searchQuery.toLowerCase() === "" ||
@@ -219,41 +212,6 @@ export function PlayerManagement() {
     dispatch(fetchAllPlayers())
     toast.success("Player updated successfully")
   }
-
-  const handleFormSuccess = () => {
-    setActiveTab("list");
-    
-    // Refresh players and debug team structure after form submission
-    dispatch(fetchAllPlayers())
-      .unwrap()
-      .then((players) => {
-        console.log("Players refreshed after form submission");
-        debugPlayersTeamStructure(players);
-      });
-  };
-
-  // Calculate player statistics for dashboard
-  const positionBreakdown = players.reduce((acc, player) => {
-    const position = player.position;
-    acc[position] = (acc[position] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const teamBreakdown = players.reduce((acc, player) => {
-    const teamId = player.teamId;
-    if (teamId) {
-      acc[teamId] = (acc[teamId] || 0) + 1;
-    } else {
-      acc['unassigned'] = (acc['unassigned'] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string | 'unassigned', number>);
-
-  const getTeamName = (teamId: number | string) => {
-    if (teamId === 'unassigned') return 'Unassigned';
-    const team = teams.find(t => t.id === teamId);
-    return team ? team.name : 'Unknown';
-  };
 
   const handleViewPlayerDetails = (player: Player) => {
     setSelectedPlayer(player)

@@ -28,7 +28,19 @@ export const testJWTAuthentication = async () => {
       
       // This should work with valid token
       const contracts = await contractApi.getContracts('player', 'active');
-      console.log('✅ Successfully fetched contracts:', contracts.length);
+      
+      // Check the shape of the returned data and log accordingly
+      if (Array.isArray(contracts)) {
+        console.log('✅ Successfully fetched contracts:', contracts.length);
+      } else if (contracts && typeof contracts === 'object' && 'player' in contracts) {
+        // It's the combined object format
+        console.log('✅ Successfully fetched contracts:', {
+          player: contracts.player.length,
+          staff: contracts.staff.length
+        });
+      } else {
+        console.log('✅ Successfully fetched contracts, unexpected format:', contracts);
+      }
       
     } else {
       console.log('❌ No token available, testing should fail...');

@@ -140,9 +140,9 @@ export const userService = {
    * Remove a role from a user
    * @param userId - User ID
    * @param roleId - Role ID
-   * @returns Updated user
+   * @returns Updated user or void if the server returns no content
    */
-  removeRoleFromUser(userId: number, roleId: number): Promise<User> {
+  removeRoleFromUser(userId: number, roleId: number): Promise<User | void> {
     // Ensure correct endpoint format for DELETE request
     return api.delete<User>(`users/${userId}/roles/${roleId}`);
   }
@@ -210,9 +210,9 @@ export const roleService = {
    * Remove a permission from a role
    * @param roleId - Role ID
    * @param permissionId - Permission ID
-   * @returns Updated role
+   * @returns Updated role or void if the server returns no content
    */
-  removePermissionFromRole(roleId: number, permissionId: number): Promise<Role> {
+  removePermissionFromRole(roleId: number, permissionId: number): Promise<Role | void> {
     return api.delete<Role>(`roles/${roleId}/permissions/${permissionId}`);
   }
 };

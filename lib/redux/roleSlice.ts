@@ -173,23 +173,33 @@ const roleSlice = createSlice({
         state.error = action.payload as string;
       })
       // Add permission to role
-      .addCase(addPermissionToRole.fulfilled, (state, action: PayloadAction<Role>) => {
-        const index = state.roles.findIndex(role => role.id === action.payload.id);
-        if (index !== -1) {
-          state.roles[index] = action.payload;
-        }
-        if (state.selectedRole?.id === action.payload.id) {
-          state.selectedRole = action.payload;
+      .addCase(addPermissionToRole.fulfilled, (state, action) => {
+        // Check if the payload exists and is a Role object (not void)
+        const payload = action.payload as Role | void;
+        if (payload && typeof payload === 'object' && 'id' in payload) {
+          const rolePayload = payload as Role;
+          const index = state.roles.findIndex(role => role.id === rolePayload.id);
+          if (index !== -1) {
+            state.roles[index] = rolePayload;
+          }
+          if (state.selectedRole?.id === rolePayload.id) {
+            state.selectedRole = rolePayload;
+          }
         }
       })
       // Remove permission from role
-      .addCase(removePermissionFromRole.fulfilled, (state, action: PayloadAction<Role>) => {
-        const index = state.roles.findIndex(role => role.id === action.payload.id);
-        if (index !== -1) {
-          state.roles[index] = action.payload;
-        }
-        if (state.selectedRole?.id === action.payload.id) {
-          state.selectedRole = action.payload;
+      .addCase(removePermissionFromRole.fulfilled, (state, action) => {
+        // Check if the payload exists and is a Role object (not void)
+        const payload = action.payload as Role | void;
+        if (payload && typeof payload === 'object' && 'id' in payload) {
+          const rolePayload = payload as Role;
+          const index = state.roles.findIndex(role => role.id === rolePayload.id);
+          if (index !== -1) {
+            state.roles[index] = rolePayload;
+          }
+          if (state.selectedRole?.id === rolePayload.id) {
+            state.selectedRole = rolePayload;
+          }
         }
       });
   },

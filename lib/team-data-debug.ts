@@ -2,7 +2,7 @@
  * Utility functions to help debug team/player data structure issues
  */
 
-import { Player, Team } from './types/team-management';
+import { Player } from './types/team-management';
 
 /**
  * Analyzes player data to find inconsistencies between teamId and team object

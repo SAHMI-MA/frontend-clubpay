@@ -17,12 +17,10 @@ const isValidJwtFormat = (token: string): boolean => {
  */
 const getAuthToken = (): string | undefined => {
   if (typeof window !== 'undefined') {
-    // Try both possible token storage keys for compatibility
-    let token = localStorage.getItem('auth_token') || 
+    const token = localStorage.getItem('auth_token') || 
                 localStorage.getItem('authToken') || 
                 sessionStorage.getItem('authToken');
     
-    // If token exists but is not a valid JWT format, log warning
     if (token && !isValidJwtFormat(token)) {
       console.warn('Retrieved token is not in valid JWT format!');
     }
@@ -157,11 +155,11 @@ export const api = {
             // Try to parse as JSON
             const errorData = JSON.parse(responseText);
             throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
-          } catch (parseError) {
+          } catch {
             // If can't parse as JSON, use text directly
             throw new Error(`API error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}`);
           }
-        } catch (e) {
+        } catch {
           throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
       }
@@ -284,7 +282,7 @@ export const api = {
           try {
             const errorData = JSON.parse(responseText);
             throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
-          } catch (parseError) {
+          } catch {
             throw new Error(`API error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}`);
           }
         } else {

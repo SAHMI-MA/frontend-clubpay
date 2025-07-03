@@ -6,7 +6,7 @@ import {
   Match, 
   MatchParticipation,
   ObjectiveGroup, 
-  Objective, 
+  // Objective - unused
   ObjectiveProgress,
   CreateTeamDto, 
   UpdateTeamDto,

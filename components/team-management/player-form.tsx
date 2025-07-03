@@ -39,7 +39,8 @@ export function PlayerForm({
     isAuthenticated: true,
     loading: true
   });
-  const isConnected = connectionStatus.isServerReachable;
+  // isConnected is not used, so we'll just comment it out
+  // const isConnected = connectionStatus.isServerReachable;
   
   // Form state
   const [formData, setFormData] = useState<CreatePlayerDto | UpdatePlayerDto>({
@@ -69,13 +70,13 @@ export function PlayerForm({
           toast.warning('Using demo authentication for development');
           await loginWithDemoCredentials();
         }
-      } catch (error) {
+      } catch (_error) {
         setConnectionStatus({
           isServerReachable: false,
           isAuthenticated: false,
           loading: false
         });
-        toast.error('Failed to connect to the server');
+        toast.error('Failed to connect to the server ' + _error);
       }
     };
     

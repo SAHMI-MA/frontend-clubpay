@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, Role, Permission, userService, roleService, permissionService, CreateUserDto, UpdateUserDto, CreateRoleDto, UpdateRoleDto } from '@/lib/services';
+import { User, userService, CreateUserDto, UpdateUserDto } from '@/lib/services';
 
 // User state interface
 interface UserState {
@@ -75,7 +75,7 @@ export const assignRoleToUser = createAsyncThunk(
 
 export const removeRoleFromUser = createAsyncThunk(
   'users/removeRole',
-  async ({ userId, roleId }: { userId: number; roleId: number }, { rejectWithValue, dispatch }) => {
+  async ({ userId, roleId }: { userId: number; roleId: number }, { rejectWithValue }) => {
     try {
       // Make the API call to remove the role
       const updatedUser = await userService.removeRoleFromUser(userId, roleId);

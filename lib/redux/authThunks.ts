@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { authService, LoginCredentials, RegisterCredentials, User } from '../auth-service';
+import { authService, LoginCredentials, RegisterCredentials } from '../auth-service';
 import { loginSuccess, setLoading, logout } from './authSlice';
 
 // Async thunk for handling login

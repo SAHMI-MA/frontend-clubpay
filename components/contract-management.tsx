@@ -21,14 +21,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Users,
-  UserCheck,
   Plus,
   Search,
   Filter,
   Eye,
   Edit,
-  Trash2,
   Calendar,
   DollarSign,
   Award,
@@ -42,28 +39,21 @@ import {
 // Redux imports
 import {
   fetchAllContracts,
-  fetchPlayerContracts,
-  fetchStaffContracts,
   createPlayerContract,
   createStaffContract,
-  updatePlayerContract,
-  updateStaffContract,
-  deletePlayerContract,
-  deleteStaffContract,
+  // deletePlayerContract and deleteStaffContract removed as they're unused
   terminatePlayerContract,
   terminateStaffContract,
   setFilterStatus,
-  setFilterType,
-  clearFilters,
+  // setFilterType import removed as it's only used in unused function
   clearError,
   verifyAuthentication,
-  selectAllContracts,
   selectPlayerContracts,
   selectStaffContracts,
   selectContractsLoading,
   selectContractsError,
   selectFilterStatus,
-  selectFilterType,
+  // selectFilterType removed as it's unused
   selectIsAuthenticated
 } from "@/lib/redux/contractSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
@@ -90,7 +80,6 @@ export function ContractManagement() {
   const loading = useSelector(selectContractsLoading)
   const error = useSelector(selectContractsError)
   const filterStatus = useSelector(selectFilterStatus)
-  const filterType = useSelector(selectFilterType)
   const isAuthenticated = useSelector(selectIsAuthenticated)
   
   // Player and Staff data for dropdowns with proper type safety
@@ -171,19 +160,14 @@ export function ContractManagement() {
   }, [players, staff, playersLoading, staffLoading, playersError, staffError])
 
   // Handle filter changes
+  // Define a type for contract status to avoid 'any'
+  type ContractStatus = 'active' | 'expired' | 'terminated' | 'pending' | 'all' | null;
+  
   const handleStatusFilterChange = (status: string) => {
     if (status === "all") {
       dispatch(setFilterStatus(null))
     } else {
-      dispatch(setFilterStatus(status as any))
-    }
-  }
-
-  const handleTypeFilterChange = (type: string) => {
-    if (type === "all") {
-      dispatch(setFilterType(null))
-    } else {
-      dispatch(setFilterType(type as any))
+      dispatch(setFilterStatus(status as ContractStatus))
     }
   }
 
@@ -394,30 +378,6 @@ export function ContractManagement() {
       }
     } catch (error) {
       console.error("Failed to terminate contract:", error)
-    }
-  }
-
-  const handleDeleteContract = async (contractId: string, type: "player" | "staff") => {
-    if (!confirm("Are you sure you want to delete this contract? This action cannot be undone.")) {
-      return
-    }
-
-    try {
-      if (type === "player") {
-        const result = await dispatch(deletePlayerContract(contractId))
-        
-        if (deletePlayerContract.fulfilled.match(result)) {
-          console.log("✅ Player contract deleted successfully")
-        }
-      } else {
-        const result = await dispatch(deleteStaffContract(contractId))
-        
-        if (deleteStaffContract.fulfilled.match(result)) {
-          console.log("✅ Staff contract deleted successfully")
-        }
-      }
-    } catch (error) {
-      console.error("Failed to delete contract:", error)
     }
   }
 

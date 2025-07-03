@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Player, CreatePlayerDto, UpdatePlayerDto, Contract, CreateContractDto } from '@/lib/types/team-management';
+import { Player, CreatePlayerDto, UpdatePlayerDto, CreateContractDto } from '@/lib/types/team-management';
 import { playerService } from '@/lib/team-management-services';
 
 // Player state interface

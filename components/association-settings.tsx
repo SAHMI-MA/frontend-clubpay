@@ -112,7 +112,7 @@ export function AssociationSettings() {
                 <Building className="h-5 w-5" />
                 Association Information
               </CardTitle>
-              <CardDescription>Update your association's basic information and contact details</CardDescription>
+              <CardDescription>Update your association&apos;s basic information and contact details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -186,7 +186,7 @@ export function AssociationSettings() {
                 <Camera className="h-5 w-5" />
                 Branding & Logo
               </CardTitle>
-              <CardDescription>Customize your association's visual identity</CardDescription>
+              <CardDescription>Customize your association&apos;s visual identity</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">

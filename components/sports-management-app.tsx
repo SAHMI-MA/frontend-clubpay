@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState} from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { TopBar } from "@/components/top-bar"
@@ -35,6 +35,7 @@ export function SportsManagementApp() {
   } : null;
 
   const handleLogin = (userData: { name: string; email: string; role: string }) => {
+    console.log("User logged in:", userData);
   }
 
   const handleLogout = () => {

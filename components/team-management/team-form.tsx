@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2} from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 
 interface TeamFormProps {

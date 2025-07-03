@@ -322,7 +322,7 @@ export const validateContractData = createAsyncThunk(
       }
       
       return { valid: true };
-    } catch (error: any) {
+    } catch {
       return rejectWithValue('Invalid date format');
     }
   }
@@ -584,7 +584,7 @@ export const selectFilterStatus = (state: { contracts: ContractState }) => state
 export const selectFilterType = (state: { contracts: ContractState }) => state.contracts.filterType;
 
 // Authentication verification selector
-export const selectIsAuthenticated = (state: { contracts: ContractState }) => {
+export const selectIsAuthenticated = () => {
   return tokenUtils.hasAuthToken();
 };
 

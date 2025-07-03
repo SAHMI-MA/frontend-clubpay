@@ -56,9 +56,6 @@ import {
   Users,
   Eye,
   CheckCircle,
-  AlertCircle,
-  X,
-  Info,
 } from "lucide-react"
 
 
@@ -93,7 +90,7 @@ export function RentalSupplierManagement() {
 
   // Redux
   const dispatch = useAppDispatch()
-  const { acquisitions: acquisitionsList, selectedAcquisition, loading, error } = useAppSelector((state) => state.acquisitions)
+  const { acquisitions: acquisitionsList, selectedAcquisition} = useAppSelector((state) => state.acquisitions)
   const { suppliers: suppliersList } = useAppSelector((state) => state.suppliers)
   const { teams } = useAppSelector((state) => state.teams)
   const { players } = useAppSelector((state) => state.players)
@@ -189,19 +186,6 @@ export function RentalSupplierManagement() {
     } else {
       return "Unassigned";
     }
-  }
-
-  const getAssigneeType = (acquisition: Acquisition | null): AssigneeType | null => {
-    if (!acquisition) return null;
-    
-    if (acquisition.team) {
-      return AssigneeType.TEAM;
-    } else if (acquisition.player) {
-      return AssigneeType.PLAYER;
-    } else if (acquisition.staff) {
-      return AssigneeType.STAFF;
-    }
-    return null;
   }
 
   const getStatusColor = (status: ApprovalStatus) => {

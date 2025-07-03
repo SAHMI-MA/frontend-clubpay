@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Player, Contract, Match } from "@/lib/types/team-management";
+import { Player} from "@/lib/types/team-management";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { fetchPlayerById } from "@/lib/redux/playerSlice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import {
   User,
   CalendarDays,
@@ -317,7 +316,7 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
                 <div className="text-center p-8">
                   <FileSignature className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                   <h3 className="text-lg font-semibold mb-1">No Contract Found</h3>
-                  <p className="text-muted-foreground">This player doesn't have an active contract.</p>
+                  <p className="text-muted-foreground">This player doesn&apos;t have an active contract.</p>
                   {/* We can add a button to create contract here */}
                 </div>
               )}
@@ -328,7 +327,7 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
               <div className="text-center p-8">
                 <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                 <h3 className="text-lg font-semibold mb-1">Match History</h3>
-                <p className="text-muted-foreground">This section will display the player's match participations.</p>
+                <p className="text-muted-foreground">This section will display the player&apos;s match participations.</p>
                 {/* We'll implement match history in later stages */}
               </div>
             </TabsContent>
@@ -338,7 +337,7 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
               <div className="text-center p-8">
                 <Medal className="h-12 w-12 mx-auto text-gray-400 mb-3" />
                 <h3 className="text-lg font-semibold mb-1">Objectives & Progress</h3>
-                <p className="text-muted-foreground">This section will display the player's objectives and progress.</p>
+                <p className="text-muted-foreground">This section will display the player&apos;s objectives and progress.</p>
                 {/* We'll implement objectives tracking in later stages */}
               </div>
             </TabsContent>

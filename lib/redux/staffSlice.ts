@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Staff, CreateStaffDto, UpdateStaffDto, StaffRole } from '../types/team-management';
+import { Staff, CreateStaffDto, UpdateStaffDto } from '../types/team-management';
 import { api } from '../api';
 
 interface StaffState {

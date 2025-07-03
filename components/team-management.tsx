@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import {
   Building2,
   BarChart3,
-  Calendar,
   Users,
   Loader2,
   PlusCircle,
@@ -88,26 +87,7 @@ export function TeamManagement() {
     toast.success("Team updated successfully")
   }
 
-  // Calculate stats for the dashboard using valid teams only
-  const totalPlayers = teamsWithFallbackCategory.reduce((acc, team) => {
-    // Only count valid players that belong to this team
-    const validPlayers = team.players?.filter(player => 
-      player && player.id && player.teamId === team.id
-    ) || []
-    return acc + validPlayers.length
-  }, 0)
-
   const totalTeams = teamsWithFallbackCategory.length
-
-  const upcomingMatches = teamsWithFallbackCategory.reduce((acc, team) => {
-    // Only count valid upcoming matches
-    const upcoming = team.matches?.filter(match => 
-      match && match.id && match.dateTime &&
-      new Date(match.dateTime) > new Date() && 
-      match.status === 'scheduled'
-    ).length || 0
-    return acc + upcoming
-  }, 0)
 
   // Use numberOfStaff from each team to calculate total
   const totalStaff = teamsWithFallbackCategory.reduce((acc, team) => 

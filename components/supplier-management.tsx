@@ -44,16 +44,6 @@ import {
   DollarSign,
 } from "lucide-react"
 
-// Supplier categories 
-const supplierCategories = [
-  "Equipment",
-  "Uniforms",
-  "Medical",
-  "Maintenance", 
-  "Catering",
-  "Transportation"
-]
-
 // Supplier categories are local to UI but suppliers are fetched from API
 
 export function SupplierManagement() {
@@ -79,7 +69,7 @@ export function SupplierManagement() {
 
   // Redux
   const dispatch = useAppDispatch()
-  const { suppliers: suppliersList, selectedSupplier, loading, error } = useAppSelector((state) => state.suppliers)
+  const { suppliers: suppliersList, selectedSupplier} = useAppSelector((state) => state.suppliers)
 
   // Load suppliers on component mount
   useEffect(() => {

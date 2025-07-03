@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState} from "react";
 import { Player, Team } from "@/lib/types/team-management";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Search, Trash2, Eye, User, CalendarClock, UserCircle } from "lucide-react";
+import { Edit, Search, Trash2, Eye, User, UserCircle } from "lucide-react";
 import { useAppDispatch } from "@/lib/redux/hooks";
 import { deletePlayer, fetchAllPlayers } from "@/lib/redux/playerSlice";
 import { toast } from "sonner";
@@ -64,9 +64,6 @@ export function PlayerList({
     return matchesSearch && matchesPosition && matchesTeam
   })
 
-  const playerCount = filteredPlayers.length
-  const totalPlayers = players.length
-
   const handleDeleteClick = (player: Player) => {
     setPlayerToDelete(player);
     setIsDeleteDialogOpen(true);
@@ -80,8 +77,8 @@ export function PlayerList({
       toast.success("Player deleted successfully");
       // Refresh the list
       dispatch(fetchAllPlayers());
-    } catch (error) {
-      toast.error("Failed to delete player");
+    } catch (_error) {
+      toast.error("Failed to delete player " + _error);
     } finally {
       setIsDeleteDialogOpen(false);
       setPlayerToDelete(null);

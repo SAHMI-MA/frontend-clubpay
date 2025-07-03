@@ -47,7 +47,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
       await dispatch(deleteTeam(teamToDelete.id)).unwrap()
       toast.success("Team deleted successfully")
     } catch (error) {
-      toast.error("Failed to delete team")
+      toast.error("Failed to delete team" + (error instanceof Error ? error.message : "Unknown error"))
     } finally {
       setIsDeleteDialogOpen(false)
       setTeamToDelete(null)
@@ -218,7 +218,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the team "{teamToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete the team &quot;{teamToDelete?.name}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

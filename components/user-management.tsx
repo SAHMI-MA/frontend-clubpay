@@ -24,8 +24,7 @@ import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2 
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
 import { 
-  fetchAllUsers, 
-  fetchUserById, 
+  fetchAllUsers,
   createUser, 
   updateUser, 
   deleteUser, 
@@ -41,7 +40,7 @@ import {
   removePermissionFromRole
 } from "@/lib/redux/roleSlice"
 import { fetchAllPermissions } from "@/lib/redux/permissionSlice"
-import { CreateUserDto, UpdateUserDto, CreateRoleDto, UpdateRoleDto, User, Role, Permission } from "@/lib/services"
+import { CreateUserDto, UpdateUserDto, CreateRoleDto, UpdateRoleDto, User, Role} from "@/lib/services"
 
 export function UserManagement() {
   const dispatch = useAppDispatch()
@@ -57,7 +56,6 @@ export function UserManagement() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false)
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false)
   const [isAssignRoleDialogOpen, setIsAssignRoleDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [newUser, setNewUser] = useState<CreateUserDto>({
     email: "",
     password: "",
@@ -162,7 +160,7 @@ export function UserManagement() {
         isActive: true,
       })
     } catch (error) {
-      toast.error("Failed to create user")
+      toast.error("Failed to create user " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -187,7 +185,7 @@ export function UserManagement() {
       setIsEditUserDialogOpen(false)
       setEditingUser(null)
     } catch (error) {
-      toast.error("Failed to update user")
+      toast.error("Failed to update user " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -224,7 +222,7 @@ export function UserManagement() {
         permissions: [],
       })
     } catch (error) {
-      toast.error("Failed to create role")
+      toast.error("Failed to create role " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -300,7 +298,7 @@ export function UserManagement() {
       setIsEditRoleDialogOpen(false)
       setEditingRole(null)
     } catch (error) {
-      toast.error("Failed to update role")
+      toast.error("Failed to update role " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -324,7 +322,7 @@ export function UserManagement() {
       setUserForRoleAssignment(null)
       setRoleToAssign(null)
     } catch (error) {
-      toast.error("Failed to assign role")
+      toast.error("Failed to assign role " + (error instanceof Error ? error.message : ""))
     }
   }
 
