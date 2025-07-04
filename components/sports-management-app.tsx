@@ -18,6 +18,7 @@ import { StaffManagement } from "./team-management/staff-management"
 import { RentalSupplierManagement } from "./rental-supplies-management"
 import { SupplierManagement } from "./supplier-management"
 import { ContractManagement } from "./contract-management"
+import { ObjectivesManagement } from "./objective-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -63,6 +64,8 @@ export function SportsManagementApp() {
         return <FinancialManagement />
       case "contracts":
         return <ContractManagement />
+      case "objectives":
+        return <ObjectivesManagement />
       case "matches":
         return <MatchManagement />
       case "settings":

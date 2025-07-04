@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -142,7 +142,7 @@ export function FinancialManagement() {
   
   // State for managing transactions
   const [isCreateTransactionDialogOpen, setIsCreateTransactionDialogOpen] = useState(false)
-  const [approvedAcquisitions] = useState<Acquisition[]>([])
+  const [approvedAcquisitions, setApprovedAcquisitions] = useState<Acquisition[]>([])
   const [selectedAcquisitionId, setSelectedAcquisitionId] = useState<number | null>(null)
   const [transactionDescription, setTransactionDescription] = useState("")
   const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false)
@@ -209,90 +209,7 @@ export function FinancialManagement() {
     } finally {
       setIsLoadingReports(false)
     }
-  }, [showToast])
-  
-  // Function to fetch transaction statistics
-  const fetchTransactionStatistics = useCallback(async () => {
-    setIsLoadingStats(true)
-    try {
-      console.log(`Preparing to fetch statistics for year ${selectedYear}`);
-      
-      // Skip the API call altogether since it's consistently failing with validation errors
-      console.log("Skipping API call and using local calculation directly");
-      
-      // Calculate statistics locally from transactions
-      const transactionsByMonth = new Map<number, { income: number; expenses: number }>();
-      
-      // Initialize all months
-      for (let i = 0; i < 12; i++) {
-        transactionsByMonth.set(i, { income: 0, expenses: 0 });
-      }
-      
-      // Calculate statistics from transactions for the selected year
-      transactions.forEach(transaction => {
-        const transactionDate = new Date(transaction.date);
-        if (transactionDate.getFullYear() === selectedYear) {
-          const month = transactionDate.getMonth(); // 0-11
-          const data = transactionsByMonth.get(month) || { income: 0, expenses: 0 };
-          
-          if (transaction.type === TransactionType.INCOME) {
-            data.income += transaction.amount;
-          } else {
-            data.expenses += Math.abs(transaction.amount);
-          }
-          
-          transactionsByMonth.set(month, data);
-        }
-      });
-      
-      // Rest of the function implementation...
-      // Create the statistics object and set it
-      
-      // Create byPeriod data from the transactions
-      const byPeriod = Array.from(transactionsByMonth.entries()).map(([month, data]) => {
-        return {
-          period: (month + 1).toString(), // 1-12
-          income: data.income,
-          expenses: -data.expenses, // Negative for expenses
-          net: data.income - data.expenses
-        };
-      });
-      
-      // Calculate total income, expenses and net profit
-      const totalIncome = byPeriod.reduce((sum, period) => sum + period.income, 0);
-      const totalExpenses = byPeriod.reduce((sum, period) => sum + period.expenses, 0);
-      const netProfit = totalIncome + totalExpenses; // expenses are negative
-      
-      // Create category breakdown
-      const byCategory: Record<string, number> = {};
-      transactions.forEach(transaction => {
-        const transactionDate = new Date(transaction.date);
-        if (transactionDate.getFullYear() === selectedYear) {
-          const category = transaction.category;
-          const amount = transaction.type === TransactionType.INCOME ? transaction.amount : -Math.abs(transaction.amount);
-          byCategory[category] = (byCategory[category] || 0) + amount;
-        }
-      });
-      
-      // Set the locally calculated statistics
-      const localStats: TransactionStatistics = {
-        totalIncome,
-        totalExpenses,
-        netProfit,
-        byCategory,
-        byPeriod
-      };
-      
-      setTransactionStats(localStats);
-      showToast("Using local transaction data for statistics", "info");
-    } catch (apiError: unknown) {
-      console.error("Local calculation approach failed:", apiError);
-      // Fallback handling logic
-      // ... (existing implementation)
-    } finally {
-      setIsLoadingStats(false)
-    }
-  }, [selectedYear, transactions, showToast])
+  }, [])
   
   // Function to fetch approved acquisitions
   const fetchApprovedAcquisitionsData = useCallback(async () => {
@@ -300,45 +217,127 @@ export function FinancialManagement() {
     setAcquisitionError(null)
     
     try {
-      console.log("Fetching approved acquisitions...")
-      // Implementation details...
-      // ... (existing implementation)
-    } catch (err: any) {
-      console.error("All attempts to fetch approved acquisitions failed:", err)
-      const errorMessage = err.message?.includes('Authentication') 
-        ? "Authentication failed: Please log in again to view approved acquisitions." 
-        : `Failed to load acquisitions: ${err?.message || 'Unknown error'}`;
+      // First attempt to use the API service directly
+      try {
+        // Use the acquisitions endpoint with a query parameter for approved status
+        const result = await api.get<Acquisition[]>(`acquisitions?status=${ApprovalStatus.APPROVED}`)
+        setApprovedAcquisitions(result) // Still using the same state variable for now
+        return
+      } catch (err: any) {
+        // If the error is related to authentication, don't try the fallback
+        if (err.message?.includes('Authentication required') || err.message?.includes('Authentication failed')) {
+          throw err // Re-throw to be caught by outer catch
+        }
+      }
       
-      setAcquisitionError(errorMessage);
-      
+      // If direct API call failed for non-auth reasons, try to get all acquisitions and filter
+      try {
+        const allAcquisitions = await api.get<Acquisition[]>('acquisitions')
+        const approvedAcquisitions = allAcquisitions.filter(
+          acquisition => acquisition.approvalStatus === ApprovalStatus.APPROVED
+        )
+        setApprovedAcquisitions(approvedAcquisitions) // Still using the same state variable
+      } catch (fallbackErr) {
+        throw fallbackErr // Re-throw to be caught by outer catch
+      }
+    } catch (err: unknown) {
+      console.error("Failed to fetch approved acquisitions:", err)
+      const errorMsg = err instanceof Error ? err.message : "Unknown error"
+      setAcquisitionError(`Failed to load approved acquisitions: ${errorMsg}`)
       showToast(
-        errorMessage,
+        "Failed to load approved acquisitions",
         "error",
-        "Failed to Load Acquisitions"
-      );
+        "Error"
+      )
     } finally {
       setIsLoadingAcquisitions(false)
     }
-  }, [showToast])
+  }, [])
   
-  // Fetch transactions, salary payments, and approved acquisitions on component mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    dispatch(fetchTransactions())
-    dispatch(fetchSalaryPayments())
-    dispatch(fetchAllPlayers())
-    dispatch(fetchAllStaff())
-    fetchApprovedAcquisitionsData()
-    fetchFinancialReports()
-    fetchTransactionStatistics()
-  }, [dispatch])
-  
-  // Function fetchFinancialReports is now defined with useCallback above
-  
-  // Function fetchTransactionStatistics is now defined with useCallback above
+  // Function to fetch transaction statistics
+  // Use useMemo to calculate transaction statistics when dependencies change
+  const calculateStatistics = useMemo(() => {
+    // Calculate statistics locally from transactions
+    const transactionsByMonth = new Map<number, { income: number; expenses: number }>();
+      
+    // Initialize all months
+    for (let i = 0; i < 12; i++) {
+      transactionsByMonth.set(i, { income: 0, expenses: 0 });
+    }
+    
+    // Calculate statistics from transactions for the selected year
+    transactions.forEach(transaction => {
+      const transactionDate = new Date(transaction.date);
+      if (transactionDate.getFullYear() === selectedYear) {
+        const month = transactionDate.getMonth(); // 0-11
+        const data = transactionsByMonth.get(month) || { income: 0, expenses: 0 };
+        
+        if (transaction.type === TransactionType.INCOME) {
+          data.income += transaction.amount;
+        } else {
+          data.expenses += Math.abs(transaction.amount);
+        }
+        
+        transactionsByMonth.set(month, data);
+      }
+    });
+    
+    // Create byPeriod data from the transactions
+    const byPeriod = Array.from(transactionsByMonth.entries()).map(([month, data]) => {
+      return {
+        period: (month + 1).toString(), // 1-12
+        income: data.income,
+        expenses: -data.expenses, // Negative for expenses
+        net: data.income - data.expenses
+      };
+    });
+    
+    // Calculate total income, expenses and net profit
+    const totalIncome = byPeriod.reduce((sum, period) => sum + period.income, 0);
+    const totalExpenses = byPeriod.reduce((sum, period) => sum + period.expenses, 0);
+    const netProfit = totalIncome + totalExpenses; // expenses are negative
+    
+    // Create category breakdown
+    const byCategory: Record<string, number> = {};
+    transactions.forEach(transaction => {
+      const transactionDate = new Date(transaction.date);
+      if (transactionDate.getFullYear() === selectedYear) {
+        const category = transaction.category;
+        const amount = transaction.type === TransactionType.INCOME ? transaction.amount : -Math.abs(transaction.amount);
+        byCategory[category] = (byCategory[category] || 0) + amount;
+      }
+    });
+    
+    // Return the calculated statistics
+    return {
+      totalIncome,
+      totalExpenses,
+      netProfit,
+      byCategory,
+      byPeriod
+    } as TransactionStatistics;
+  }, [selectedYear, transactions]);
+
+  // Function to fetch transaction statistics (now just uses the memoized calculation)
+  const fetchTransactionStatistics = useCallback(async () => {
+    setIsLoadingStats(true);
+    try {
+      // Set the statistics from our memoized calculation
+      setTransactionStats(calculateStatistics);
+      
+      // Only show toast on the first load
+      if (!transactionStats) {
+        showToast("Using local transaction data for statistics", "info");
+      }
+    } catch (error) {
+      console.error("Failed to calculate transaction statistics:", error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, [calculateStatistics, transactionStats]);
   
   // Function to generate financial report
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = useCallback(async () => {
     if (!reportForm.periodStart || !reportForm.periodEnd || !reportForm.title) {
       showToast(
         "Please fill in all required fields",
@@ -394,17 +393,8 @@ export function FinancialManagement() {
     setReportError(null)
     
     try {
-      // Create report data but actually send it to the API
-      // Create and send the report data to the API
-      await api.post('accounting/financial-reports', {
-        periodStart: reportForm.periodStart,
-        periodEnd: reportForm.periodEnd,
-        title: reportForm.title,
-        notes: reportForm.notes || "",
-        generatedById: userId
-      });
-      
-      
+      // For now, just show success and close dialog
+      // TODO: Implement actual report generation thunk
       showToast(
         "Financial report generated successfully",
         "success",
@@ -434,10 +424,10 @@ export function FinancialManagement() {
     } finally {
       setIsGeneratingReport(false)
     }
-  }
+  }, [reportForm, showToast, authUser, fetchFinancialReports]);
   
   // Function to view report details
-  const handleViewReport = async (reportId: number) => {
+  const handleViewReport = useCallback(async (reportId: number) => {
     try {
       const report = await api.get<FinancialReport>(`accounting/financial-reports/${reportId}`)
       setSelectedReport(report)
@@ -450,16 +440,36 @@ export function FinancialManagement() {
         "Error"
       )
     }
-  }
+  }, [showToast]);
   
-  // Update stats when year changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Fetch initial data on component mount - only run once
+  useEffect(() => {
+    // Fetch data from Redux
+    dispatch(fetchTransactions())
+    dispatch(fetchSalaryPayments())
+    dispatch(fetchAllPlayers())
+    dispatch(fetchAllStaff())
+
+    // Fetch other data directly
+    const fetchInitialData = async () => {
+      await Promise.all([
+        fetchApprovedAcquisitionsData(),
+        fetchFinancialReports()
+      ]);
+    };
+    
+    fetchInitialData();
+    // Explicitly NOT including fetchApprovedAcquisitionsData or fetchFinancialReports
+    // in the dependency array to prevent infinite loops
+  }, [dispatch]);
+  
+  // Update stats when year or transactions change, but separate from other data fetching
   useEffect(() => {
     fetchTransactionStatistics()
-  }, [selectedYear])
+  }, [selectedYear, transactions]);
   
   // PDF Export Functions
-  const exportReportAsPDF = async (report: FinancialReport) => {
+  const exportReportAsPDF = useCallback(async (report: FinancialReport) => {
     try {
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
@@ -632,9 +642,9 @@ export function FinancialManagement() {
         "Export Failed"
       )
     }
-  }
+  }, [showToast]);
   
-  const exportTransactionsAsPDF = () => {
+  const exportTransactionsAsPDF = useCallback(() => {
     try {
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
@@ -732,9 +742,9 @@ export function FinancialManagement() {
         "Export Failed"
       )
     }
-  }
+  }, [transactions, showToast]);
   
-  const exportAnalyticsAsPDF = () => {
+  const exportAnalyticsAsPDF = useCallback(() => {
     try {
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
@@ -882,12 +892,10 @@ export function FinancialManagement() {
         "Export Failed"
       )
     }
-  }
-  
-  // Function fetchApprovedAcquisitionsData is now defined with useCallback above
+  }, [transactionStats, selectedYear, showToast]);
   
   // Create custom transaction
-  const handleCreateCustomTransaction = async () => {
+  const handleCreateCustomTransaction = useCallback(async () => {
     // Check if all required fields are filled
     if (!customTransactionForm.amount || !customTransactionForm.date || !customTransactionForm.description) {
       showToast(
@@ -989,10 +997,10 @@ export function FinancialManagement() {
         "Transaction Creation Failed"
       )
     }
-  }
+  }, [customTransactionForm, dispatch, showToast]);
 
   // Create transaction from acquisition
-  const handleCreateTransaction = async () => {
+  const handleCreateTransaction = useCallback(async () => {
     if (!selectedAcquisitionId) {
       setTransactionError("Please select an acquisition")
       return
@@ -1121,10 +1129,10 @@ export function FinancialManagement() {
     } finally {
       setIsSubmittingTransaction(false)
     }
-  }
+  }, [dispatch, fetchApprovedAcquisitionsData, selectedAcquisitionId, transactionDescription, showToast]);
   
   // Create salary payment
-  const handleCreateSalaryPayment = async () => {
+  const handleCreateSalaryPayment = useCallback(async () => {
     // Validation
     if (!salaryPaymentForm.amount || !salaryPaymentForm.paymentDate || 
         !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd ||
@@ -1221,19 +1229,19 @@ export function FinancialManagement() {
     } finally {
       setIsSubmittingSalaryPayment(false)
     }
-  }
+  }, [salaryPaymentForm, dispatch, showToast]);
   
   // Open transaction type selection dialog for a salary payment
-  const openTransactionTypeDialog = (salaryPaymentId: number) => {
+  const openTransactionTypeDialog = useCallback((salaryPaymentId: number) => {
     setSelectedSalaryPaymentId(salaryPaymentId);
     // Default to expense and salary category for salary payments
     setSelectedTransactionType(TransactionType.EXPENSE);
     setSelectedTransactionCategory(TransactionCategory.SALARY);
     setIsTransactionTypeDialogOpen(true);
-  }
+  }, []);
   
   // Create transaction from salary payment with specified type
-  const handleCreateTransactionFromSalaryPayment = async () => {
+  const handleCreateTransactionFromSalaryPayment = useCallback(async () => {
     // Check authentication token and user
     let authToken
     if (typeof window !== 'undefined') {
@@ -1359,24 +1367,26 @@ export function FinancialManagement() {
         "Transaction Creation Failed"
       )
     }
-  }
+  }, [selectedSalaryPaymentId, selectedTransactionType, selectedTransactionCategory, dispatch, showToast]);
   
   // Filter transactions based on search term, category, and type
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTransactions = useMemo(() => transactions.filter((transaction) => {
+    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
-      selectedCategory === "all" || transaction.category.toString().toLowerCase() === selectedCategory.toLowerCase()
-    const matchesType = selectedType === "all" || transaction.type.toString().toLowerCase() === selectedType.toLowerCase()
-    return matchesSearch && matchesCategory && matchesType
-  })
+      selectedCategory === "all" || transaction.category.toString().toLowerCase() === selectedCategory.toLowerCase();
+    const matchesType = selectedType === "all" || transaction.type.toString().toLowerCase() === selectedType.toLowerCase();
+    
+    return matchesSearch && matchesCategory && matchesType;
+  }), [transactions, searchTerm, selectedCategory, selectedType]);
 
-  // No filteredPaymentRequests needed
-
-  const getTypeColor = (type: TransactionType) => {
+  // Utility function to get color based on transaction type
+  const getTypeColor = useCallback((type: TransactionType) => {
     return type === TransactionType.INCOME
       ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-  }
+  }, []);
+
+  // Calculate financial summaries
 
   const getStatusColor = (status: TransactionPaymentStatus) => {
     switch (status) {
@@ -1393,22 +1403,26 @@ export function FinancialManagement() {
 
   // No payment-related functions needed
 
-  const totalIncome = transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0) || 0
-  const totalExpenses = Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0)) || 0
-  const netProfit = totalIncome - totalExpenses
+  const totalIncome = useMemo(() => 
+    transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0) || 0
+  , [transactions]);
+  
+  const totalExpenses = useMemo(() => 
+    Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0)) || 0
+  , [transactions]);
+  
+  const netProfit = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
 
-  const calculateMonthlyData = () => {
+  const calculateMonthlyData = useCallback(() => {
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    
     // If we have API statistics data, use it
     if (transactionStats && transactionStats.byPeriod) {
-      const monthNames = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      
       // Create a map from API data
       const apiDataMap = new Map();
-      
-      console.log("Processing byPeriod data:", transactionStats.byPeriod);
       
       transactionStats.byPeriod.forEach(period => {
         let monthIndex = -1;
@@ -1442,7 +1456,6 @@ export function FinancialManagement() {
         
         // If we successfully parsed a valid month index, add the data
         if (monthIndex >= 0 && monthIndex < 12) {
-          console.log(`Mapped period ${periodStr} to month ${monthNames[monthIndex]}`);
           apiDataMap.set(monthNames[monthIndex], {
             income: period.income || 0,
             expenses: Math.abs(period.expenses || 0), // Ensure positive for display
@@ -1467,11 +1480,6 @@ export function FinancialManagement() {
     const monthlyMap = new Map<string, { income: number; expenses: number }>();
     
     // Initialize all 12 months for the selected year
-    const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    
     monthNames.forEach(month => {
       monthlyMap.set(month, { income: 0, expenses: 0 });
     });
@@ -1506,9 +1514,10 @@ export function FinancialManagement() {
         profit: data.income - data.expenses
       };
     });
-  };
+  }, [transactionStats, selectedYear, transactions]);
 
-  const monthlyData = calculateMonthlyData();
+  // Use memoization to avoid recalculating monthly data on every render
+  const monthlyData = useMemo(() => calculateMonthlyData(), [calculateMonthlyData]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">

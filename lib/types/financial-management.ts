@@ -180,3 +180,15 @@ export interface CreateCustomTransactionDto {
   category: TransactionCategory; // The category of the transaction (SPONSORSHIP, DONATION, UTILITY, etc.)
   createdById: number;
 }
+
+export interface BulkSalaryPaymentDto {
+  teamId?: number;
+  periodStart: string;
+  periodEnd: string;
+  paymentDate: string;
+  taxRate: number;
+  includeStaff: boolean;
+  includePlayers: boolean;
+  description?: string;
+  createdById: number;
+}
