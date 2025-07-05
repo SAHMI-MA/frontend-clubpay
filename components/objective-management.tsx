@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, Search, Trophy, Target, Eye, Edit, Trash2, DollarSign, Award, CheckCircle, Loader2 } from "lucide-react"
+import { Plus, Trophy, Target, Eye, Edit, Trash2, DollarSign, Award, CheckCircle, Loader2, RefreshCw } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
 import { toast } from "sonner"
@@ -34,15 +33,19 @@ import {
   deleteObjectiveGroup,
   createObjective,
   deleteObjective,
+  updateObjective,
   completeObjective,
-  assignGroupToPlayers
+  assignGroupToPlayers,
+  assignObjectiveToPlayer,
+  bulkAssignObjective
 } from "@/lib/redux/objectiveSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
 import { 
   ObjectiveGroup, 
   CreateObjectiveGroupDto,
   CreateObjectiveDto,
-  CompleteObjectiveDto
+  AssignObjectiveDto,
+  BulkAssignObjectiveDto
 } from "@/lib/types/objective-management"
 
 export function ObjectivesManagement() {
@@ -60,15 +63,13 @@ export function ObjectivesManagement() {
   const { players: availablePlayers, loading: playersLoading } = useSelector((state: RootState) => state.players)
   
   // Local component state
-  const [activeTab, setActiveTab] = useState("objectives")
-  const [searchTerm, setSearchTerm] = useState("")
+  const [activeTab, setActiveTab] = useState("groups")
   const [isObjectiveDialogOpen, setIsObjectiveDialogOpen] = useState(false)
   const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false)
   const [objectiveForm, setObjectiveForm] = useState({
     title: "",
     description: "",
     bonusAmount: "",
-    assignedPlayers: [] as number[],
     groupId: undefined as number | undefined
   })
   
@@ -92,6 +93,29 @@ export function ObjectivesManagement() {
     // description removed - not supported by API
   })
   
+  // State for objective editing
+  const [isEditObjectiveDialogOpen, setIsEditObjectiveDialogOpen] = useState(false)
+  const [editObjectiveForm, setEditObjectiveForm] = useState({
+    id: 0,
+    title: "",
+    description: "",
+    bonusAmount: "",
+    groupId: undefined as number | undefined
+  })
+  
+  // State for confirmation dialogs
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmData, setDeleteConfirmData] = useState<{
+    type: 'objective' | 'group'
+    id: number
+    name: string
+  } | null>(null)
+  
+  // State for individual objective assignment
+  const [isObjectiveAssignDialogOpen, setIsObjectiveAssignDialogOpen] = useState(false)
+  const [selectedObjectiveForAssignment, setSelectedObjectiveForAssignment] = useState<number | null>(null)
+  const [objectiveAssignmentPlayers, setObjectiveAssignmentPlayers] = useState<number[]>([])
+  
   // Fetch data on component mount
   useEffect(() => {
     dispatch(fetchObjectiveGroups())
@@ -107,44 +131,74 @@ export function ObjectivesManagement() {
   // Load player progress when players are available
   useEffect(() => {
     if (availablePlayers.length > 0) {
-      // Load progress for the first few players or all players depending on your needs
-      const playerIds = availablePlayers.slice(0, 10).map(p => p.id) // Limit to first 10 for performance
-      playerIds.forEach(playerId => {
-        dispatch(fetchPlayerObjectiveProgress(playerId))
+      // Load progress for all players
+      availablePlayers.forEach(player => {
+        dispatch(fetchPlayerObjectiveProgress(player.id))
       })
     }
   }, [dispatch, availablePlayers])
 
-  // Filter objectives based on search term
+  // Debug data state (only log when counts change, not on every data update)
+  useEffect(() => {
+    console.log('📊 Current data state:', {
+      objectiveGroups: objectiveGroups.length,
+      objectives: objectives.length,
+      availablePlayers: availablePlayers.length,
+      playerProgress: playerProgress.length,
+      objectiveGroupsData: objectiveGroups.map(g => ({
+        id: g.id,
+        name: g.name,
+        hasObjectivesArray: !!g.objectives,
+        objectivesArrayLength: g.objectives?.length || 0,
+        filteredObjectivesCount: objectives.filter(obj => obj.objectiveGroupId === g.id).length
+      })),
+      playerProgressSample: playerProgress.slice(0, 3).map(p => ({
+        playerId: (p as any).__playerId,
+        playerName: `Player ID ${(p as any).__playerId}`, // We don't have player name in progress data anymore
+        objectiveId: p.objective?.id,
+        objectiveTitle: p.objective?.title,
+        isCompleted: p.isCompleted
+      }))
+    })
+    
+    // Removed automatic sync to prevent infinite loops
+    // Users can manually sync using the "Sync Assignments" button on each group
+    
+  }, [objectiveGroups.length, objectives.length, availablePlayers.length, playerProgress.length, objectiveGroups, objectives, playerProgress])
+
+  // Filter objectives based on search term and calculate accurate summaries
   const mappedObjectiveGroups = objectiveGroups.map(group => {
-    const groupObjectiveIds = group.objectives?.map(obj => obj.id) || []
-    const groupTotalBonus = group.objectives?.reduce((sum, obj) => sum + obj.bonusAmount, 0) || 0
+    // Use objectives from the group object itself (API includes them)
+    const groupObjectives = group.objectives || []
+    const groupObjectiveIds = groupObjectives.map(obj => obj.id)
+    const groupTotalBonus = groupObjectives.reduce((sum, obj) => sum + Number(obj.bonusAmount), 0)
     
     return {
       ...group,
-      objectives: groupObjectiveIds,
+      objectiveIds: groupObjectiveIds,  // Keep IDs separate
       totalBonusPotential: groupTotalBonus,
-      isActive: true
+      isActive: true,
+      objectiveCount: groupObjectives.length
     }
   })
   
-  // Filter objectives based on search term
-  const filteredObjectives = objectives.filter((objective) => {
-    const matchesSearch =
-      objective.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (objective.description || "").toLowerCase().includes(searchTerm.toLowerCase())
-    
-    return matchesSearch
-  })
-
   // Statistics
   const totalActiveObjectives = objectives.length
   const completedObjectives = playerProgress.filter(p => p.isCompleted).length
-  const totalBonusPotential = objectives.reduce((sum, o) => sum + o.bonusAmount, 0)
+  
+  // Calculate total bonus potential based on group assignments
+  const totalBonusPotential = objectiveGroups.reduce((sum, group) => {
+    const assignedPlayersCount = group.assignedPlayers?.length || 0
+    // Use objectives from the group object itself (API includes them)
+    const groupObjectives = group.objectives || []
+    const groupObjectivesBonus = groupObjectives.reduce((objSum, obj) => objSum + Number(obj.bonusAmount), 0)
+    return sum + (assignedPlayersCount * groupObjectivesBonus)
+  }, 0)
+  
   const bonusesEarned = playerProgress
     .filter(p => p.isCompleted)
     .reduce((sum, p) => {
-      const bonusAmount = p.customBonusAmount || (p.objective?.bonusAmount || 0)
+      const bonusAmount = Number(p.bonus) || Number(p.objective?.bonusAmount) || 0
       return sum + bonusAmount
     }, 0)
 
@@ -154,7 +208,6 @@ export function ObjectivesManagement() {
       title: "",
       description: "",
       bonusAmount: "",
-      assignedPlayers: [],
       groupId: undefined
     })
     setGroupForm({
@@ -165,6 +218,8 @@ export function ObjectivesManagement() {
     setGroupAssignmentPlayers([])
     setSelectedGroupForAssignment(null)
     setEditGroupForm({ id: 0, name: "" })
+    setObjectiveAssignmentPlayers([])
+    setSelectedObjectiveForAssignment(null)
   }
 
   const handleCreateObjective = async () => {
@@ -186,9 +241,38 @@ export function ObjectivesManagement() {
       const resultAction = await dispatch(createObjective(newObjectiveData))
       
       if (createObjective.fulfilled.match(resultAction)) {
+        const newObjective = resultAction.payload
         toast.success("Objective created successfully!")
+        
+        // Find the group and assign the new objective to all players in that group
+        const targetGroup = objectiveGroups.find(group => group.id === objectiveForm.groupId)
+        if (targetGroup && targetGroup.assignedPlayers && targetGroup.assignedPlayers.length > 0) {
+          // Assign the new objective to each player in the group
+          for (const player of targetGroup.assignedPlayers) {
+            try {
+              const assignData: AssignObjectiveDto = {
+                objectiveId: newObjective.id,
+                playerId: player.id
+              }
+              await dispatch(assignObjectiveToPlayer(assignData))
+            } catch (error) {
+              console.error(`Failed to assign objective to player ${player.id}:`, error)
+            }
+          }
+          
+          // Refresh player progress for all affected players
+          targetGroup.assignedPlayers.forEach(player => {
+            dispatch(fetchPlayerObjectiveProgress(player.id))
+          })
+          
+          toast.success(`Objective assigned to ${targetGroup.assignedPlayers.length} player(s)!`)
+        }
+        
         setIsObjectiveDialogOpen(false)
         resetForms()
+        // Refresh both objectives and groups to update the UI
+        dispatch(fetchObjectives())
+        dispatch(fetchObjectiveGroups())
       } else {
         toast.error("Failed to create objective")
       }
@@ -236,7 +320,36 @@ export function ObjectivesManagement() {
       const resultAction = await dispatch(assignGroupToPlayers({ groupId, playerIds }))
       
       if (assignGroupToPlayers.fulfilled.match(resultAction)) {
-        toast.success("Group assigned to players successfully!")
+        toast.success(`Group assigned to ${playerIds.length} player(s) successfully!`)
+        
+        // Find the group objectives from the group object itself (API includes them)
+        const targetGroup = objectiveGroups.find(group => group.id === groupId)
+        const groupObjectives = targetGroup?.objectives || []
+        
+        if (groupObjectives.length > 0) {
+          let assignmentCount = 0
+          
+          // Assign each objective in the group to each newly assigned player
+          for (const objective of groupObjectives) {
+            for (const playerId of playerIds) {
+              try {
+                const assignData: AssignObjectiveDto = {
+                  objectiveId: objective.id,
+                  playerId: playerId
+                }
+                await dispatch(assignObjectiveToPlayer(assignData))
+                assignmentCount++
+              } catch (error) {
+                console.error(`Failed to assign objective ${objective.id} to player ${playerId}:`, error)
+              }
+            }
+          }
+          
+          if (assignmentCount > 0) {
+            toast.success(`${assignmentCount} objective assignments created!`)
+          }
+        }
+        
         // Refresh objective groups and player progress
         dispatch(fetchObjectiveGroups())
         playerIds.forEach(playerId => {
@@ -251,12 +364,84 @@ export function ObjectivesManagement() {
     }
   }
 
+  // Helper function to sync all objectives in a group with all assigned players
+  const syncGroupObjectivesWithPlayers = async (groupId: number) => {
+    try {
+      console.log('🔄 Manual sync triggered for group', groupId)
+      const targetGroup = objectiveGroups.find(group => group.id === groupId)
+      const groupObjectives = targetGroup?.objectives || []
+      
+      if (!targetGroup || !targetGroup.assignedPlayers || groupObjectives.length === 0) {
+        console.log('❌ Cannot sync: missing group data', { targetGroup, objectiveCount: groupObjectives.length })
+        return
+      }
+
+      let assignmentCount = 0
+      
+      // Assign each objective in the group to each assigned player
+      for (const objective of groupObjectives) {
+        for (const player of targetGroup.assignedPlayers) {
+          try {
+            // Check if this assignment already exists in progress data
+            const existingProgress = playerProgress.find(
+              p => (p as any).__playerId === player.id && p.objective?.id === objective.id
+            )
+            
+            if (!existingProgress) {
+              console.log('➕ Creating assignment:', { objectiveId: objective.id, playerId: player.id })
+              const assignData: AssignObjectiveDto = {
+                objectiveId: objective.id,
+                playerId: player.id
+              }
+              await dispatch(assignObjectiveToPlayer(assignData))
+              assignmentCount++
+            } else {
+              console.log('✅ Assignment already exists:', { objectiveId: objective.id, playerId: player.id })
+            }
+          } catch (error) {
+            console.error(`Failed to assign objective ${objective.id} to player ${player.id}:`, error)
+          }
+        }
+      }
+      
+      if (assignmentCount > 0) {
+        toast.success(`${assignmentCount} missing objective assignments created!`)
+        
+        // Only refresh progress for affected players
+        targetGroup.assignedPlayers.forEach((player, index) => {
+          setTimeout(() => {
+            dispatch(fetchPlayerObjectiveProgress(player.id))
+          }, index * 100)
+        })
+      } else {
+        toast.info("All objectives are already assigned to the players in this group.")
+      }
+    } catch (error) {
+      console.error('Error syncing group objectives with players:', error)
+      toast.error("Error syncing group assignments")
+    }
+  }
+
   // Function to handle objective completion
   const handleCompleteObjective = async (playerId: number, objectiveId: number) => {
     try {
-      const completeData: CompleteObjectiveDto = {
-        completionDate: new Date().toISOString()
+      // First, check if this objective is actually assigned to the player
+      const playerProgressForObjective = playerProgress.find(
+        p => (p as any).__playerId === playerId && p.objective?.id === objectiveId
+      )
+      
+      if (!playerProgressForObjective) {
+        toast.error("This objective is not assigned to the player. Please assign the objective group first.")
+        return
       }
+      
+      if (playerProgressForObjective.isCompleted) {
+        toast.info("This objective is already completed.")
+        return
+      }
+      
+      // Send empty object - API doesn't accept completionDate property
+      const completeData = {}
       
       const resultAction = await dispatch(completeObjective({ playerId, objectiveId, completeData }))
       
@@ -275,16 +460,148 @@ export function ObjectivesManagement() {
   
   // Function to delete an objective
   const handleObjectiveDelete = async (objectiveId: number) => {
+    const objective = objectives.find(obj => obj.id === objectiveId)
+    if (!objective) return
+    
+    setDeleteConfirmData({
+      type: 'objective',
+      id: objectiveId,
+      name: objective.title || objective.name || 'Unnamed Objective'
+    })
+    setIsDeleteConfirmOpen(true)
+  }
+
+  // Function to delete a group
+  const handleDeleteGroup = async (groupId: number) => {
+    const group = objectiveGroups.find(g => g.id === groupId)
+    if (!group) return
+    
+    // Check if group has objectives
+    const groupObjectives = objectives.filter(obj => obj.objectiveGroupId === groupId)
+    
+    if (groupObjectives.length > 0) {
+      toast.error("Cannot delete group that contains objectives. Please delete or reassign objectives first.")
+      return
+    }
+
+    setDeleteConfirmData({
+      type: 'group',
+      id: groupId,
+      name: group.name
+    })
+    setIsDeleteConfirmOpen(true)
+  }
+
+  // Function to execute the confirmed delete action
+  const executeDelete = async () => {
+    if (!deleteConfirmData) return
+    
     try {
-      const resultAction = await dispatch(deleteObjective(objectiveId))
-      
-      if (deleteObjective.fulfilled.match(resultAction)) {
-        toast.success("Objective deleted successfully!")
-      } else {
-        toast.error("Failed to delete objective")
+      if (deleteConfirmData.type === 'objective') {
+        const resultAction = await dispatch(deleteObjective(deleteConfirmData.id))
+        
+        if (deleteObjective.fulfilled.match(resultAction)) {
+          toast.success("Objective deleted successfully!")
+          // Refresh both objectives and groups to update the UI
+          dispatch(fetchObjectives())
+          dispatch(fetchObjectiveGroups())
+        } else {
+          toast.error("Failed to delete objective")
+        }
+      } else if (deleteConfirmData.type === 'group') {
+        const resultAction = await dispatch(deleteObjectiveGroup(deleteConfirmData.id))
+
+        if (deleteObjectiveGroup.fulfilled.match(resultAction)) {
+          toast.success("Group deleted successfully!")
+          // Refresh objective groups
+          dispatch(fetchObjectiveGroups())
+        } else {
+          toast.error("Failed to delete group")
+        }
       }
     } catch (error) {
-      toast.error("Error deleting objective")
+      toast.error(`Error deleting ${deleteConfirmData.type}`)
+      console.error(error)
+    } finally {
+      setIsDeleteConfirmOpen(false)
+      setDeleteConfirmData(null)
+    }
+  }
+
+  // Function to handle objective editing
+  const handleEditObjective = (objective: any) => {
+    setEditObjectiveForm({
+      id: objective.id,
+      title: objective.title,
+      description: objective.description,
+      bonusAmount: objective.bonusAmount?.toString() || "",
+      groupId: objective.objectiveGroupId
+    })
+    setIsEditObjectiveDialogOpen(true)
+  }
+
+  // Function to submit objective update
+  const handleObjectiveUpdate = async () => {
+    try {
+      if (!editObjectiveForm.title.trim()) {
+        toast.error("Please provide an objective title")
+        return
+      }
+
+      const updateData = {
+        title: editObjectiveForm.title,
+        description: editObjectiveForm.description,
+        objectiveGroupId: editObjectiveForm.groupId,
+        bonusAmount: parseFloat(editObjectiveForm.bonusAmount) || 0
+      }
+
+      const resultAction = await dispatch(updateObjective({ 
+        objectiveId: editObjectiveForm.id, 
+        objectiveData: updateData 
+      }))
+      
+      if (updateObjective.fulfilled.match(resultAction)) {
+        // If the group was changed, assign the objective to all players in the new group
+        if (editObjectiveForm.groupId) {
+          const targetGroup = objectiveGroups.find(group => group.id === editObjectiveForm.groupId)
+          if (targetGroup && targetGroup.assignedPlayers && targetGroup.assignedPlayers.length > 0) {
+            // Assign the updated objective to each player in the new group
+            for (const player of targetGroup.assignedPlayers) {
+              try {
+                const assignData: AssignObjectiveDto = {
+                  objectiveId: editObjectiveForm.id,
+                  playerId: player.id
+                }
+                await dispatch(assignObjectiveToPlayer(assignData))
+              } catch (error) {
+                console.error(`Failed to assign objective to player ${player.id}:`, error)
+              }
+            }
+            
+            // Refresh player progress for all affected players
+            targetGroup.assignedPlayers.forEach(player => {
+              dispatch(fetchPlayerObjectiveProgress(player.id))
+            })
+          }
+        }
+        
+        toast.success("Objective updated successfully!")
+        setEditObjectiveForm({
+          id: 0,
+          title: "",
+          description: "",
+          bonusAmount: "",
+          groupId: undefined
+        })
+        setIsEditObjectiveDialogOpen(false)
+        // Refresh both objectives and groups to update the UI
+        dispatch(fetchObjectives())
+        dispatch(fetchObjectiveGroups())
+      } else {
+        toast.error("Failed to update objective")
+      }
+    } catch (error) {
+      toast.error("Error updating objective")
       console.error(error)
     }
   }
@@ -329,35 +646,71 @@ export function ObjectivesManagement() {
     }
   }
 
+  // Function to refresh all data
+  const refreshAllData = () => {
+    console.log('🔄 Manual refresh triggered')
+    dispatch(fetchObjectiveGroups())
+    dispatch(fetchObjectives())
+    dispatch(fetchAllPlayers())
+    
+    // Refresh player progress for all players (with a small delay to avoid rate limiting)
+    setTimeout(() => {
+      if (availablePlayers.length > 0) {
+        availablePlayers.forEach((player, index) => {
+          setTimeout(() => {
+            dispatch(fetchPlayerObjectiveProgress(player.id))
+          }, index * 100) // Stagger the requests
+        })
+      }
+    }, 500)
+    
+    // Refresh team progress
+    const activeTeamId = 1
+    dispatch(fetchTeamObjectiveProgress(activeTeamId))
+    
+    toast.success("Data refreshed successfully!")
+  }
+
   // Function to view group details
   const handleViewGroupDetails = (group: ObjectiveGroup) => {
     setSelectedGroupForDetails(group)
     setIsGroupDetailsDialogOpen(true)
   }
 
-  // Function to delete a group
-  const handleDeleteGroup = async (groupId: number) => {
+  // Function to handle individual objective assignment to multiple players
+  const handleAssignObjectiveToPlayers = async (objectiveId: number, playerIds: number[]) => {
     try {
-      // Check if group has objectives
-      const groupObjectives = objectives.filter(obj => obj.group?.id === groupId)
+      console.log('🎯 Assigning objective', objectiveId, 'to players', playerIds)
       
-      if (groupObjectives.length > 0) {
-        toast.error("Cannot delete group that contains objectives. Please delete or reassign objectives first.")
-        return
+      const bulkAssignData: BulkAssignObjectiveDto = {
+        objectiveId: objectiveId,
+        playerIds: playerIds
       }
-
-      const resultAction = await dispatch(deleteObjectiveGroup(groupId))
-
-      if (deleteObjectiveGroup.fulfilled.match(resultAction)) {
-        toast.success("Group deleted successfully!")
-        // Refresh objective groups
+      
+      console.log('📤 Sending bulk assign request:', bulkAssignData)
+      
+      const resultAction = await dispatch(bulkAssignObjective(bulkAssignData))
+      
+      if (bulkAssignObjective.fulfilled.match(resultAction)) {
+        console.log('✅ Assignment successful:', resultAction.payload)
+        toast.success(`Objective assigned to ${playerIds.length} player(s) successfully!`)
+        
+        // Only refresh data for the affected players, not everything
+        playerIds.forEach(playerId => {
+          console.log('🔄 Refreshing progress for player', playerId)
+          dispatch(fetchPlayerObjectiveProgress(playerId))
+        })
+        
+        // Refresh groups to show updated assignments
         dispatch(fetchObjectiveGroups())
+        
       } else {
-        toast.error("Failed to delete group")
+        console.error('❌ Assignment failed:', resultAction)
+        toast.error("Failed to assign objective to players")
       }
     } catch (error) {
-      toast.error("Error deleting group")
-      console.error(error)
+      console.error('💥 Assignment error:', error)
+      toast.error("Error assigning objective to players")
     }
   }
 
@@ -400,8 +753,25 @@ export function ObjectivesManagement() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Objectives & Rewards Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Create objective groups, assign them to players, and track performance bonuses</p>
+          {/* Debug info */}
+          <div className="text-xs text-gray-500 mt-1">
+            Progress entries: {playerProgress.length} | Players: {availablePlayers.length} | Groups: {objectiveGroups.length} | Objectives: {objectives.length}
+            <br />
+            Group-Objective mapping: {objectiveGroups.map(g => {
+              const count = g.objectives?.length || 0;
+              return `${g.name}:${count}`;
+            }).join(', ')}
+          </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={refreshAllData}
+            className="bg-gray-50 hover:bg-gray-100"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Data
+          </Button>
           <Dialog open={isObjectiveDialogOpen} onOpenChange={setIsObjectiveDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700">
@@ -560,111 +930,11 @@ export function ObjectivesManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="objectives">Objectives</TabsTrigger>
-          <TabsTrigger value="progress">Player Progress</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="groups">Objective Groups</TabsTrigger>
+          <TabsTrigger value="progress">Player Progress</TabsTrigger>
           <TabsTrigger value="rewards">Rewards Summary</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="objectives" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Objectives</CardTitle>
-              <CardDescription>Manage individual and team performance objectives</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Search */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search objectives..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Objectives Table */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Objective</TableHead>
-                    <TableHead>Group</TableHead>
-                    <TableHead>Bonus Amount</TableHead>
-                    <TableHead>Assigned Players</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredObjectives.map((objective) => {
-                    const assignedPlayers = playerProgress
-                      .filter(p => p.objective.id === objective.id)
-                      .map(p => p.player)
-                    
-                    return (
-                      <TableRow key={objective.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{objective.name}</p>
-                            <p className="text-sm text-gray-500">{objective.description}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {objective.group ? (
-                            <Badge variant="outline">{objective.group.name}</Badge>
-                          ) : (
-                            <span className="text-gray-400">No group</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold text-green-600">
-                            ${objective.bonusAmount.toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {assignedPlayers.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {assignedPlayers.slice(0, 3).map((player) => (
-                                <Badge key={player.id} variant="secondary" className="text-xs">
-                                  {player.firstName} {player.lastName}
-                                </Badge>
-                              ))}
-                              {assignedPlayers.length > 3 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{assignedPlayers.length - 3} more
-                                </Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">Unassigned</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 bg-transparent"
-                              onClick={() => handleObjectiveDelete(objective.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="progress" className="space-y-6">
           <Card>
@@ -685,10 +955,88 @@ export function ObjectivesManagement() {
                   </div>
                 ) : (
                   availablePlayers.map((player) => {
-                    // Filter player progress data from Redux store
-                  const playerProgressData = playerProgress.filter(p => p.player?.id === player.id)
+                    // Filter player progress data from Redux store using the __playerId field
+                    const playerProgressData = playerProgress.filter(p => (p as any).__playerId === player.id)
+                    
+                    // Debug logging for this player
+                    if (player.id <= 3) { // Only log for first few players to avoid spam
+                      console.log(`[UI] Player ${player.firstName} ${player.lastName} (ID: ${player.id}):`)
+                      console.log('  - Total progress items in store:', playerProgress.length)
+                      console.log('  - Progress items for this player:', playerProgressData.length)
+                      if (playerProgressData.length > 0) {
+                        console.log('  - Progress items:', playerProgressData.map(p => ({ 
+                          id: p.id, 
+                          playerId: (p as any).__playerId, 
+                          objectiveId: p.objective?.id,
+                          objectiveTitle: p.objective?.title
+                        })))
+                      }
+                    }
+                    
+                    // Check if player is assigned to any groups
+                    const assignedGroups = objectiveGroups.filter(group => 
+                      group.assignedPlayers?.some(assignedPlayer => assignedPlayer.id === player.id)
+                    )
+                    
+                    // Only show players that have actual progress data (assigned objectives) OR are assigned to groups
+                    if (playerProgressData.length === 0 && assignedGroups.length === 0) {
+                      return (
+                        <div key={player.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold">{player.firstName} {player.lastName}</h3>
+                              <p className="text-sm text-gray-500">
+                                {player.position}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No objectives assigned to this player. Use the &quot;Objective Groups&quot; tab to assign objectives.
+                          </p>
+                        </div>
+                      )
+                    }
 
-                  if (playerProgressData.length === 0) {
+                    // If player is in groups but has no progress data, show a warning
+                    if (playerProgressData.length === 0 && assignedGroups.length > 0) {
+                      return (
+                        <div key={player.id} className="border rounded-lg p-4 bg-yellow-50">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold">{player.firstName} {player.lastName}</h3>
+                              <p className="text-sm text-gray-500">
+                                {player.position}
+                              </p>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={refreshAllData}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Refresh
+                            </Button>
+                          </div>
+                          <div className="text-sm text-amber-700">
+                            <p className="font-medium">⚠️ Assignment Issue Detected</p>
+                            <p className="text-xs mt-1">
+                              Player is assigned to {assignedGroups.length} group(s) but no objective progress found.
+                            </p>
+                            <p className="text-xs">
+                              Groups: {assignedGroups.map(g => g.name).join(', ')}
+                            </p>
+                            <p className="text-xs mt-2">
+                              This usually means the backend returned invalid progress data (IDs set to 0).
+                              Try clicking &quot;Refresh&quot; or use &quot;Sync Assignments&quot; on the group.
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // Calculate potential bonus from actual assigned objectives
+                    const potentialBonus = playerProgressData.reduce((sum, p) => sum + Number(p.objective.bonusAmount), 0)
+
                     return (
                       <div key={player.id} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-4">
@@ -698,82 +1046,66 @@ export function ObjectivesManagement() {
                               {player.position}
                             </p>
                           </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">Potential Bonus</p>
+                            <p className="font-semibold text-green-600">
+                              ${potentialBonus.toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-500 text-center py-4">
-                          No objectives assigned to this player
-                        </p>
+
+                        <div className="space-y-3">
+                          {playerProgressData.map((progressItem) => {
+                            const objective = progressItem.objective
+                            const isCompleted = progressItem.isCompleted
+                            const completionDate = progressItem.completedAt
+                            const customBonusAmount = progressItem.bonus
+
+                            return (
+                              <div
+                                key={`${player.id}-${objective.id}`}
+                                className={`flex items-center justify-between p-3 rounded ${
+                                  isCompleted 
+                                    ? 'bg-green-50 border-l-4 border-green-500 dark:bg-green-900/20' 
+                                    : 'bg-gray-50 dark:bg-gray-800'
+                                }`}
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium text-sm">{objective.title}</p>
+                                    <Badge variant={isCompleted ? "default" : "outline"}>
+                                      {isCompleted ? "Completed" : "In Progress"}
+                                    </Badge>
+                                  </div>
+                                  {completionDate && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Completed: {new Date(completionDate).toLocaleDateString()}
+                                    </p>
+                                  )}
+
+                                </div>
+                                <div className="ml-4 text-right">
+                                  <p className="text-sm font-medium text-green-600">
+                                    ${(Number(customBonusAmount) || Number(objective.bonusAmount)).toLocaleString()}
+                                  </p>
+                                  {!isCompleted && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="mt-2"
+                                      onClick={() => handleCompleteObjective(player.id, objective.id)}
+                                    >
+                                      Mark Complete
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
-                  }
-
-                  return (
-                    <div key={player.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold">{player.firstName} {player.lastName}</h3>
-                          <p className="text-sm text-gray-500">
-                            {player.position}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Potential Bonus</p>
-                          <p className="font-semibold text-green-600">
-                            ${playerProgressData.reduce((sum, p) => sum + p.objective.bonusAmount, 0).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        {playerProgressData.map((progress) => {
-                          return (
-                            <div
-                              key={progress.id}
-                              className={`flex items-center justify-between p-3 rounded ${
-                                progress.isCompleted 
-                                  ? 'bg-green-50 border-l-4 border-green-500 dark:bg-green-900/20' 
-                                  : 'bg-gray-50 dark:bg-gray-800'
-                              }`}
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-medium text-sm">{progress.objective.name}</p>
-                                  <Badge variant={progress.isCompleted ? "default" : "outline"}>
-                                    {progress.isCompleted ? "Completed" : "In Progress"}
-                                  </Badge>
-                                </div>
-                                {progress.completionDate && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Completed: {new Date(progress.completionDate).toLocaleDateString()}
-                                  </p>
-                                )}
-                                {progress.progressNotes && (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Notes: {progress.progressNotes}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="ml-4 text-right">
-                                <p className="text-sm font-medium text-green-600">
-                                  ${(progress.customBonusAmount || progress.objective.bonusAmount).toLocaleString()}
-                                </p>
-                                {!progress.isCompleted && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="mt-2"
-                                    onClick={() => handleCompleteObjective(progress.player.id, progress.objective.id)}
-                                  >
-                                    Mark Complete
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                }))}
+                  }))}
               </div>
             </CardContent>
           </Card>
@@ -793,7 +1125,7 @@ export function ObjectivesManagement() {
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="text-lg">{group.name}</CardTitle>
-                          <CardDescription>{group.description}</CardDescription>
+                          {/* Description removed - not in API response */}
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-500">Total Bonus Potential</p>
@@ -806,18 +1138,72 @@ export function ObjectivesManagement() {
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-sm font-medium">Objectives ({group.objectives?.length || 0})</Label>
-                          <div className="space-y-1 mt-1">
-                            {(group.objectives || []).map((objId: number) => {
-                              const objective = objectives.find((o) => o.id === objId)
-                              return objective ? (
-                                <div key={objId} className="flex items-center justify-between text-sm">
-                                  <span>{objective.name}</span>
-                                  <span className="text-green-600">${objective.bonusAmount.toLocaleString()}</span>
+                          {(() => {
+                            // Use objectives from the group object itself (API includes them)
+                            const groupObjectives = group.objectives || [];
+                            console.log(`📋 Group ${group.id} (${group.name}):`, {
+                              groupId: group.id,
+                              totalObjectives: objectives.length,
+                              groupObjectives: groupObjectives.length,
+                              groupObjectiveData: groupObjectives.map(o => ({ id: o.id, title: o.title, bonusAmount: o.bonusAmount }))
+                            });
+                            return (
+                              <>
+                                <Label className="text-sm font-medium">Objectives ({groupObjectives.length})</Label>
+                                <div className="space-y-1 mt-1">
+                                  {groupObjectives.map((objective) => (
+                                    <div key={objective.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                                      <div className="flex-1">
+                                        <span className="font-medium">{objective.title || objective.name}</span>
+                                        {objective.description && (
+                                          <p className="text-xs text-gray-500 mt-1">{objective.description}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 ml-4">
+                                        <span className="text-green-600 font-medium text-xs">${Number(objective.bonusAmount).toLocaleString()}</span>
+                                        {/* Removed individual "Assign to players" button for objectives in groups */}
+                                        {/* Use the group-level assignment instead */}
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleEditObjective(objective)}
+                                          className="h-6 w-6 p-0"
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleObjectiveDelete(objective.id)}
+                                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {groupObjectives.length === 0 && (
+                                    <p className="text-xs text-gray-500 italic">No objectives in this group</p>
+                                  )}
                                 </div>
-                              ) : null
-                            })}
-                          </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 w-full text-xs"
+                                  onClick={() => {
+                                    setObjectiveForm({
+                                      ...objectiveForm,
+                                      groupId: group.id
+                                    })
+                                    setIsObjectiveDialogOpen(true)
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add Objective
+                                </Button>
+                              </>
+                            );
+                          })()}
                         </div>
                         <div>
                           <Label className="text-sm font-medium">
@@ -844,7 +1230,11 @@ export function ObjectivesManagement() {
                           variant="outline" 
                           size="sm"
                           onClick={() => {
+                            const originalGroup = objectiveGroups.find(g => g.id === group.id)
                             setSelectedGroupForAssignment(group.id)
+                            // Pre-populate with already assigned players
+                            const currentlyAssignedPlayerIds = originalGroup?.assignedPlayers?.map(p => p.id) || []
+                            setGroupAssignmentPlayers(currentlyAssignedPlayerIds)
                             setIsGroupAssignDialogOpen(true)
                           }}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-100"
@@ -869,6 +1259,16 @@ export function ObjectivesManagement() {
                         }}>
                           <Eye className="h-4 w-4 mr-1" />
                           View Details
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => syncGroupObjectivesWithPlayers(group.id)}
+                          className="bg-purple-50 text-purple-600 hover:bg-purple-100"
+                          title="Sync all objectives in this group with all assigned players"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Sync Assignments
                         </Button>
                         <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 bg-transparent"
                           onClick={() => handleDeleteGroup(group.id)}
@@ -905,11 +1305,16 @@ export function ObjectivesManagement() {
                     </div>
                   ) : (
                     availablePlayers.map((player) => {
-                      const playerProgressData = playerProgress.filter(p => p.player?.id === player.id)
-                      const potentialBonus = playerProgressData.reduce((sum, p) => sum + p.objective.bonusAmount, 0)
+                      const playerProgressData = playerProgress.filter(p => (p as any).__playerId === player.id)
+                      const potentialBonus = playerProgressData.reduce((sum, p) => sum + Number(p.objective.bonusAmount), 0)
                       const earnedBonus = playerProgressData
                         .filter(p => p.isCompleted)
-                      .reduce((sum, p) => sum + (p.customBonusAmount || p.objective.bonusAmount), 0)
+                        .reduce((sum, p) => sum + (Number(p.bonus) || Number(p.objective.bonusAmount)), 0)
+
+                      // Only show players that have actual progress data
+                      if (playerProgressData.length === 0) {
+                        return null
+                      }
 
                     return (
                       <div key={player.id} className="flex items-center justify-between p-3 border rounded">
@@ -927,7 +1332,15 @@ export function ObjectivesManagement() {
                         </div>
                       </div>
                     )
-                  }))}
+                  }).filter(Boolean))}
+                  {availablePlayers.filter(player => 
+                    playerProgress.filter(p => (p as any).__playerId === player.id).length > 0
+                  ).length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No players have assigned objectives yet.</p>
+                      <p className="text-sm text-gray-400">Use the &quot;Objective Groups&quot; tab to assign objectives to players.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -940,8 +1353,9 @@ export function ObjectivesManagement() {
               <CardContent>
                 <div className="space-y-4">
                   {mappedObjectiveGroups.map((group) => {
-                    const groupObjectives = objectives.filter(obj => obj.group?.id === group.id)
-                    const totalBonus = groupObjectives.reduce((sum, obj) => sum + obj.bonusAmount, 0)
+                    // Use objectives from the group object itself (API includes them)
+                    const groupObjectives = objectiveGroups.find(g => g.id === group.id)?.objectives || []
+                    const totalBonus = groupObjectives.reduce((sum, obj) => sum + Number(obj.bonusAmount), 0)
 
                     return (
                       <div key={group.id} className="flex items-center justify-between p-3 border rounded">
@@ -970,24 +1384,24 @@ export function ObjectivesManagement() {
                 <div className="space-y-3">
                   {playerProgress
                     .filter(p => p.isCompleted)
-                    .sort((a, b) => new Date(b.completionDate || '').getTime() - new Date(a.completionDate || '').getTime())
+                    .sort((a, b) => new Date(b.completedAt || '').getTime() - new Date(a.completedAt || '').getTime())
                     .slice(0, 10)
                     .map((progress) => (
-                      <div key={progress.id} className="flex items-center justify-between p-3 bg-green-50 border-l-4 border-green-500 rounded dark:bg-green-900/20">
+                      <div key={`${progress.id}-${(progress as any).__playerId}`} className="flex items-center justify-between p-3 bg-green-50 border-l-4 border-green-500 rounded dark:bg-green-900/20">
                         <div>
-                          <p className="font-medium text-sm">{progress.objective.name}</p>
+                          <p className="font-medium text-sm">{progress.objective.title}</p>
                           <p className="text-sm text-gray-600">
-                            {progress.player.firstName} {progress.player.lastName}
+                            Player ID: {(progress as any).__playerId || 'Unknown'}
                           </p>
-                          {progress.completionDate && (
+                          {progress.completedAt && (
                             <p className="text-xs text-gray-500">
-                              {new Date(progress.completionDate).toLocaleDateString()}
+                              {new Date(progress.completedAt).toLocaleDateString()}
                             </p>
                           )}
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600">
-                            +${(progress.customBonusAmount || progress.objective.bonusAmount).toLocaleString()}
+                            +${(Number(progress.bonus) || Number(progress.objective.bonusAmount)).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -1011,10 +1425,16 @@ export function ObjectivesManagement() {
           <DialogHeader>
             <DialogTitle>Assign Group to Players</DialogTitle>
             <DialogDescription>
-              Select players to assign all objectives in this group to
+              Select players to assign all objectives in this group to. Players already assigned are pre-selected.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Show currently assigned players count */}
+            {groupAssignmentPlayers.length > 0 && (
+              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                {groupAssignmentPlayers.length} player(s) currently assigned to this group
+              </div>
+            )}
             <div>
               <Label>Select Players</Label>
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-2">
@@ -1095,7 +1515,7 @@ export function ObjectivesManagement() {
             {selectedGroupForDetails && (
               <div>
                 <h3 className="text-lg font-semibold">{selectedGroupForDetails.name}</h3>
-                <p className="text-sm text-gray-500">{selectedGroupForDetails.description}</p>
+                {/* Description removed - not in API response */}
                 
                 <div className="mt-4">
                   <Label className="text-sm font-medium">Objectives ({selectedGroupForDetails.objectives?.length || 0})</Label>
@@ -1104,7 +1524,7 @@ export function ObjectivesManagement() {
                       // Handle Objective[] type from API
                       return (
                         <div key={objective.id} className="flex items-center justify-between text-sm">
-                          <span>{objective.name}</span>
+                          <span>{objective.title || objective.name}</span>
                           <span className="text-green-600">${objective.bonusAmount.toLocaleString()}</span>
                         </div>
                       )
@@ -1125,16 +1545,10 @@ export function ObjectivesManagement() {
                         </Badge>
                       ))
                     ) : (
-                      /* Fallback to calculating from progress data */
-                      Array.from(new Set(
-                        playerProgress
-                          .filter(p => selectedGroupForDetails.objectives?.some(obj => obj.id === p.objective.id))
-                          .map(p => p.player)
-                      )).slice(0, 6).map((player) => (
-                        <Badge key={player.id} variant="secondary" className="text-xs">
-                          {player.firstName} {player.lastName}
-                        </Badge>
-                      ))
+                      /* Fallback to showing a message since we can't calculate from progress data anymore */
+                      <Badge variant="secondary" className="text-xs">
+                        No assigned players
+                      </Badge>
                     )}
                     
                     {/* Show "+X more" badge */}
@@ -1158,6 +1572,9 @@ export function ObjectivesManagement() {
                 setIsGroupDetailsDialogOpen(false)
                 if (selectedGroupForDetails) {
                   setSelectedGroupForAssignment(selectedGroupForDetails.id)
+                  // Pre-populate with already assigned players
+                  const currentlyAssignedPlayerIds = selectedGroupForDetails.assignedPlayers?.map(p => p.id) || []
+                  setGroupAssignmentPlayers(currentlyAssignedPlayerIds)
                   setIsGroupAssignDialogOpen(true)
                 }
               }}
@@ -1197,6 +1614,207 @@ export function ObjectivesManagement() {
               onClick={handleUpdateGroup}
             >
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Objective Dialog */}
+      <Dialog open={isEditObjectiveDialogOpen} onOpenChange={setIsEditObjectiveDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Objective</DialogTitle>
+            <DialogDescription>
+              Update the details of the objective
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editObjectiveTitle">Objective Title *</Label>
+              <Input 
+                id="editObjectiveTitle" 
+                value={editObjectiveForm.title}
+                onChange={(e) => setEditObjectiveForm({ ...editObjectiveForm, title: e.target.value })}
+                placeholder="e.g., Score 10 goals this season" 
+              />
+            </div>
+            <div>
+              <Label htmlFor="editObjectiveDescription">Description</Label>
+              <Textarea 
+                id="editObjectiveDescription" 
+                value={editObjectiveForm.description}
+                onChange={(e) => setEditObjectiveForm({ ...editObjectiveForm, description: e.target.value })}
+                placeholder="Optional description of the objective requirements"
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="editBonusAmount">Bonus Amount ($)</Label>
+              <Input 
+                id="editBonusAmount" 
+                type="number" 
+                value={editObjectiveForm.bonusAmount}
+                onChange={(e) => setEditObjectiveForm({ ...editObjectiveForm, bonusAmount: e.target.value })}
+                placeholder="0" 
+              />
+            </div>
+            <div>
+              <Label htmlFor="editGroupSelect">Objective Group *</Label>
+              <Select 
+                value={editObjectiveForm.groupId?.toString()} 
+                onValueChange={(value) => setEditObjectiveForm({ ...editObjectiveForm, groupId: parseInt(value) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an objective group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {objectiveGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditObjectiveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleObjectiveUpdate}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this {deleteConfirmData?.type}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">
+                <strong>{deleteConfirmData?.type === 'objective' ? 'Objective' : 'Group'}:</strong> {deleteConfirmData?.name}
+              </p>
+              {deleteConfirmData?.type === 'objective' && (
+                <p className="text-xs text-red-600 mt-1">
+                  All player progress for this objective will be permanently lost.
+                </p>
+              )}
+              {deleteConfirmData?.type === 'group' && (
+                <p className="text-xs text-red-600 mt-1">
+                  This group and any player assignments will be permanently deleted.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteConfirmOpen(false)
+                setDeleteConfirmData(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={executeDelete}
+            >
+              Delete {deleteConfirmData?.type === 'objective' ? 'Objective' : 'Group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Individual Objective Assignment Dialog */}
+      <Dialog open={isObjectiveAssignDialogOpen} onOpenChange={setIsObjectiveAssignDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Assign Objective to Players</DialogTitle>
+            <DialogDescription>
+              Select players to assign this specific objective to
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedObjectiveForAssignment && (
+              <div className="p-3 bg-blue-50 rounded-lg border">
+                <h4 className="font-medium text-sm text-blue-900">
+                  {objectives.find(obj => obj.id === selectedObjectiveForAssignment)?.title || 'Objective'}
+                </h4>
+                <p className="text-xs text-blue-700 mt-1">
+                  Bonus: ${objectives.find(obj => obj.id === selectedObjectiveForAssignment)?.bonusAmount.toLocaleString() || '0'}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label>Select Players</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-2">
+                {playersLoading ? (
+                  <div className="col-span-2 flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm text-gray-500">Loading players...</span>
+                  </div>
+                ) : availablePlayers.length === 0 ? (
+                  <div className="col-span-2 text-center py-4">
+                    <span className="text-sm text-gray-500">No players available</span>
+                  </div>
+                ) : (
+                  availablePlayers.map((player) => (
+                    <div key={player.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`assign-objective-player-${player.id}`}
+                        checked={objectiveAssignmentPlayers.includes(player.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setObjectiveAssignmentPlayers([...objectiveAssignmentPlayers, player.id])
+                          } else {
+                            setObjectiveAssignmentPlayers(objectiveAssignmentPlayers.filter(id => id !== player.id))
+                          }
+                        }}
+                      />
+                      <Label 
+                        htmlFor={`assign-objective-player-${player.id}`} 
+                        className="text-sm cursor-pointer"
+                      >
+                        {player.firstName} {player.lastName}
+                      </Label>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsObjectiveAssignDialogOpen(false)
+                setObjectiveAssignmentPlayers([])
+                setSelectedObjectiveForAssignment(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (selectedObjectiveForAssignment && objectiveAssignmentPlayers.length > 0) {
+                  await handleAssignObjectiveToPlayers(selectedObjectiveForAssignment, objectiveAssignmentPlayers)
+                  setIsObjectiveAssignDialogOpen(false)
+                  setObjectiveAssignmentPlayers([])
+                  setSelectedObjectiveForAssignment(null)
+                }
+              }}
+              disabled={objectiveAssignmentPlayers.length === 0}
+            >
+              Assign Objective
             </Button>
           </DialogFooter>
         </DialogContent>

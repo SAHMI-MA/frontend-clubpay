@@ -3,22 +3,26 @@
 export interface ObjectiveGroup {
   id: number;
   name: string;
-  description?: string;
+  bonusAmount?: number; // Added to match API
   objectives?: Objective[];
   assignedPlayers?: {
     id: number;
     firstName: string;
     lastName: string;
-    position?: string;
+    position: string;
+    assignedAt: string | Date; // Added to match API
   }[];
   createdAt: string | Date;
+  updatedAt: string | Date; // Added to match API
 }
 
 export interface Objective {
   id: number;
-  name: string;
+  title: string;  // Changed from 'name' to 'title' to match API
+  name?: string;  // Keep 'name' as optional for backwards compatibility
   description?: string;
   bonusAmount: number;
+  objectiveGroupId?: number; // Added to match API response
   group?: {
     id: number;
     name: string;
@@ -28,22 +32,27 @@ export interface Objective {
 
 export interface PlayerObjectiveProgress {
   id: number;
-  player: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
+  isCompleted: boolean;
+  completedAt: string | Date | null;
+  bonus?: number | null;
   objective: {
     id: number;
-    name: string;
-    bonusAmount: number;
+    title: string;
+    description?: string;
+    bonusAmount: string; // API returns as string
+    objectiveGroup: {
+      id: number;
+      name: string;
+      bonusAmount: string;
+      createdAt: string | Date;
+      updatedAt: string | Date;
+    };
+    createdAt: string | Date;
+    updatedAt: string | Date;
   };
-  completionDate?: string | Date;
-  isCompleted: boolean;
-  progressNotes?: string;
-  customBonusAmount?: number;
   createdAt: string | Date;
   updatedAt: string | Date;
+  __playerId?: number; // Added by Redux to track which player this belongs to
 }
 
 export interface TeamObjectiveProgress {
@@ -105,6 +114,14 @@ export interface CreateObjectiveDto {
 export interface AssignObjectiveDto {
   objectiveId: number;
   playerId: number;
+}
+
+export interface AssignObjectiveResponseDto {
+  isCompleted: boolean;
+  completedAt: string;
+  bonus: number;
+  playerId: number;
+  objectiveId: number;
 }
 
 export interface BulkAssignObjectiveDto {

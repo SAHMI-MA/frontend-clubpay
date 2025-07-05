@@ -214,7 +214,12 @@ export const fetchPlayerObjectiveProgress = createAsyncThunk(
   'objectives/fetchPlayerProgress',
   async (playerId: number, { rejectWithValue }) => {
     try {
-      return await objectiveApi.getPlayerObjectiveProgress(playerId);
+      const progress = await objectiveApi.getPlayerObjectiveProgress(playerId);
+      // Add player ID to each progress item for easier filtering in UI
+      return {
+        playerId,
+        progress: progress.map(p => ({ ...p, __playerId: playerId }))
+      };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch player objective progress');
     }
@@ -399,7 +404,29 @@ const objectivesSlice = createSlice({
       })
       .addCase(fetchPlayerObjectiveProgress.fulfilled, (state, action) => {
         state.loading.progress = false;
-        state.playerProgress = action.payload;
+        const { playerId, progress } = action.payload;
+        console.log(`[Redux] Player ${playerId} progress received:`, progress.length, 'items');
+        
+        // Remove existing progress for this player and add new progress
+        // Use a Map to ensure uniqueness by progress ID + player ID
+        const progressMap = new Map();
+        
+        // Add existing progress (except for this player)
+        state.playerProgress
+          .filter(p => (p as any).__playerId !== playerId)
+          .forEach(p => {
+            const key = `${p.id}-${(p as any).__playerId}`;
+            progressMap.set(key, p);
+          });
+        
+        // Add new progress for this player
+        progress.forEach(p => {
+          const key = `${p.id}-${playerId}`;
+          progressMap.set(key, p);
+        });
+        
+        // Convert back to array
+        state.playerProgress = Array.from(progressMap.values());
       })
       .addCase(fetchPlayerObjectiveProgress.rejected, (state, action) => {
         state.loading.progress = false;
@@ -436,15 +463,27 @@ const objectivesSlice = createSlice({
         state.error.bonuses = action.payload as string;
       });
 
-    // Progress updates
-    builder
-      .addCase(assignObjectiveToPlayer.fulfilled, (state, action) => {
-        state.playerProgress.push(action.payload);
-      });
-
     builder
       .addCase(bulkAssignObjective.fulfilled, (state, action) => {
-        state.playerProgress = [...state.playerProgress, ...action.payload];
+        // API returns clean data with proper IDs - use Map to prevent duplicates
+        console.log('[Redux] Bulk assign - received:', action.payload.length, 'items');
+        
+        const progressMap = new Map();
+        
+        // Add existing progress
+        state.playerProgress.forEach(p => {
+          const key = `${p.id}-${(p as any).__playerId}`;
+          progressMap.set(key, p);
+        });
+        
+        // Add new progress (will overwrite if duplicate keys exist)
+        action.payload.forEach(p => {
+          const key = `${p.id}-${(p as any).__playerId}`;
+          progressMap.set(key, p);
+        });
+        
+        // Convert back to array
+        state.playerProgress = Array.from(progressMap.values());
       });
 
     builder
@@ -465,10 +504,11 @@ const objectivesSlice = createSlice({
 
     builder
       .addCase(deleteObjectiveProgress.fulfilled, (state, action) => {
-        const { playerId, objectiveId } = action.payload;
+        const { objectiveId } = action.payload;
+        // Since progress is fetched per player, we can filter by objective ID only
         state.playerProgress = state.playerProgress.filter(
           (progress: PlayerObjectiveProgress) => 
-            !(progress.player.id === playerId && progress.objective.id === objectiveId)
+            progress.objective.id !== objectiveId
         );
       });
   }

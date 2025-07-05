@@ -8,6 +8,7 @@ import {
   CreateObjectiveGroupDto,
   CreateObjectiveDto,
   AssignObjectiveDto,
+  AssignObjectiveResponseDto,
   BulkAssignObjectiveDto,
   TeamObjectiveAssignmentDto,
   CompleteObjectiveDto,
@@ -29,7 +30,7 @@ export const createObjectiveGroup = async (groupData: CreateObjectiveGroupDto): 
 };
 
 export const updateObjectiveGroup = async (groupId: number, groupData: CreateObjectiveGroupDto): Promise<ObjectiveGroup> => {
-  return api.put<ObjectiveGroup>(`/objectives/groups/${groupId}`, groupData);
+  return api.patch<ObjectiveGroup>(`/objectives/groups/${groupId}`, groupData);
 };
 
 export const deleteObjectiveGroup = async (groupId: number): Promise<void> => {
@@ -77,7 +78,7 @@ export const createObjective = async (objectiveData: CreateObjectiveDto): Promis
 };
 
 export const updateObjective = async (objectiveId: number, objectiveData: Partial<CreateObjectiveDto>): Promise<Objective> => {
-  return api.put<Objective>(`/objectives/${objectiveId}`, objectiveData);
+  return api.patch<Objective>(`/objectives/${objectiveId}`, objectiveData);
 };
 
 export const deleteObjective = async (objectiveId: number): Promise<void> => {
@@ -85,8 +86,19 @@ export const deleteObjective = async (objectiveId: number): Promise<void> => {
 };
 
 // Objective Assignments
-export const assignObjectiveToPlayer = async (assignData: AssignObjectiveDto): Promise<PlayerObjectiveProgress> => {
-  return api.post<PlayerObjectiveProgress>('/objectives/assign', assignData);
+export const assignObjectiveToPlayer = async (assignData: AssignObjectiveDto): Promise<AssignObjectiveResponseDto> => {
+  const { objectiveId, playerId } = assignData;
+  
+  // Try with empty body first since API complains about playerId/objectiveId in body
+  const requestBody = {};
+  
+  console.log('Assignment API call:', {
+    url: `/objectives/${objectiveId}/player/${playerId}`,
+    body: requestBody,
+    assignDataInput: assignData
+  });
+  
+  return api.post<AssignObjectiveResponseDto>(`/objectives/${objectiveId}/player/${playerId}`, requestBody);
 };
 
 export const bulkAssignObjective = async (bulkAssignData: BulkAssignObjectiveDto): Promise<PlayerObjectiveProgress[]> => {
@@ -125,7 +137,7 @@ export const batchCompleteObjectives = async (playerId: number, batchData: Batch
 };
 
 export const updateObjectiveProgress = async (playerId: number, objectiveId: number, updateData: UpdateObjectiveProgressDto): Promise<PlayerObjectiveProgress> => {
-  return api.put<PlayerObjectiveProgress>(`/objectives/player/${playerId}/progress/${objectiveId}`, updateData);
+  return api.patch<PlayerObjectiveProgress>(`/objectives/player/${playerId}/progress/${objectiveId}`, updateData);
 };
 
 export const deleteObjectiveProgress = async (playerId: number, objectiveId: number): Promise<void> => {
