@@ -55,7 +55,7 @@ const menuItems = [
     id: "staff",
   },
   {
-    title: "Rental & Suppliers",
+    title: "Rental and Acquisitions",
     icon: Warehouse,
     id: "rentals",
   },

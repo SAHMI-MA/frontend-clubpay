@@ -10,6 +10,7 @@ import supplierReducer from './supplierSlice';
 import acquisitionReducer from './acquisitionSlice';
 import financialReducer from './financialSlice';
 import contractReducer from './contractSlice';
+import objectiveReducer from './objectiveSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -25,6 +26,7 @@ export const store = configureStore({
     acquisitions: acquisitionReducer,
     financial: financialReducer,
     contracts: contractReducer,
+    objectives: objectiveReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

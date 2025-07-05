@@ -9,9 +9,9 @@ import {
   CreateTransactionFromSalaryPaymentDto,
   CreateRentalDto,
   CreateSalaryPaymentDto,
+  BulkSalaryPaymentDto,
   UpdateTransactionDto,
   UpdatePaymentStatusDto,
-  GenerateReportDto,
   TransactionFilterDto,
   PaymentStatus
 } from '@/lib/types/financial-management';
@@ -342,39 +342,49 @@ export const updateSalaryPaymentStatus = createAsyncThunk(
   }
 );
 
-// Financial Reports Thunks
-export const fetchFinancialReports = createAsyncThunk(
-  'financial/fetchFinancialReports',
-  async (_, { rejectWithValue }) => {
+// Bulk Salary Payments Thunk
+export const createBulkSalaryPayment = createAsyncThunk(
+  'financial/createBulkSalaryPayment',
+  async (paymentData: BulkSalaryPaymentDto, { rejectWithValue, dispatch }) => {
     try {
-      const data = await api.get<FinancialReport[]>('/accounting/financial-reports');
-      return data;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch financial reports');
-    }
-  }
-);
+      // Check for authentication token
+      let authToken;
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token');
+      }
 
-export const fetchFinancialReportById = createAsyncThunk(
-  'financial/fetchFinancialReportById',
-  async (id: number, { rejectWithValue }) => {
-    try {
-      const data = await api.get<FinancialReport>(`/accounting/financial-reports/${id}`);
-      return data;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch financial report details');
-    }
-  }
-);
+      if (!authToken) {
+        return rejectWithValue('Authentication required: No token found. Please log in again.');
+      }
 
-export const generateFinancialReport = createAsyncThunk(
-  'financial/generateFinancialReport',
-  async (reportData: GenerateReportDto, { rejectWithValue }) => {
-    try {
-      const data = await api.post<FinancialReport>('/accounting/financial-reports/generate', reportData);
-      return data;
+      console.log("Making bulk salary payment request with authorization token");
+      console.log("Request endpoint: /accounting/salary-payments/bulk");
+      console.log("Request payload:", JSON.stringify(paymentData));
+      
+      const response = await api.post<SalaryPayment[]>('/accounting/salary-payments/bulk', paymentData);
+      
+      // Refresh salary payments after creating bulk payments
+      await dispatch(fetchSalaryPayments());
+      
+      return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to generate financial report');
+      console.error("Bulk salary payment creation failed:", error);
+      
+      // Log detailed error information
+      console.error("API Error Details:", {
+        status: error.status || error.statusCode || error.response?.status,
+        data: error.response?.data || error.data,
+        message: error.message,
+        fullError: error
+      });
+      
+      // Extract more detailed error message if available
+      const serverErrorMessage = error.response?.data?.message || 
+                               error.response?.data?.error ||
+                               error.data?.message;
+      
+      const errorMessage = serverErrorMessage || error.message || 'Failed to create bulk salary payments';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -695,46 +705,20 @@ const financialSlice = createSlice({
       state.loading = false;
       state.error = action.payload as string;
     });
-
-    // Fetch Financial Reports
-    builder.addCase(fetchFinancialReports.pending, (state) => {
+    
+    // Bulk Salary Payment
+    builder.addCase(createBulkSalaryPayment.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(fetchFinancialReports.fulfilled, (state, action) => {
+    builder.addCase(createBulkSalaryPayment.fulfilled, (state, action) => {
       state.loading = false;
-      state.financialReports = action.payload;
+      // Add the new salary payments to the state
+      if (Array.isArray(action.payload)) {
+        state.salaryPayments = [...state.salaryPayments, ...action.payload];
+      }
     });
-    builder.addCase(fetchFinancialReports.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
-    });
-
-    // Fetch Financial Report By ID
-    builder.addCase(fetchFinancialReportById.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(fetchFinancialReportById.fulfilled, (state, action) => {
-      state.loading = false;
-      state.selectedReport = action.payload;
-    });
-    builder.addCase(fetchFinancialReportById.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload as string;
-    });
-
-    // Generate Financial Report
-    builder.addCase(generateFinancialReport.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(generateFinancialReport.fulfilled, (state, action) => {
-      state.loading = false;
-      state.financialReports.push(action.payload);
-      state.selectedReport = action.payload;
-    });
-    builder.addCase(generateFinancialReport.rejected, (state, action) => {
+    builder.addCase(createBulkSalaryPayment.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });
