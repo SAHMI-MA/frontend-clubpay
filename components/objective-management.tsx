@@ -40,6 +40,7 @@ import {
   bulkAssignObjective
 } from "@/lib/redux/objectiveSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
+import { fetchAllTeams } from "@/lib/redux/teamSlice"
 import { 
   ObjectiveGroup, 
   CreateObjectiveGroupDto,
@@ -61,6 +62,9 @@ export function ObjectivesManagement() {
   
   // Get players from Redux store
   const { players: availablePlayers, loading: playersLoading } = useSelector((state: RootState) => state.players)
+  
+  // Get teams from Redux store
+  const { teams } = useSelector((state: RootState) => state.teams)
   
   // Local component state
   const [activeTab, setActiveTab] = useState("groups")
@@ -121,12 +125,23 @@ export function ObjectivesManagement() {
     dispatch(fetchObjectiveGroups())
     dispatch(fetchObjectives())
     dispatch(fetchAllPlayers()) // Fetch real players from the API
+    dispatch(fetchAllTeams()) // Fetch teams from the API
     
-    // If there's an active team in your app state, you can fetch team progress
-    // For now, assuming we have a team with ID 1
-    const activeTeamId = 1
-    dispatch(fetchTeamObjectiveProgress(activeTeamId))
+    // If there are teams available, fetch team progress for the first team
+    // Only after teams are loaded
   }, [dispatch])
+  
+  // Load team progress when teams are available
+  useEffect(() => {
+    if (teams.length > 0) {
+      const firstTeamId = teams[0].id
+      dispatch(fetchTeamObjectiveProgress(firstTeamId))
+        .catch((error) => {
+          console.warn(`Failed to fetch team objective progress for team ${firstTeamId}:`, error)
+          // Don't show error toast as this is optional functionality
+        })
+    }
+  }, [dispatch, teams])
   
   // Load player progress when players are available
   useEffect(() => {
@@ -664,9 +679,14 @@ export function ObjectivesManagement() {
       }
     }, 500)
     
-    // Refresh team progress
-    const activeTeamId = 1
-    dispatch(fetchTeamObjectiveProgress(activeTeamId))
+    // Refresh team progress (only if teams are available)
+    if (teams.length > 0) {
+      const firstTeamId = teams[0].id
+      dispatch(fetchTeamObjectiveProgress(firstTeamId))
+        .catch((error) => {
+          console.warn(`Failed to fetch team objective progress for team ${firstTeamId}:`, error)
+        })
+    }
     
     toast.success("Data refreshed successfully!")
   }

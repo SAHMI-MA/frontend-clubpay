@@ -11,6 +11,7 @@ import acquisitionReducer from './acquisitionSlice';
 import financialReducer from './financialSlice';
 import contractReducer from './contractSlice';
 import objectiveReducer from './objectiveSlice';
+import matchReducer from './matchSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -27,6 +28,7 @@ export const store = configureStore({
     financial: financialReducer,
     contracts: contractReducer,
     objectives: objectiveReducer,
+    matches: matchReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

@@ -55,7 +55,7 @@ export function StaffManagement() {
     }
   }, [error])
   
-  const [newStaff, setNewStaff] = useState<Partial<CreateStaffDto> & { selectedTeamId: number }>({
+  const [newStaff, setNewStaff] = useState<CreateStaffDto & { selectedTeamId: number }>({
     firstName: "",
     lastName: "",
     role: StaffRole.HEAD_COACH,
@@ -64,8 +64,13 @@ export function StaffManagement() {
     email: "",
     qualification: "",
     experience: "",
+    rib: "", // Bank account information
+    staffImage: "",
+    salary: undefined, // Staff salary
+    contractStartDate: "", // Contract start date
+    contractEndDate: "", // Contract end date
     teamId: teams?.[0]?.id || 0,
-    // We'll use this for tracking team selection but not send it in the API call
+    // We'll use this for tracking team selection in UI but not send it in the API call
     selectedTeamId: teams?.[0]?.id || 0,
   })
 
@@ -121,9 +126,56 @@ export function StaffManagement() {
   // Contract expiry tracking removed as it's no longer part of the API
 
   const handleAddStaff = async () => {
-    await dispatch(createStaff(newStaff as CreateStaffDto))
-    setIsAddDialogOpen(false)
-    setNewStaff({ ...newStaff })
+    // Validate required fields
+    if (!newStaff.firstName || !newStaff.lastName || !newStaff.role || !newStaff.dateOfBirth || !newStaff.teamId) {
+      toast.error("Please fill in all required fields (First Name, Last Name, Role, Date of Birth, Team)")
+      return
+    }
+
+    try {
+      // Extract only the valid fields for the API call, excluding selectedTeamId
+      const staffData: CreateStaffDto = {
+        firstName: newStaff.firstName,
+        lastName: newStaff.lastName,
+        role: newStaff.role,
+        dateOfBirth: newStaff.dateOfBirth,
+        phoneNumber: newStaff.phoneNumber,
+        email: newStaff.email,
+        qualification: newStaff.qualification,
+        experience: newStaff.experience,
+        rib: newStaff.rib,
+        staffImage: newStaff.staffImage,
+        salary: newStaff.salary,
+        contractStartDate: newStaff.contractStartDate,
+        contractEndDate: newStaff.contractEndDate,
+        teamId: newStaff.teamId // Use teamId, not selectedTeamId
+      }
+      
+      await dispatch(createStaff(staffData))
+      toast.success("Staff member added successfully!")
+      setIsAddDialogOpen(false)
+      
+      // Reset form
+      setNewStaff({
+        firstName: "",
+        lastName: "",
+        role: StaffRole.HEAD_COACH,
+        dateOfBirth: "",
+        phoneNumber: "",
+        email: "",
+        qualification: "",
+        experience: "",
+        rib: "",
+        salary: undefined,
+        contractStartDate: "",
+        contractEndDate: "",
+        teamId: teams?.[0]?.id || 0,
+        selectedTeamId: teams?.[0]?.id || 0,
+      })
+    } catch (error) {
+      console.error("Error creating staff:", error)
+      toast.error("Failed to add staff member")
+    }
   }
 
   const handleEditStaff = (staff: Staff) => {
@@ -192,28 +244,30 @@ export function StaffManagement() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
                     value={newStaff.firstName}
                     onChange={(e) => setNewStaff({ ...newStaff, firstName: e.target.value })}
                     placeholder="Enter first name"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Last Name *</Label>
                   <Input
                     id="lastName"
                     value={newStaff.lastName}
                     onChange={(e) => setNewStaff({ ...newStaff, lastName: e.target.value })}
                     placeholder="Enter last name"
+                    required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Role *</Label>
                   <Select value={newStaff.role} onValueChange={(value) => setNewStaff({ ...newStaff, role: value as StaffRole })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
@@ -228,7 +282,7 @@ export function StaffManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="team">Team</Label>
+                  <Label htmlFor="team">Team *</Label>
                   <Select
                     value={newStaff.selectedTeamId?.toString()}
                     onValueChange={(value) => setNewStaff({ ...newStaff, selectedTeamId: parseInt(value), teamId: parseInt(value) })}
@@ -249,12 +303,13 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Label htmlFor="dateOfBirth">Date of Birth *</Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
                     value={newStaff.dateOfBirth}
                     onChange={(e) => setNewStaff({ ...newStaff, dateOfBirth: e.target.value })}
+                    required
                   />
                 </div>
               </div>
@@ -300,6 +355,52 @@ export function StaffManagement() {
                   placeholder="Describe experience"
                   rows={3}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="salary">Salary</Label>
+                  <Input
+                    id="salary"
+                    type="number"
+                    min="0"
+                    value={newStaff.salary || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="Enter monthly salary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rib">RIB (Bank Account)</Label>
+                  <Input
+                    id="rib"
+                    value={newStaff.rib}
+                    onChange={(e) => setNewStaff({ ...newStaff, rib: e.target.value })}
+                    placeholder="Bank account information"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contractStartDate">Contract Start Date</Label>
+                  <Input
+                    id="contractStartDate"
+                    type="date"
+                    value={newStaff.contractStartDate}
+                    onChange={(e) => setNewStaff({ ...newStaff, contractStartDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contractEndDate">Contract End Date</Label>
+                  <Input
+                    id="contractEndDate"
+                    type="date"
+                    value={newStaff.contractEndDate}
+                    onChange={(e) => setNewStaff({ ...newStaff, contractEndDate: e.target.value })}
+                  />
+                </div>
               </div>
 
               {/* Contract details have been removed as requested */}
@@ -748,7 +849,6 @@ export function StaffManagement() {
                       setEditingStaff({ 
                         ...editingStaff, 
                         team: selectedTeam,
-                        // @ts-expect-error - teamId isn't in the type but needed for API
                         teamId: parseInt(value) 
                       });
                     }}
@@ -793,6 +893,52 @@ export function StaffManagement() {
                   value={editingStaff.qualification || ""}
                   onChange={(e) => setEditingStaff({ ...editingStaff, qualification: e.target.value })}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-salary">Salary</Label>
+                  <Input
+                    id="edit-salary"
+                    type="number"
+                    min="0"
+                    value={editingStaff.salary || ""}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="Enter monthly salary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-rib">RIB (Bank Account)</Label>
+                  <Input
+                    id="edit-rib"
+                    value={editingStaff.rib || ""}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, rib: e.target.value })}
+                    placeholder="Bank account information"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-contractStartDate">Contract Start Date</Label>
+                  <Input
+                    id="edit-contractStartDate"
+                    type="date"
+                    value={editingStaff.contractStartDate || ""}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, contractStartDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-contractEndDate">Contract End Date</Label>
+                  <Input
+                    id="edit-contractEndDate"
+                    type="date"
+                    value={editingStaff.contractEndDate || ""}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, contractEndDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
           )}

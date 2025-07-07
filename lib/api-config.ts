@@ -21,6 +21,6 @@ export const getApiUrl = (path: string = ''): string => {
     : apiConfig.baseUrl;
     
   const fullUrl = `${baseUrl}${normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`}`;
-  console.log(`API URL constructed: "${fullUrl}" from base "${apiConfig.baseUrl}" and path "${path}"`);
+  console.log(`🔗 API URL constructed: "${fullUrl}" from base "${apiConfig.baseUrl}" and path "${path}"`);
   return fullUrl;
 };

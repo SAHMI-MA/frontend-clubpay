@@ -23,6 +23,7 @@ import { debugPlayersTeamStructure } from "@/lib/team-data-debug";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getPositionDisplayName } from "@/lib/utils";
 
 export function PlayerManagement() {
   const dispatch = useAppDispatch();
@@ -293,7 +294,7 @@ export function PlayerManagement() {
           <SelectContent>
             <SelectItem value="all">All Positions</SelectItem>
             {Array.from(new Set(players.map(p => p.position))).filter(Boolean).map(position => (
-              <SelectItem key={position} value={position}>{position}</SelectItem>
+              <SelectItem key={position} value={position}>{getPositionDisplayName(position)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
