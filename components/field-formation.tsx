@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -22,7 +21,6 @@ import { AppDispatch, RootState } from "@/lib/redux/store"
 import { toast } from "sonner"
 import { 
   addPlayerToMatch,
-  removePlayerFromMatch 
 } from "@/lib/redux/matchSlice"
 import { 
   Match, 
@@ -117,7 +115,7 @@ export function FieldFormation({ match, isOpen, onClose }: FieldFormationProps) 
   const dispatch = useDispatch<AppDispatch>()
   
   // Redux state
-  const { participations, loading } = useSelector((state: RootState) => state.matches)
+  const { loading } = useSelector((state: RootState) => state.matches)
   const { players: availablePlayers } = useSelector((state: RootState) => state.players)
   
   // Local state
@@ -132,12 +130,6 @@ export function FieldFormation({ match, isOpen, onClose }: FieldFormationProps) 
 
   // Get starting XI from squad assignments
   const startingXI = Object.values(squadAssignments)
-
-  // Get current match participations
-  const currentMatchParticipations = participations.filter(p => 
-    // Since we don't have matchId in participation, we'll manage this locally
-    false // This will be updated when we load participations for the match
-  )
 
   // Filter available players (not already assigned)
   const availablePlayersFiltered = availablePlayers.filter(
@@ -179,16 +171,6 @@ export function FieldFormation({ match, isOpen, onClose }: FieldFormationProps) 
     )
     if (availablePosition) {
       assignPlayerToPosition(player, availablePosition.id)
-    }
-  }
-
-  const removeFromStartingXI = (playerId: number) => {
-    // Find and remove player from any position
-    const positionToRemove = Object.entries(squadAssignments).find(
-      ([_, player]) => player.id === playerId
-    )
-    if (positionToRemove) {
-      removePlayerFromPosition(positionToRemove[0])
     }
   }
 

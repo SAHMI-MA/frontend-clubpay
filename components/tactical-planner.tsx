@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Users, UserMinus, RotateCcw, Save, Loader2 } from "lucide-react"
+import { Users, UserMinus, RotateCcw, Save } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
 import { toast } from "sonner"
@@ -135,7 +135,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
   const dispatch = useDispatch<AppDispatch>()
   
   // Redux state
-  const { participations, loading } = useSelector((state: RootState) => state.matches)
+  const { participations} = useSelector((state: RootState) => state.matches)
   const { players: availablePlayers } = useSelector((state: RootState) => state.players)
   
   // Local state
@@ -378,7 +378,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
       // Add all starting XI players with match bonus or default
       if (Object.keys(startingXI).length > 0) {
         toast.info("Assigning starting XI...")
-        for (const [positionIndex, player] of Object.entries(startingXI)) {
+        for (const [, player] of Object.entries(startingXI)) {
           const participationData: CreateMatchParticipationDto = {
             playerId: player.id,
             role: "Starter",
@@ -714,7 +714,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
                   className="mt-2"
                 />
                 <div className="text-xs text-gray-500 mt-1">
-                  Tip: You can search by player name (e.g., "John"), number (e.g., "10"), or position (e.g., "ST")
+                  Tip: You can search by player name (e.g., &ldquo;John&ldquo;), number (e.g., &ldquo;10&ldquo;), or position (e.g., &ldquo;ST&ldquo;)
                 </div>
               </div>
               

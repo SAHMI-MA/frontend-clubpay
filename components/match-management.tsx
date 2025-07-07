@@ -19,8 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar, Clock, MapPin, Plus, Search, Trophy, Users, Target, Loader2, Trash2, Eye, Edit, AlertTriangle, UserMinus, RotateCcw } from "lucide-react"
+import { Calendar, Clock, MapPin, Plus, Search, Trophy, Users, Target, Loader2, Trash2, Eye, Edit, AlertTriangle} from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
 import { toast } from "sonner"
@@ -31,7 +30,6 @@ import {
   createMatch,
   updateMatch,
   deleteMatch,
-  addPlayerToMatch,
   removePlayerFromMatch,
   setSelectedMatch
 } from "@/lib/redux/matchSlice"
@@ -40,7 +38,6 @@ import {
   Match, 
   CreateMatchDto,
   UpdateMatchDto, 
-  CreateMatchParticipationDto 
 } from "@/lib/types/match-management"
 import { TacticalPlanner } from "./tactical-planner"
 
@@ -57,7 +54,6 @@ export function MatchManagement() {
   } = useSelector((state: RootState) => state.matches)
   
   // Get players from Redux store
-  const { players: availablePlayers } = useSelector((state: RootState) => state.players)
 
   // Get auth state to check if user is logged in
   const { isAuthenticated, user, token } = useSelector((state: RootState) => state.auth)
@@ -70,10 +66,8 @@ export function MatchManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isTacticalPlannerOpen, setIsTacticalPlannerOpen] = useState(false)
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null)
-  const [isAddPlayerDialogOpen, setIsAddPlayerDialogOpen] = useState(false)
   const [selectedMatchForView, setSelectedMatchForView] = useState<Match | null>(null)
   const [selectedMatchForTactical, setSelectedMatchForTactical] = useState<Match | null>(null)
-  const [selectedMatch, setSelectedMatchForParticipation] = useState<Match | null>(null)
   
   // Form states
   const [matchForm, setMatchForm] = useState({
@@ -96,7 +90,7 @@ export function MatchManagement() {
     teamId: ""
   })
   
-  const [participationForm, setParticipationForm] = useState({
+  const [, setParticipationForm] = useState({
     playerId: "",
     role: "Starter" as "Starter" | "Substitute" | "Bench",
     bonus: "",
@@ -225,11 +219,6 @@ export function MatchManagement() {
     return match.team?.name || "Unknown Team"
   }
 
-  const getPlayerName = (playerId: number) => {
-    const player = availablePlayers.find(p => p.id === playerId)
-    return player ? `${player.firstName} ${player.lastName}` : "Unknown Player"
-  }
-
   // Event handlers
   const handleCreateMatch = async () => {
     try {
@@ -349,39 +338,6 @@ export function MatchManagement() {
     dispatch(setSelectedMatch(match.id))
     // Load participations for this match
     dispatch(fetchMatchParticipations(match.id))
-  }
-
-  const handleAddPlayerToMatch = async () => {
-    try {
-      if (!selectedMatch || !participationForm.playerId || !participationForm.role) {
-        toast.error("Please fill in all required fields")
-        return
-      }
-
-      const participationData: CreateMatchParticipationDto = {
-        playerId: parseInt(participationForm.playerId),
-        role: participationForm.role,
-        bonus: participationForm.bonus ? parseFloat(participationForm.bonus) : undefined,
-        percentage: participationForm.percentage ? parseInt(participationForm.percentage) : undefined
-      }
-
-      const resultAction = await dispatch(addPlayerToMatch({
-        matchId: selectedMatch.id,
-        participationData
-      }))
-      
-      if (addPlayerToMatch.fulfilled.match(resultAction)) {
-        toast.success("Player added to match successfully!")
-        setIsAddPlayerDialogOpen(false)
-        resetForms()
-        setSelectedMatchForParticipation(null)
-      } else {
-        toast.error("Failed to add player to match")
-      }
-    } catch (error) {
-      toast.error("Error adding player to match")
-      console.error(error)
-    }
   }
 
   const handleRemovePlayerFromMatch = async (participationId: number, matchId: number) => {
@@ -783,7 +739,7 @@ export function MatchManagement() {
                     <div>
                       <h3 className="font-semibold text-blue-900">Use Tactical Planner</h3>
                       <p className="text-sm text-blue-700">
-                        Click "Tactics" on any match to use our drag-and-drop tactical planner. 
+                        Click &rdquo;Tactics&rdquo; on any match to use our drag-and-drop tactical planner. 
                         Assign 11 starters (100% bonus) and up to 5 substitutes (50% bonus) with formation support.
                       </p>
                     </div>
@@ -860,7 +816,7 @@ export function MatchManagement() {
                             <div className="flex flex-col items-center space-y-2">
                               <Users className="h-12 w-12 text-gray-400" />
                               <p>No squad assignments found</p>
-                              <p className="text-sm">Use the "Tactics" button on matches to assign players using our tactical planner</p>
+                              <p className="text-sm">Use the &rdquo;Tactics&rdquo; button on matches to assign players using our tactical planner</p>
                             </div>
                           </TableCell>
                         </TableRow>
