@@ -23,6 +23,8 @@ export interface Player {
   lastName: string;
   dateOfBirth: string;
   position: string;
+  playerNumber?: number; // NEW: Jersey/shirt number
+  rib?: string; // NEW: Bank account information
   playerImage?: string;
   teamId?: number | null; // Allow null for consistency
   team?: Team;
@@ -39,6 +41,7 @@ export interface Match {
   city: string;
   opposition: string;
   dateTime: string;
+  formation?: string; // NEW: Formation used in this match
   teamId: number;
   team?: Team;
   matchParticipations?: MatchParticipation[];
@@ -68,6 +71,7 @@ export interface MatchParticipation {
   role: string;
   bonus?: number;
   percentage?: number;
+  position?: string; // NEW: Player's position in this specific match
   playerId: number;
   matchId: number;
   player?: Player;
@@ -131,6 +135,8 @@ export interface CreatePlayerDto {
   lastName: string;
   dateOfBirth: string;
   position: string;
+  playerNumber?: number; // NEW: Jersey/shirt number
+  rib?: string; // NEW: Bank account information
   teamId?: number | null; // Allow both undefined and null for clarity
   playerImage?: string;
 }
@@ -140,6 +146,8 @@ export interface UpdatePlayerDto {
   lastName?: string;
   dateOfBirth?: string;
   position?: string;
+  playerNumber?: number; // NEW: Jersey/shirt number
+  rib?: string; // NEW: Bank account information
   teamId?: number | null; // Allow both undefined and null for clarity
   playerImage?: string;
 }
@@ -186,7 +194,12 @@ export interface Staff {
   email?: string;
   qualification?: string;
   experience?: string;
+  rib?: string; // NEW: Bank account information
   staffImage?: string | null;
+  salary?: number; // NEW: Staff salary
+  contractStartDate?: string; // NEW: Contract start date
+  contractEndDate?: string; // NEW: Contract end date
+  teamId?: number; // NEW: Team association
   team?: Team;
   createdAt?: string;
   updatedAt?: string;
@@ -201,7 +214,11 @@ export interface CreateStaffDto {
   email?: string;
   qualification?: string;
   experience?: string;
+  rib?: string; // NEW: Bank account information
   staffImage?: string;
+  salary?: number; // NEW: Staff salary
+  contractStartDate?: string; // NEW: Contract start date
+  contractEndDate?: string; // NEW: Contract end date
   teamId: number; // We still use teamId when creating staff
 }
 
@@ -214,6 +231,10 @@ export interface UpdateStaffDto {
   email?: string;
   qualification?: string;
   experience?: string;
+  rib?: string; // NEW: Bank account information
   staffImage?: string;
+  salary?: number; // NEW: Staff salary
+  contractStartDate?: string; // NEW: Contract start date
+  contractEndDate?: string; // NEW: Contract end date
   teamId?: number; // We still use teamId when updating staff
 }

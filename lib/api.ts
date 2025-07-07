@@ -165,8 +165,24 @@ export const api = {
       }
 
       return response.json();
-    } catch (error) {
+    } catch (error: any) {
       console.error('API request failed:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Handle different types of errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        console.error('Network error: Failed to fetch. Check if the backend server is running.');
+        throw new Error('Network error: Cannot connect to the server. Please check if the backend is running.');
+      }
+      
+      if (error.name === 'AbortError') {
+        console.error('Request was aborted');
+        throw new Error('Request timeout: The request took too long to complete.');
+      }
+      
+      // Re-throw the original error
       throw error;
     }
   },

@@ -64,6 +64,7 @@ export function SupplierManagement() {
     email: "",
     phone: "",
     address: "",
+    rib: "", // NEW: Bank account information
     category: "",
   })
 
@@ -148,6 +149,7 @@ export function SupplierManagement() {
       email: "",
       phone: "",
       address: "",
+      rib: "", // NEW: Bank account information
       category: "",
     })
   }
@@ -333,6 +335,16 @@ export function SupplierManagement() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="supplierRib">RIB (Bank Account)</Label>
+                <Input
+                  id="supplierRib"
+                  value={newSupplier.rib}
+                  onChange={(e) => setNewSupplier({ ...newSupplier, rib: e.target.value })}
+                  placeholder="Bank account information"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="supplierAddress">Address</Label>
                 <Textarea
                   id="supplierAddress"
@@ -509,7 +521,7 @@ export function SupplierManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {supplier.lastOrderDate ? supplier.lastOrderDate.toLocaleDateString() : "Never"}
+                      {supplier.lastOrderDate ? new Date(supplier.lastOrderDate).toLocaleDateString() : "Never"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -650,7 +662,7 @@ export function SupplierManagement() {
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Order</Label>
                   <p className="text-lg font-bold">
-                    {selectedSupplier.lastOrderDate ? selectedSupplier.lastOrderDate.toLocaleDateString() : "Never"}
+                    {selectedSupplier.lastOrderDate ? new Date(selectedSupplier.lastOrderDate).toLocaleDateString() : "Never"}
                   </p>
                 </div>
               </div>

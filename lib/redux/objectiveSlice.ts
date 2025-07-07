@@ -232,6 +232,11 @@ export const fetchTeamObjectiveProgress = createAsyncThunk(
     try {
       return await objectiveApi.getTeamObjectiveProgress(teamId);
     } catch (error: any) {
+      // Handle 404 specifically for teams that don't exist
+      if (error.response?.status === 404) {
+        console.warn(`Team with ID ${teamId} not found for objective progress`);
+        return rejectWithValue(`Team with ID ${teamId} not found`);
+      }
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch team objective progress');
     }
   }
@@ -445,7 +450,14 @@ const objectivesSlice = createSlice({
       })
       .addCase(fetchTeamObjectiveProgress.rejected, (state, action) => {
         state.loading.progress = false;
-        state.error.progress = action.payload as string;
+        // Don't show team not found errors as critical errors
+        const errorMessage = action.payload as string;
+        if (errorMessage.includes('not found')) {
+          console.warn('Team objective progress:', errorMessage);
+          state.error.progress = null; // Don't treat as an error
+        } else {
+          state.error.progress = errorMessage;
+        }
       });
 
     // Bonuses

@@ -9,15 +9,17 @@ export interface Supplier {
   email: string;
   website?: string;
   contactPerson: string;
-  createdAt?: string;
-  updatedAt?: string;
-  // Additional fields for UI
+  rib?: string; // NEW: Bank account information
   isActive?: boolean;
   rating?: number;
   category?: string;
   totalOrders?: number;
   totalSpent?: number;
-  lastOrderDate?: Date;
+  lastOrderDate?: string; // Changed from Date to string for API consistency
+  acquisitions?: any[]; // NEW: Array of acquisitions
+  supplies?: Supply[]; // NEW: Array of supplies
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateSupplierDto {
@@ -27,6 +29,7 @@ export interface CreateSupplierDto {
   email: string;
   website?: string;
   contactPerson: string;
+  rib?: string; // NEW: Bank account information
   category?: string; // Optional for UI categorization
 }
 
@@ -37,6 +40,7 @@ export interface UpdateSupplierDto {
   email?: string;
   website?: string;
   contactPerson?: string;
+  rib?: string; // NEW: Bank account information
   category?: string;
   isActive?: boolean;
   rating?: number;
@@ -164,14 +168,10 @@ export interface Supply {
   itemType: ItemType;
   quantity: number;
   condition: SupplyCondition;
+  supplier?: string; // NEW: Supplier name as string
+  acquisitions?: any[]; // NEW: Array of acquisitions
   createdAt?: string;
   updatedAt?: string;
-  supplier?: {
-    id: number;
-    name: string;
-  };
-  supplierId: number;
-  acquisitions?: any[];
 }
 
 export interface CreateSupplyDto {

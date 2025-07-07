@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { toast } from "sonner";
 import { Loader2, User, WifiOff } from "lucide-react";
 import { testApiConnection, loginWithDemoCredentials } from "@/lib/api-utils";
+import { getTacticalFieldPositions, getPositionDisplayName } from "@/lib/utils";
 
 interface PlayerFormProps {
   player?: Player | null;
@@ -48,6 +50,8 @@ export function PlayerForm({
     lastName: "",
     dateOfBirth: "",
     position: "",
+    playerNumber: undefined,
+    rib: "",
     teamId: undefined,
     playerImage: "",
   });
@@ -96,6 +100,8 @@ export function PlayerForm({
         lastName: player.lastName,
         dateOfBirth: player.dateOfBirth.split("T")[0], // Format date for input field
         position: player.position,
+        playerNumber: player.playerNumber,
+        rib: player.rib || "",
         teamId: player.teamId,
         playerImage: player.playerImage || "",
       });
@@ -113,7 +119,9 @@ export function PlayerForm({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "teamId" ? Number(value) : value,
+      [name]: name === "teamId" ? Number(value) : 
+              name === "playerNumber" ? (value ? Number(value) : undefined) : 
+              value,
     }));
   };
 
@@ -198,16 +206,14 @@ export function PlayerForm({
     }
   };
 
-  const positions = [
-    "Goalkeeper",
-    "Defender",
-    "Midfielder",
-    "Forward",
-    "Coach",
-    "Assistant",
-    "Physiotherapist",
-    "Manager"
-  ];
+  // Get tactical field positions only (no staff roles for players)
+  const tacticalPositions = getTacticalFieldPositions();
+  
+  // Prepare options for the combobox - only field positions for players
+  const positionOptions = tacticalPositions.map(position => ({
+    value: position,
+    label: getPositionDisplayName(position)
+  }));
 
   return (
     <Card className="w-full shadow-lg">
@@ -262,22 +268,42 @@ export function PlayerForm({
 
             <div className="space-y-2">
               <Label htmlFor="position">Position *</Label>
-              <Select
+              <Combobox
+                options={positionOptions}
                 value={formData.position}
                 onValueChange={handlePositionChange}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select position" />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions.map((pos) => (
-                    <SelectItem key={pos} value={pos}>
-                      {pos}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select position..."
+                searchPlaceholder="Search tactical positions..."
+                emptyText="No position found."
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="playerNumber">Player Number</Label>
+              <Input
+                id="playerNumber"
+                name="playerNumber"
+                type="number"
+                min="1"
+                max="99"
+                placeholder="Jersey number (1-99)"
+                value={formData.playerNumber || ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rib">RIB (Bank Account)</Label>
+              <Input
+                id="rib"
+                name="rib"
+                placeholder="Bank account information"
+                value={formData.rib || ""}
+                onChange={handleChange}
+              />
             </div>
           </div>
 

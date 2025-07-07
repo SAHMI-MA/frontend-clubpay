@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getPositionDisplayName } from "@/lib/utils";
 import {
   User,
   CalendarDays,
@@ -109,7 +110,7 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
               </h2>
               <div className="flex items-center gap-2">
                 <Badge className="bg-white/20 hover:bg-white/30 text-white">
-                  {player.position}
+                  {getPositionDisplayName(player.position)}
                 </Badge>
                 <span className="text-white/80 text-sm">
                   {getTeamName(player)}
@@ -182,7 +183,7 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
                       <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div>
                         <p className="font-medium text-sm">Position</p>
-                        <p className="text-muted-foreground">{player.position}</p>
+                        <p className="text-muted-foreground">{getPositionDisplayName(player.position)}</p>
                       </div>
                     </div>
                   </CardContent>

@@ -12,6 +12,7 @@ import { Edit, Search, Trash2, Eye, User, UserCircle } from "lucide-react";
 import { useAppDispatch } from "@/lib/redux/hooks";
 import { deletePlayer, fetchAllPlayers } from "@/lib/redux/playerSlice";
 import { toast } from "sonner";
+import { getPositionDisplayName } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -153,7 +154,7 @@ export function PlayerList({
                 <SelectContent>
                   <SelectItem value="all">All Positions</SelectItem>
                   {positions.map(position => (
-                    <SelectItem key={position} value={position}>{position}</SelectItem>
+                    <SelectItem key={position} value={position}>{getPositionDisplayName(position)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -199,7 +200,7 @@ export function PlayerList({
                         </TableCell>
                       )}
                       <TableCell>
-                        <Badge variant="outline">{player.position}</Badge>
+                        <Badge variant="outline">{getPositionDisplayName(player.position)}</Badge>
                       </TableCell>
                       {!teamId && (
                         <TableCell>
