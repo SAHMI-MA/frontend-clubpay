@@ -957,7 +957,8 @@ export function FinancialManagement() {
         category: customTransactionForm.category,
         amount: parseFloat(customTransactionForm.amount),
         date: customTransactionForm.date,
-        description: customTransactionForm.description
+        description: customTransactionForm.description,
+        createdById: userId as number // We've already checked that userId is not null above
       }
       
       console.log("Creating custom transaction with data:", transactionData)

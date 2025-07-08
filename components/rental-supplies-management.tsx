@@ -459,7 +459,7 @@ export function RentalSupplierManagement() {
 
   // Statistics
   const totalAcquisitions = acquisitionsList.length
-  const totalSpent = acquisitionsList.reduce((sum, a) => sum + a.cost, 0)
+  const totalSpent = acquisitionsList.reduce((sum, a) => sum + (Number(a.cost) || 0), 0)
   const activeRentals = acquisitionsList.filter(
     (a) => a.acquisitionType === AcquisitionType.RENTAL && a.approvalStatus === ApprovalStatus.DELIVERED,
   ).length

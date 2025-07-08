@@ -1,33 +1,119 @@
 "use client"
 
+import { useEffect } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { AppDispatch, RootState } from "@/lib/redux/store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { Building2, CreditCard, DollarSign, TrendingUp, Users, Calendar, Trophy, AlertCircle } from "lucide-react"
-
-const revenueData = [
-  { month: "Jan", revenue: 45000, expenses: 32000 },
-  { month: "Feb", revenue: 52000, expenses: 38000 },
-  { month: "Mar", revenue: 48000, expenses: 35000 },
-  { month: "Apr", revenue: 61000, expenses: 42000 },
-  { month: "May", revenue: 55000, expenses: 40000 },
-  { month: "Jun", revenue: 67000, expenses: 45000 },
-]
-
-const clubData = [
-  { name: "Active Teams", value: 24, color: "#1E3A8A" },
-  { name: "Youth Teams", value: 16, color: "#F97316" },
-  { name: "Senior Teams", value: 8, color: "#22D3EE" },
-]
-
-const upcomingMatches = [
-  { team: "Eagles FC", opponent: "Lions United", date: "2024-01-15", time: "15:00" },
-  { team: "Hawks FC", opponent: "Tigers FC", date: "2024-01-16", time: "17:30" },
-  { team: "Wolves FC", opponent: "Bears United", date: "2024-01-17", time: "14:00" },
-]
+import { Building2, CreditCard, DollarSign, TrendingUp, Users, Calendar, Trophy, AlertCircle, RefreshCw } from "lucide-react"
+import { 
+  fetchAllDashboardData, 
+  markAlertAsRead 
+} from "@/lib/redux/dashboardSlice"
 
 export function Dashboard() {
+  const dispatch = useDispatch<AppDispatch>()
+  const authState = useSelector((state: RootState) => state.auth)
+  const { 
+    metrics, 
+    financialData, 
+    teamDistribution, 
+    upcomingMatches, 
+    alerts, 
+    recentActivity, 
+    quickStats, 
+    loading, 
+    error,
+    lastUpdated 
+  } = useSelector((state: RootState) => state.dashboard)
+
+  // Load dashboard data on component mount (only if authenticated)
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.token) {
+      dispatch(fetchAllDashboardData({}))
+    }
+  }, [dispatch, authState.isAuthenticated, authState.token])
+
+  const handleRefreshData = () => {
+    if (authState.isAuthenticated && authState.token) {
+      dispatch(fetchAllDashboardData({}))
+    }
+  }
+
+  // Show authentication error if not logged in
+  if (!authState.isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Card className="p-6">
+          <CardContent className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Authentication Required
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Please log in to view the dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const handleMarkAlertAsRead = (alertId: number) => {
+    dispatch(markAlertAsRead(alertId))
+  }
+
+  const getAlertIcon = (type: string) => {
+    switch (type) {
+      case 'contract':
+        return <Trophy className="h-4 w-4 mt-0.5" />
+      case 'payment':
+        return <CreditCard className="h-4 w-4 mt-0.5" />
+      case 'registration':
+        return <Users className="h-4 w-4 mt-0.5" />
+      default:
+        return <AlertCircle className="h-4 w-4 mt-0.5" />
+    }
+  }
+
+  const getAlertColorClass = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-500'
+      case 'medium':
+        return 'bg-orange-50 dark:bg-orange-900/20 border-orange-500 text-orange-500'
+      case 'low':
+        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-500'
+      default:
+        return 'bg-gray-50 dark:bg-gray-900/20 border-gray-500 text-gray-500'
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -36,10 +122,20 @@ export function Dashboard() {
           <p className="text-gray-600 dark:text-gray-400">
             Welcome back! Here&apos;s what&apos;s happening with your association.
           </p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              Last updated: {new Date(lastUpdated).toLocaleString()}
+            </p>
+          )}
         </div>
-        <Button className="bg-blue-800 hover:bg-blue-900 text-white">
-          <Calendar className="h-4 w-4 mr-2" />
-          Schedule Match
+        <Button 
+          variant="outline" 
+          onClick={handleRefreshData}
+          disabled={Object.values(loading).some(Boolean)}
+          className="text-blue-800 border-blue-800 hover:bg-blue-50"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${Object.values(loading).some(Boolean) ? 'animate-spin' : ''}`} />
+          Refresh
         </Button>
       </div>
 
@@ -51,11 +147,21 @@ export function Dashboard() {
             <DollarSign className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">$328,000</div>
-            <p className="text-xs text-green-600 flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12.5% from last month
-            </p>
+            {loading.metrics ? (
+              <Skeleton className="h-8 w-24 mb-2" />
+            ) : metrics ? (
+              <>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(metrics.totalRevenue)}
+                </div>
+                <p className={`text-xs flex items-center mt-1 ${metrics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <TrendingUp className={`h-3 w-3 mr-1 ${metrics.revenueGrowth < 0 ? 'rotate-180' : ''}`} />
+                  {metrics.revenueGrowth >= 0 ? '+' : ''}{metrics.revenueGrowth}% from last month
+                </p>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-400">--</div>
+            )}
           </CardContent>
         </Card>
 
@@ -65,11 +171,21 @@ export function Dashboard() {
             <Users className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">487</div>
-            <p className="text-xs text-green-600 flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +8 new this week
-            </p>
+            {loading.metrics ? (
+              <Skeleton className="h-8 w-24 mb-2" />
+            ) : metrics ? (
+              <>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {metrics.activePlayersCount}
+                </div>
+                <p className="text-xs text-green-600 flex items-center mt-1">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  +{metrics.newPlayersThisWeek} new this week
+                </p>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-400">--</div>
+            )}
           </CardContent>
         </Card>
 
@@ -79,8 +195,18 @@ export function Dashboard() {
             <Building2 className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">24</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all divisions</p>
+            {loading.metrics ? (
+              <Skeleton className="h-8 w-24 mb-2" />
+            ) : metrics ? (
+              <>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {metrics.totalTeamsCount}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all divisions</p>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-400">--</div>
+            )}
           </CardContent>
         </Card>
 
@@ -90,11 +216,21 @@ export function Dashboard() {
             <CreditCard className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">$45,000</div>
-            <p className="text-xs text-red-600 flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 mr-1 rotate-180" />
-              +5.2% from last month
-            </p>
+            {loading.metrics ? (
+              <Skeleton className="h-8 w-24 mb-2" />
+            ) : metrics ? (
+              <>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(metrics.monthlyExpenses)}
+                </div>
+                <p className={`text-xs flex items-center mt-1 ${metrics.expensesGrowth <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <TrendingUp className={`h-3 w-3 mr-1 ${metrics.expensesGrowth > 0 ? 'rotate-180' : ''}`} />
+                  {metrics.expensesGrowth >= 0 ? '+' : ''}{metrics.expensesGrowth}% from last month
+                </p>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-400">--</div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -107,16 +243,24 @@ export function Dashboard() {
             <CardDescription>Monthly financial overview for the current year</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#1E3A8A" name="Revenue" />
-                <Bar dataKey="expenses" fill="#F97316" name="Expenses" />
-              </BarChart>
-            </ResponsiveContainer>
+            {loading.financialData ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : financialData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={financialData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="revenue" fill="#1E3A8A" name="Revenue" />
+                  <Bar dataKey="expenses" fill="#F97316" name="Expenses" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-500">
+                {error.financialData ? `Error: ${error.financialData}` : 'No financial data available'}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -126,25 +270,33 @@ export function Dashboard() {
             <CardDescription>Breakdown of teams by category</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={clubData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {clubData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {loading.teamDistribution ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : teamDistribution.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={teamDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ category, count }) => `${category}: ${count}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {teamDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-500">
+                {error.teamDistribution ? `Error: ${error.teamDistribution}` : 'No team distribution data available'}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -160,26 +312,50 @@ export function Dashboard() {
             <CardDescription>Next scheduled games this week</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {upcomingMatches.map((match, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {match.team} vs {match.opponent}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {match.date} at {match.time}
-                    </p>
+            {loading.upcomingMatches ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : upcomingMatches.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {match.homeTeam} vs {match.awayTeam}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(match.dateTime)} at {formatTime(match.dateTime)}
+                      </p>
+                      {match.venue && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          {match.venue}
+                        </p>
+                      )}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        match.status === 'scheduled' 
+                          ? 'bg-blue-50 text-blue-800 border-blue-200' 
+                          : 'bg-green-50 text-green-800 border-green-200'
+                      }
+                    >
+                      {match.status}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
-                    Scheduled
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                {error.upcomingMatches ? `Error: ${error.upcomingMatches}` : 'No upcoming matches scheduled'}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -192,34 +368,160 @@ export function Dashboard() {
             <CardDescription>Important notifications and updates</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border-l-4 border-orange-500">
-                <Trophy className="h-4 w-4 text-orange-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Contract Renewal Due</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">3 player contracts expire this month</p>
-                </div>
+            {loading.alerts ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
               </div>
-
-              <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
-                <CreditCard className="h-4 w-4 text-blue-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Received</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Monthly membership fees collected</p>
-                </div>
+            ) : alerts.length > 0 ? (
+              <div className="space-y-4">
+                {alerts.map((alert) => (
+                  <div 
+                    key={alert.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-opacity ${
+                      alert.isRead ? 'opacity-60' : ''
+                    } ${getAlertColorClass(alert.priority)}`}
+                    onClick={() => handleMarkAlertAsRead(alert.id)}
+                  >
+                    <div className={getAlertColorClass(alert.priority)}>
+                      {getAlertIcon(alert.type)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {alert.title}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {alert.description}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        {formatDate(alert.createdAt)}
+                      </p>
+                    </div>
+                    {!alert.isRead && (
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    )}
+                  </div>
+                ))}
               </div>
-
-              <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
-                <Users className="h-4 w-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">New Player Registration</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">5 new players joined this week</p>
-                </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                {error.alerts ? `Error: ${error.alerts}` : 'No recent alerts'}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Stats Row */}
+      {quickStats && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white">Quick Statistics</CardTitle>
+            <CardDescription>Overview of key operational metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading.quickStats ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[...Array(6)].map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.totalMatches}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Total Matches
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.matchesThisMonth}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    This Month
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.totalStaff}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Total Staff
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.totalSuppliers}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Suppliers
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.pendingPayments}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Pending Payments
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {quickStats.activeContracts}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Active Contracts
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      {recentActivity.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white">Recent Activity</CardTitle>
+            <CardDescription>Latest actions and updates in the system</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading.recentActivity ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, index) => (
+                  <Skeleton key={index} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentActivity.map((activity) => (
+                  <div 
+                    key={activity.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {activity.action}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {activity.description}
+                      </p>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-500">
+                      {formatDate(activity.timestamp)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

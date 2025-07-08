@@ -103,6 +103,7 @@ export interface CreateTransactionDto {
   amount: number;
   date: string;
   description: string;
+  createdById: number;
   supplierId?: number;
   rentalId?: number;
   salaryPaymentId?: number;

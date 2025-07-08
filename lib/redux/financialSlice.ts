@@ -136,9 +136,9 @@ export const createTransaction = createAsyncThunk(
       console.log("Request payload:", JSON.stringify(data));
       
       // Make sure data contains all required fields
-      if (!data.type || !data.category || !data.amount || !data.date || !data.description) {
+      if (!data.type || !data.category || !data.amount || !data.date || !data.description || !data.createdById) {
         console.error("Missing required fields in payload:", data);
-        throw new Error("Missing required fields: all fields are required");
+        throw new Error("Missing required fields: all fields including createdById are required");
       }
       
       const response = await api.post<Transaction>('/accounting/transactions', data);
