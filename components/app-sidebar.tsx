@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   BarChart3,
   Building2,
@@ -27,6 +28,23 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import { getApiUrl } from "@/lib/api-config"
+
+// Types
+interface AssociationSettings {
+  id: number
+  name: string
+  description: string
+  contactEmail: string
+  contactPhone: string
+  address: string
+  primaryColor: string
+  secondaryColor: string
+  tagline: string
+  logoUrl?: string
+  createdAt: string
+  updatedAt: string
+}
 
 const menuItems = [
   {
@@ -102,14 +120,79 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
+  const [associationSettings, setAssociationSettings] = useState<AssociationSettings | null>(null)
+  const [logoError, setLogoError] = useState(false)
+
+  useEffect(() => {
+    const fetchAssociationSettings = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        }
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
+        const response = await fetch(getApiUrl('/associations/settings'), {
+          headers
+        })
+        
+        if (response.ok) {
+          const settings = await response.json()
+          setAssociationSettings(settings)
+          setLogoError(false) // Reset logo error when fetching new settings
+        }
+      } catch (error) {
+        console.error('Failed to fetch association settings:', error)
+        // Silently fail - we'll show default branding
+      }
+    }
+
+    fetchAssociationSettings()
+
+    // Listen for association settings updates
+    const handleSettingsUpdate = () => {
+      fetchAssociationSettings()
+    }
+
+    window.addEventListener('associationSettingsUpdated', handleSettingsUpdate)
+
+    return () => {
+      window.removeEventListener('associationSettingsUpdated', handleSettingsUpdate)
+    }
+  }, [])
+
+  const handleLogoError = () => {
+    setLogoError(true)
+  }
+
+  const displayName = associationSettings?.name || "Sports Manager"
+  const displayTagline = associationSettings?.tagline || "Association System"
+  const logoUrl = associationSettings?.logoUrl && !logoError 
+    ? `http://localhost:8080${associationSettings.logoUrl}` 
+    : null
+
   return (
     <Sidebar className="border-r border-gray-200 dark:border-gray-700">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Sports Manager</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Association System</p>
+        <div className="flex items-center gap-3">
+          {logoUrl ? (
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800">
+              <img 
+                src={logoUrl} 
+                alt={`${displayName} Logo`}
+                className="w-full h-full object-cover"
+                onError={handleLogoError}
+              />
+            </div>
+          ) : (
+            <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400 flex-shrink-0" />
+          )}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{displayName}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{displayTagline}</p>
           </div>
         </div>
       </SidebarHeader>
@@ -137,7 +220,9 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400">© 2024 Sports Association</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          © 2024 {associationSettings?.name || "Sports Association"}
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
