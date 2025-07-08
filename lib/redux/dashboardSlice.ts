@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { tokenUtils } from '@/lib/api'
+import { getApiUrl } from '@/lib/api-config'
 
 // Dashboard Types
 export interface DashboardMetrics {
@@ -128,21 +129,30 @@ const makeAuthenticatedRequest = async (url: string): Promise<Response> => {
     throw new Error('No authentication token available')
   }
   
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  })
-  
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Authentication failed. Please login again.')
+  try {
+    console.log(`🔄 Making authenticated request to: ${url}`)
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error(`🔒 Authentication failed for request to ${url}`)
+        throw new Error('Authentication failed. Please login again.')
+      }
+      console.error(`❌ API request failed for ${url}: ${response.status} ${response.statusText}`)
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
     }
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+    
+    console.log(`✅ Request to ${url} successful`)
+    return response
+  } catch (error) {
+    console.error(`❌ Error making request to ${url}:`, error)
+    throw error
   }
-  
-  return response
 }
 
 // Async Thunks
@@ -151,8 +161,8 @@ export const fetchDashboardMetrics = createAsyncThunk(
   async (teamId: number | undefined, { rejectWithValue }) => {
     try {
       const url = teamId 
-        ? `http://localhost:8080/dashboard/metrics?teamId=${teamId}`
-        : 'http://localhost:8080/dashboard/metrics'
+        ? getApiUrl(`/dashboard/metrics?teamId=${teamId}`)
+        : getApiUrl('/dashboard/metrics')
       
       const response = await makeAuthenticatedRequest(url)
       return await response.json()
@@ -172,7 +182,7 @@ export const fetchFinancialOverview = createAsyncThunk(
       if (params?.startDate) searchParams.append('startDate', params.startDate)
       if (params?.endDate) searchParams.append('endDate', params.endDate)
       
-      const url = `http://localhost:8080/dashboard/financial-overview${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+      const url = getApiUrl(`/dashboard/financial-overview${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
       
       const response = await makeAuthenticatedRequest(url)
       return await response.json()
@@ -186,7 +196,7 @@ export const fetchTeamDistribution = createAsyncThunk(
   'dashboard/fetchTeamDistribution',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await makeAuthenticatedRequest('http://localhost:8080/dashboard/team-distribution')
+      const response = await makeAuthenticatedRequest(getApiUrl('/dashboard/team-distribution'))
       return await response.json()
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch team distribution')
@@ -203,7 +213,7 @@ export const fetchUpcomingMatches = createAsyncThunk(
       if (params?.limit) searchParams.append('limit', params.limit.toString())
       if (params?.days) searchParams.append('days', params.days.toString())
       
-      const url = `http://localhost:8080/dashboard/upcoming-matches${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+      const url = getApiUrl(`/dashboard/upcoming-matches${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
       
       const response = await makeAuthenticatedRequest(url)
       return await response.json()
@@ -218,8 +228,8 @@ export const fetchAlerts = createAsyncThunk(
   async (limit: number | undefined, { rejectWithValue }) => {
     try {
       const url = limit 
-        ? `http://localhost:8080/dashboard/alerts?limit=${limit}`
-        : 'http://localhost:8080/dashboard/alerts'
+        ? getApiUrl(`/dashboard/alerts?limit=${limit}`)
+        : getApiUrl('/dashboard/alerts')
       
       const response = await makeAuthenticatedRequest(url)
       return await response.json()
@@ -234,8 +244,8 @@ export const fetchRecentActivity = createAsyncThunk(
   async (limit: number | undefined, { rejectWithValue }) => {
     try {
       const url = limit 
-        ? `http://localhost:8080/dashboard/recent-activity?limit=${limit}`
-        : 'http://localhost:8080/dashboard/recent-activity'
+        ? getApiUrl(`/dashboard/recent-activity?limit=${limit}`)
+        : getApiUrl('/dashboard/recent-activity')
       
       const response = await makeAuthenticatedRequest(url)
       return await response.json()
@@ -249,7 +259,7 @@ export const fetchQuickStats = createAsyncThunk(
   'dashboard/fetchQuickStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await makeAuthenticatedRequest('http://localhost:8080/dashboard/quick-stats')
+      const response = await makeAuthenticatedRequest(getApiUrl('/dashboard/quick-stats'))
       return await response.json()
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch quick stats')

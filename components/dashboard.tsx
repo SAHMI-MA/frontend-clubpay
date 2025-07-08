@@ -116,6 +116,32 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {Object.values(error).some(Boolean) && (
+        <div className="bg-red-50 border border-red-500 text-red-800 px-4 py-3 rounded-md mb-6 relative" role="alert">
+          <div className="flex items-start">
+            <div className="py-1">
+              <AlertCircle className="h-6 w-6 text-red-500 mr-4" />
+            </div>
+            <div>
+              <p className="font-bold">Error loading dashboard data</p>
+              <ul className="text-sm mt-2 list-disc pl-5">
+                {Object.entries(error).map(([key, errorMsg]) => 
+                  errorMsg ? <li key={key}>{key}: {errorMsg}</li> : null
+                )}
+              </ul>
+            </div>
+            <button 
+              className="absolute top-0 right-0 mt-4 mr-4 text-red-500 hover:text-red-700"
+              onClick={() => handleRefreshData()}
+              aria-label="Retry"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>

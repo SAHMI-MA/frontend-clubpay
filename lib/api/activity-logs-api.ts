@@ -37,10 +37,10 @@ export interface ActivityLogFilterDto {
   endDate?: string
 }
 
-const API_BASE_URL = 'http://localhost:8080/api'
+import { apiConfig } from '@/lib/api-config'
 
 class ActivityLogsAPIService {
-  private baseURL = API_BASE_URL
+  private baseURL = apiConfig.baseUrl
   private token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
 
   private getHeaders() {

@@ -1,4 +1,5 @@
 import { api } from '../api';
+import { getApiUrl } from '../api-config';
 import {
   ObjectiveGroup,
   Objective,
@@ -48,7 +49,7 @@ export const getGroupAssignedPlayers = async (groupId: number): Promise<any[]> =
 
 export const removeGroupFromPlayers = async (groupId: number, playerIds: number[]): Promise<void> => {
   // Custom DELETE request with body since the api.delete() doesn't support body
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/objectives/groups/${groupId}/remove-from-players`, {
+  const response = await fetch(getApiUrl(`/objectives/groups/${groupId}/remove-from-players`), {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',

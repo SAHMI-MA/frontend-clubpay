@@ -3,7 +3,8 @@ console.log('=== OBJECTIVE MANAGEMENT DEBUG TEST ===');
 
 // Test the API endpoints directly
 const testAPI = async () => {
-  const baseURL = 'http://localhost:8080';
+  // Read API URL from environment variable or use default
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
   
   try {
     // Test groups endpoint

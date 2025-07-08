@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Building, Camera, History, Save, Search, Settings, Upload, User, Activity, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
 import { toast } from "sonner"
-import { getApiUrl } from "@/lib/api-config"
+import { getApiUrl, apiConfig } from "@/lib/api-config"
 
 // Types
 interface AssociationSettings {
@@ -306,7 +306,7 @@ export function AssociationSettings() {
       setSecondaryColor(settings.secondaryColor)
       setTagline(settings.tagline)
       // Convert relative logo URL to full URL for display
-      setLogoUrl(settings.logoUrl ? `http://localhost:8080${settings.logoUrl}` : null)
+      setLogoUrl(settings.logoUrl ? `${apiConfig.baseUrl}${settings.logoUrl}` : null)
     }
   }, [settings])
 
@@ -500,7 +500,7 @@ export function AssociationSettings() {
       
       setSettings(updatedSettings)
       // Convert relative logo URL to full URL for display
-      setLogoUrl(updatedSettings.logoUrl ? `http://localhost:8080${updatedSettings.logoUrl}` : null)
+      setLogoUrl(updatedSettings.logoUrl ? `${apiConfig.baseUrl}${updatedSettings.logoUrl}` : null)
       toast.success('✅ Logo uploaded successfully!', {
         duration: 4000,
         description: 'Your association logo has been updated and is now visible.'

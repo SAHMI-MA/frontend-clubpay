@@ -29,7 +29,7 @@ interface AssociationSettings {
 export async function getAssociationSettings(): Promise<AssociationSettings | null> {
   try {
     // For server-side requests, we'll use a direct API call
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
     
     // Try without auth first (for public metadata)
     let response = await fetch(`${baseUrl}/associations/settings`, {

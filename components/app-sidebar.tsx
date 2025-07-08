@@ -28,7 +28,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { getApiUrl } from "@/lib/api-config"
+import { getApiUrl, apiConfig } from "@/lib/api-config"
 
 // Types
 interface AssociationSettings {
@@ -171,7 +171,7 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
   const displayName = associationSettings?.name || "Sports Manager"
   const displayTagline = associationSettings?.tagline || "Association System"
   const logoUrl = associationSettings?.logoUrl && !logoError 
-    ? `http://localhost:8080${associationSettings.logoUrl}` 
+    ? `${apiConfig.baseUrl}${associationSettings.logoUrl}` 
     : null
 
   return (
