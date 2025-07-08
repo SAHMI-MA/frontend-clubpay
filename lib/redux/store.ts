@@ -12,6 +12,7 @@ import financialReducer from './financialSlice';
 import contractReducer from './contractSlice';
 import objectiveReducer from './objectiveSlice';
 import matchReducer from './matchSlice';
+import dashboardReducer from './dashboardSlice';
 
 // Configure the Redux store
 export const store = configureStore({
@@ -29,6 +30,7 @@ export const store = configureStore({
     contracts: contractReducer,
     objectives: objectiveReducer,
     matches: matchReducer,
+    dashboard: dashboardReducer,
   },
   // Enable Redux DevTools extension
   devTools: process.env.NODE_ENV !== 'production',

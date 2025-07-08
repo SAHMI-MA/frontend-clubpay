@@ -21,9 +21,6 @@ import { loginWithDemoCredentials, testApiConnection } from "@/lib/api-utils";
 import { debugAuth } from "@/lib/auth-debug";
 import { debugPlayersTeamStructure } from "@/lib/team-data-debug";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getPositionDisplayName } from "@/lib/utils";
 
 export function PlayerManagement() {
   const dispatch = useAppDispatch();
@@ -33,9 +30,6 @@ export function PlayerManagement() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filterPosition, setFilterPosition] = useState<string>("all")
-  const [filterTeam, setFilterTeam] = useState<string>("all")
 
   const [apiConnectionStatus, setApiConnectionStatus] = useState<{ 
     isServerReachable: boolean;
@@ -179,19 +173,7 @@ export function PlayerManagement() {
     }
   };
   // Filter players based on search query, position, and team
-  const filteredPlayers = players.filter(player => {
-    const matchesSearch = searchQuery.toLowerCase() === "" ||
-      player.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      player.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      player.team?.name.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesPosition = filterPosition === "all" || player.position === filterPosition
-    const matchesTeam = filterTeam === "all" || 
-      (player.teamId && player.teamId.toString() === filterTeam) ||
-      (player.team && player.team.id && player.team.id.toString() === filterTeam)
-
-    return matchesSearch && matchesPosition && matchesTeam
-  })
+  const filteredPlayers = players
 
   const handleCreatePlayer = () => {
     setIsCreateDialogOpen(true)
@@ -279,38 +261,6 @@ export function PlayerManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Search and Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Input
-          placeholder="Search players or teams..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={filterPosition} onValueChange={setFilterPosition}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by position" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Positions</SelectItem>
-            {Array.from(new Set(players.map(p => p.position))).filter(Boolean).map(position => (
-              <SelectItem key={position} value={position}>{getPositionDisplayName(position)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterTeam} onValueChange={setFilterTeam}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by team" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Teams</SelectItem>
-            {teams.filter(team => team && team.id && team.name).map(team => (
-              <SelectItem key={team.id} value={team.id.toString()}>{team.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Player List */}
       {loading ? (
         <div className="flex justify-center py-8">
@@ -322,7 +272,6 @@ export function PlayerManagement() {
           teams={teams}
           onViewDetails={handleViewPlayerDetails}
           onEditPlayer={handleEditPlayer}
-          onAddNew={handleCreatePlayer}
           isSimplified={false}
         />
       )}
