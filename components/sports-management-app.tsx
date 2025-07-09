@@ -19,6 +19,7 @@ import { RentalSupplierManagement } from "./rental-supplies-management"
 import { SupplierManagement } from "./supplier-management"
 import { ContractManagement } from "./contract-management"
 import { ObjectivesManagement } from "./objective-management"
+import { I18nProvider } from "@/lib/i18n/provider"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -78,23 +79,27 @@ export function SportsManagementApp() {
   // Show authentication page if not logged in
   if (!isAuthenticated) {
     return (
-      <div className={darkMode ? "dark" : ""}>
-        <AuthPage onLogin={handleLogin} darkMode={darkMode} setDarkMode={setDarkMode} />
-      </div>
+      <I18nProvider>
+        <div className={darkMode ? "dark" : ""}>
+          <AuthPage onLogin={handleLogin} darkMode={darkMode} setDarkMode={setDarkMode} />
+        </div>
+      </I18nProvider>
     )
   }
 
   return (
-    <div className={darkMode ? "dark" : ""}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-gray-50 dark:bg-gray-900">
-          <AppSidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <div className="flex-1 flex flex-col min-w-0">
-            <TopBar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onLogout={handleLogout} />
-            <main className="flex-1 p-6 overflow-auto">{renderCurrentPage()}</main>
+    <I18nProvider>
+      <div className={darkMode ? "dark" : ""}>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full bg-gray-50 dark:bg-gray-900">
+            <AppSidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+            <div className="flex-1 flex flex-col min-w-0">
+              <TopBar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onLogout={handleLogout} />
+              <main className="flex-1 p-6 overflow-auto">{renderCurrentPage()}</main>
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
-    </div>
+        </SidebarProvider>
+      </div>
+    </I18nProvider>
   )
 }

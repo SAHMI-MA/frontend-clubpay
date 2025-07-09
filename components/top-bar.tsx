@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Moon, Search, Sun, User } from "lucide-react"
+import { Bell, Moon, Search, Sun, User, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { useLanguage } from "@/lib/i18n/language-context"
+import { useTranslation } from "react-i18next"
 
 interface TopBarProps {
   darkMode: boolean
@@ -22,6 +24,9 @@ interface TopBarProps {
 }
 
 export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
+  const { t } = useTranslation();
+  const { language, changeLanguage } = useLanguage();
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 w-full">
       <div className="flex items-center gap-4">
@@ -29,27 +34,63 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Search..."
+            placeholder={t('common.search') || 'Search...'}
             className="w-64 pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Language Selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-600 dark:text-gray-400"
+              title={t('common.language') || 'Language'}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => changeLanguage('en')}
+              className={language === 'en' ? 'bg-gray-100 dark:bg-gray-700' : ''}
+            >
+              {t('common.english') || 'English'}
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => changeLanguage('fr')}
+              className={language === 'fr' ? 'bg-gray-100 dark:bg-gray-700' : ''}
+            >
+              {t('common.french') || 'Français'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Dark Mode Toggle */}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setDarkMode(!darkMode)}
           className="text-gray-600 dark:text-gray-400"
+          title={darkMode ? (t('common.lightMode') || 'Light Mode') : (t('common.darkMode') || 'Dark Mode')}
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        <Button variant="ghost" size="icon" className="relative text-gray-600 dark:text-gray-400">
+        {/* Notifications */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative text-gray-600 dark:text-gray-400"
+        >
           <Bell className="h-4 w-4" />
           <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs">3</Badge>
         </Button>
 
+        {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
@@ -68,11 +109,11 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>{t('common.profile') || 'Profile'}</DropdownMenuItem>
+            <DropdownMenuItem>{t('common.settings') || 'Settings'}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400">
-              Sign out
+              {t('common.logout') || 'Sign out'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

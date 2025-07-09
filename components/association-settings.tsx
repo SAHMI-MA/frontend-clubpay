@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building, Camera, History, Save, Search, Settings, Upload, User, Activity, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { getApiUrl, apiConfig } from "@/lib/api-config"
+import { useTranslation } from "react-i18next"
 
 // Types
 interface AssociationSettings {
@@ -249,6 +250,38 @@ export function AssociationSettings() {
   // API instance
   const api = new AssociationAPI()
   
+  // Get translation function
+  const { t, i18n } = useTranslation()
+  
+  // Use a simple re-render trigger that doesn't create new objects
+  const [, setLanguageKey] = useState(0);
+  
+  // Listen for language changes to force re-render - with improved stability
+  useEffect(() => {
+    // Prevent subscribing multiple times 
+    const handleLanguageChanged = () => {
+      console.log('Language change detected in AssociationSettings');
+      // Use a stable update that won't cause infinite loops
+      setLanguageKey(prev => prev + 1);
+    };
+    
+    // Use a debounced version to prevent excessive updates
+    let timeoutId: NodeJS.Timeout;
+    const debouncedHandler = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleLanguageChanged, 50);
+    };
+    
+    window.addEventListener('languageChanged', debouncedHandler);
+    
+    console.log('AssociationSettings mounted with language:', i18n?.language);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('languageChanged', debouncedHandler);
+    };
+  }, []); // Empty dependency array for stability
+  
   // State management
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -265,6 +298,12 @@ export function AssociationSettings() {
   const [primaryColor, setPrimaryColor] = useState("#1E3A8A")
   const [secondaryColor, setSecondaryColor] = useState("#F97316")
   const [tagline, setTagline] = useState("")
+  
+  // Custom tagline setter
+  const updateTagline = (value: string) => {
+    // We want to allow empty values too
+    setTagline(value)
+  }
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   
   // Activity logs state
@@ -291,74 +330,125 @@ export function AssociationSettings() {
 
   // Load initial data
   useEffect(() => {
-    loadData()
-  }, [])
+    // Create a flag to track if component is mounted
+    let isMounted = true;
+    
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load settings and logs separately to handle individual failures
+        let settingsData = null;
+        
+        try {
+          settingsData = await api.getSettings();
+          
+          if (settingsData && isMounted) {
+            setSettings(settingsData);
+          }
+        } catch (error) {
+          console.error('Failed to load settings:', error);
+        }
+        
+        // Load initial activity logs separately from settings
+        if (isMounted) {
+          loadActivityLogs();
+        }
+      } catch (error) {
+        console.error('Unexpected error in loadData:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchInitialData();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  // Update form fields when settings change
+  // Update form fields when settings change - using a ref to prevent infinite loops
+  const initialLoad = useRef(true);
+  
   useEffect(() => {
-    if (settings) {
-      setAssociationName(settings.name)
-      setAssociationDescription(settings.description)
-      setContactEmail(settings.contactEmail)
-      setContactPhone(settings.contactPhone)
-      setAddress(settings.address)
-      setPrimaryColor(settings.primaryColor)
-      setSecondaryColor(settings.secondaryColor)
-      setTagline(settings.tagline)
+    // Only update if settings exist and it's either initial load or settings have genuinely changed
+    if (settings && initialLoad.current) {
+      console.log('Initial settings load, updating form fields:', settings);
+      
+      // Use synchronous updates to avoid async issues
+      if (settings.name) setAssociationName(settings.name);
+      if (settings.description) setAssociationDescription(settings.description);
+      if (settings.contactEmail) setContactEmail(settings.contactEmail);
+      if (settings.contactPhone) setContactPhone(settings.contactPhone);
+      if (settings.address) setAddress(settings.address);
+      if (settings.primaryColor) setPrimaryColor(settings.primaryColor);
+      if (settings.secondaryColor) setSecondaryColor(settings.secondaryColor);
+      
+      // Set tagline on initial load only
+      if (settings.tagline) {
+        setTagline(settings.tagline);
+      }
+      
       // Convert relative logo URL to full URL for display
-      setLogoUrl(settings.logoUrl ? `${apiConfig.baseUrl}${settings.logoUrl}` : null)
+      if (settings.logoUrl && typeof apiConfig !== 'undefined' && apiConfig.baseUrl) {
+        setLogoUrl(`${apiConfig.baseUrl}${settings.logoUrl}`);
+      } else {
+        setLogoUrl(null);
+      }
+      
+      // Mark initial load as complete
+      initialLoad.current = false;
     }
-  }, [settings])
+  }, [settings]); // Dependencies are safe with the initialLoad.current guard
 
   // Load activity logs when search term or filters change
+  // Using a ref to track initial render for activity logs
+  const isInitialActivityRender = useRef(true);
+  
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadActivityLogs()
-    }, 300) // Debounce search and filter changes
-
-    return () => clearTimeout(timeoutId)
-  }, [searchTerm, currentPage, pageSize, activityType, userId, startDate, endDate, entityType])
-
-
-
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      
-      // Load settings and logs separately to handle individual failures
-      let settingsData = null
-      let logsData = null
-      
-      try {
-        settingsData = await api.getSettings()
-        setSettings(settingsData)
-      } catch (error) {
-        console.error('Failed to load settings:', error)
-        toast.error('Failed to load association settings')
-      }
-      
-      try {
-        logsData = await api.getActivityLogs({ page: 1, limit: pageSize })
-        setActivityLogs(logsData?.data || [])
-        setTotalPages(logsData?.totalPages || 1)
-        setTotalRecords(logsData?.total || 0)
-      } catch (error) {
-        console.error('Failed to load activity logs:', error)
-        toast.error('Failed to load activity logs')
-        setActivityLogs([])
-        setTotalPages(1)
-      }
-    } catch (error) {
-      console.error('Unexpected error in loadData:', error)
-    } finally {
-      setLoading(false)
+    // Skip initial execution to prevent double loading
+    if (isInitialActivityRender.current) {
+      isInitialActivityRender.current = false;
+      return;
     }
-  }
+    
+    // Debounce to prevent excessive API calls
+    const timeoutId = setTimeout(() => {
+      // Prevent duplicate calls if already loading
+      if (!logsLoading) {
+        loadActivityLogs();
+      }
+    }, 300); // Debounce search and filter changes
 
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, currentPage, pageSize, activityType, userId, startDate, endDate, entityType, logsLoading]);
+
+
+  // Activity logs loading with improved error handling and state management
+  const loadActivityLogsRef = useRef(false);
   const loadActivityLogs = async () => {
+    // Prevent running if we're already loading logs to avoid duplicate requests
+    if (logsLoading) {
+      console.log('Already loading logs, skipping duplicate request');
+      return;
+    }
+    
+    // Prevent duplicate calls within the same render cycle
+    if (loadActivityLogsRef.current) {
+      console.log('Debouncing multiple loadActivityLogs calls');
+      return;
+    }
+    
+    loadActivityLogsRef.current = true;
+    
     try {
-      setLogsLoading(true)
-      const logsData = await api.getActivityLogs({
+      setLogsLoading(true);
+      
+      const params = {
         page: currentPage,
         limit: pageSize,
         search: searchTerm || undefined,
@@ -367,48 +457,84 @@ export function AssociationSettings() {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         entityType: entityType || undefined
-      })
+      };
       
-      console.log('Activity logs data structure:', logsData?.data?.[0])
+      console.log('Fetching activity logs with params:', params);
+      
+      const logsData = await api.getActivityLogs(params);
+      
+      if (!logsData) {
+        console.error('No logs data returned from API');
+        setActivityLogs([]);
+        setTotalPages(1);
+        setTotalRecords(0);
+        return;
+      }
+      
+      console.log('Activity logs data received, processing...');
       
       // Map through the logs and ensure userId is properly set
       const processedLogs = (logsData?.data || []).map(log => {
+        const processedLog = {...log}; // Create a copy to avoid mutating the original
+        
         // If userId is missing or null, try to extract it from another field
-        if (!log.userId && log.userFullName) {
+        if (!processedLog.userId && processedLog.userFullName) {
           // Try to extract numeric part from the user name (assuming format like "admin 1")
-          const numericMatch = log.userFullName.match(/\d+/);
+          const numericMatch = processedLog.userFullName.match(/\d+/);
           if (numericMatch) {
-            log.userId = parseInt(numericMatch[0], 10);
+            processedLog.userId = parseInt(numericMatch[0], 10);
           }
         }
-        return log;
+        return processedLog;
       });
       
-      setActivityLogs(processedLogs)
-      setTotalPages(logsData?.totalPages || 1)
-      setTotalRecords(logsData?.total || 0)
+      // Use batch updates to minimize render cycles
+      setActivityLogs(processedLogs);
+      setTotalPages(logsData?.totalPages || 1);
+      setTotalRecords(logsData?.total || 0);
     } catch (error) {
-      console.error('Failed to load activity logs:', error)
-      toast.error('Failed to load activity logs')
+      console.error('Failed to load activity logs:', error);
+      toast.error(t('Failed to load activity logs'));
       // Set fallback values on error
-      setActivityLogs([])
-      setTotalPages(1)
-      setTotalRecords(0)
+      setActivityLogs([]);
+      setTotalPages(1);
+      setTotalRecords(0);
     } finally {
-      setLogsLoading(false)
+      setLogsLoading(false);
+      
+      // Reset the ref after a short delay to allow for next calls
+      setTimeout(() => {
+        loadActivityLogsRef.current = false;
+      }, 100);
     }
-  }
+  };
 
   const handleSaveSettings = async () => {
     try {
+      // Validate required fields
+      const validationErrors = [];
+      
+      if (!associationName.trim()) validationErrors.push("Association Name is required");
+      if (!associationDescription.trim()) validationErrors.push("Description is required");
+      if (!contactEmail.trim()) validationErrors.push("Contact Email is required");
+      if (!contactEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) validationErrors.push("Contact Email must be valid");
+      if (!contactPhone.trim()) validationErrors.push("Contact Phone is required");
+      if (!address.trim()) validationErrors.push("Address is required");
+      
+      // If any validation errors, show them and don't submit
+      if (validationErrors.length > 0) {
+        toast.error(`Please correct the following errors: ${validationErrors.join(", ")}`);
+        return;
+      }
+      
       setSaving(true)
       
       const settingsToUpdate = {
-        name: associationName,
-        description: associationDescription,
-        contactEmail,
-        contactPhone,
-        address,
+        name: associationName.trim(),
+        description: associationDescription.trim(),
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim(),
+        address: address.trim(),
         primaryColor,
         secondaryColor,
         tagline
@@ -419,9 +545,9 @@ export function AssociationSettings() {
       const updatedSettings = await api.updateSettings(settingsToUpdate)
       
       setSettings(updatedSettings)
-      toast.success('✅ Association settings have been saved successfully!', {
+      toast.success(t('common.success'), {
         duration: 4000,
-        description: 'All changes to your association information have been updated.'
+        description: t('associationSettings.settingsSaved')
       })
       
       // Dispatch custom event to notify other components of the update
@@ -434,7 +560,29 @@ export function AssociationSettings() {
         if (error.message.includes('401') || error.message.includes('403')) {
           toast.error('Authentication failed. Please log in again.')
         } else if (error.message.includes('400')) {
-          toast.error('Invalid data provided. Please check your inputs.')
+          try {
+            // Try to parse the error message to get detailed validation errors
+            const errorMatch = error.message.match(/\{.*\}/);
+            if (errorMatch) {
+              const errorJson = JSON.parse(errorMatch[0]);
+              
+              if (Array.isArray(errorJson.message)) {
+                // Show first few validation errors
+                const errorMessages = errorJson.message.slice(0, 3);
+                toast.error(`Validation errors: ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
+                  duration: 8000
+                });
+              } else {
+                toast.error(`Invalid data provided: ${errorJson.message || 'Please check your inputs'}`)
+              }
+            } else {
+              toast.error('Invalid data provided. Please check your inputs.')
+            }
+          } catch (parseError) {
+            // Fallback if we can't parse the JSON
+            toast.error('Invalid data provided. Please check your inputs.')
+            console.error('Failed to parse error message:', parseError)
+          }
         } else if (error.message.includes('404')) {
           toast.error('Settings endpoint not found. Please contact support.')
         } else if (error.message.includes('500')) {
@@ -452,25 +600,93 @@ export function AssociationSettings() {
 
   const handleSaveBranding = async () => {
     try {
+      // For branding updates, we need to ensure the primary settings are included to satisfy validation
+      // First, get the current settings from state
+      if (!settings) {
+        toast.error("Unable to save branding: Settings data is missing");
+        return;
+      }
+      
       setSaving(true)
       
+      console.log('Saving branding with tagline:', tagline)
+      
+      // Include required fields from existing settings to satisfy API validation
       const updatedSettings = await api.updateSettings({
+        // Include required fields from current settings
+        name: settings.name || associationName,
+        description: settings.description || associationDescription,
+        contactEmail: settings.contactEmail || contactEmail,
+        contactPhone: settings.contactPhone || contactPhone,
+        address: settings.address || address,
+        // Update the branding specific fields
         primaryColor,
         secondaryColor,
         tagline
       })
       
-      setSettings(updatedSettings)
-      toast.success('✅ Branding settings have been saved successfully!', {
+      console.log('Received updated settings from API:', updatedSettings)
+      
+      // Store current tagline to preserve user's input
+      const currentTagline = tagline
+      
+      // Update settings but don't overwrite current form values
+      setSettings({
+        ...updatedSettings,
+        // Keep the current tagline from the form state
+        // This prevents the form from reverting to the server value
+        tagline: currentTagline
+      })
+      console.log('Settings state updated with new values')
+      
+      toast.success(t('common.success'), {
         duration: 4000,
-        description: 'Your association branding has been updated.'
+        description: t('associationSettings.settingsSaved')
       })
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
     } catch (error) {
       console.error('Failed to save branding:', error)
-      toast.error('Failed to save branding')
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('401') || error.message.includes('403')) {
+          toast.error('Authentication failed. Please log in again.')
+        } else if (error.message.includes('400')) {
+          try {
+            // Try to parse the error message to get detailed validation errors
+            const errorMatch = error.message.match(/\{.*\}/);
+            if (errorMatch) {
+              const errorJson = JSON.parse(errorMatch[0]);
+              
+              if (Array.isArray(errorJson.message)) {
+                // Show first few validation errors
+                const errorMessages = errorJson.message.slice(0, 3);
+                toast.error(`Validation errors: ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
+                  duration: 8000
+                });
+              } else {
+                toast.error(`Invalid data provided: ${errorJson.message || 'Please check your inputs'}`)
+              }
+            } else {
+              toast.error('Invalid data provided. Please check your inputs.')
+            }
+          } catch (parseError) {
+            // Fallback if we can't parse the JSON
+            toast.error('Invalid data provided. Please check your inputs.')
+            console.error('Failed to parse error message:', parseError)
+          }
+        } else if (error.message.includes('404')) {
+          toast.error('Settings endpoint not found. Please contact support.')
+        } else if (error.message.includes('500')) {
+          toast.error('Server error. Please try again later.')
+        } else {
+          toast.error(`Failed to save branding: ${error.message}`)
+        }
+      } else {
+        toast.error('Failed to save branding. Please try again.')
+      }
     } finally {
       setSaving(false)
     }
@@ -501,9 +717,9 @@ export function AssociationSettings() {
       setSettings(updatedSettings)
       // Convert relative logo URL to full URL for display
       setLogoUrl(updatedSettings.logoUrl ? `${apiConfig.baseUrl}${updatedSettings.logoUrl}` : null)
-      toast.success('✅ Logo uploaded successfully!', {
+      toast.success(t('common.success'), {
         duration: 4000,
-        description: 'Your association logo has been updated and is now visible.'
+        description: t('associationSettings.logoUploaded')
       })
       
       // Dispatch custom event to notify other components of the update
@@ -542,9 +758,9 @@ export function AssociationSettings() {
       const updatedSettings = await api.deleteLogo()
       setSettings(updatedSettings)
       setLogoUrl(null)
-      toast.success('✅ Logo removed successfully!', {
+      toast.success(t('common.success'), {
         duration: 4000,
-        description: 'Your association logo has been removed.'
+        description: t('associationSettings.logoRemove')
       })
       
       // Dispatch custom event to notify other components of the update
@@ -698,17 +914,17 @@ export function AssociationSettings() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Association Settings</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('associationSettings.title')}</h1>
               <p className="text-gray-600 dark:text-gray-400">Manage association details, branding, and system logs</p>
             </div>
           </div>
 
           <Tabs defaultValue="general" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="users">User Settings</TabsTrigger>
-          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          <TabsTrigger value="general">{t('associationSettings.generalSettings')}</TabsTrigger>
+          <TabsTrigger value="branding">{t('associationSettings.branding')}</TabsTrigger>
+          <TabsTrigger value="users">{t('common.settings')}</TabsTrigger>
+          <TabsTrigger value="logs">{t('associationSettings.activityLogs')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -723,54 +939,54 @@ export function AssociationSettings() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="associationName">Association Name</Label>
+                  <Label htmlFor="associationName">{t('associationSettings.name')}</Label>
                   <Input
                     id="associationName"
                     value={associationName}
                     onChange={(e) => setAssociationName(e.target.value)}
-                    placeholder="Enter association name"
+                    placeholder={`${t('associationSettings.name')}...`}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Email</Label>
+                  <Label htmlFor="contactEmail">{t('associationSettings.contactEmail')}</Label>
                   <Input
                     id="contactEmail"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="Enter contact email"
+                    placeholder={`${t('associationSettings.contactEmail')}...`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="contactPhone">Contact Phone</Label>
+                  <Label htmlFor="contactPhone">{t('associationSettings.contactPhone')}</Label>
                   <Input
                     id="contactPhone"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="Enter contact phone"
+                    placeholder={`${t('associationSettings.contactPhone')}...`}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">{t('associationSettings.address')}</Label>
                   <Input
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter association address"
+                    placeholder={`${t('associationSettings.address')}...`}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('associationSettings.description')}</Label>
                 <Textarea
                   id="description"
                   value={associationDescription}
                   onChange={(e) => setAssociationDescription(e.target.value)}
-                  placeholder="Enter association description"
+                  placeholder={`${t('associationSettings.description')}...`}
                   rows={4}
                 />
               </div>
@@ -784,12 +1000,12 @@ export function AssociationSettings() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {t('common.loading')}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Save Changes
+                      {t('associationSettings.saveSettings')}
                     </>
                   )}
                 </Button>
@@ -803,21 +1019,21 @@ export function AssociationSettings() {
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                 <Camera className="h-5 w-5" />
-                Branding & Logo
+                {t('associationSettings.branding')}
               </CardTitle>
               <CardDescription>Customize your association&apos;s visual identity</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label>Association Logo</Label>
+                  <Label>{t('associationSettings.logoUpload')}</Label>
                   <div className="mt-2 flex items-center gap-4">
                     <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 relative">
                       {logoUrl ? (
                         <>
                           <img 
                             src={logoUrl} 
-                            alt="Association Logo" 
+                            alt={t('associationSettings.logoUpload')} 
                             className="w-full h-full object-cover rounded-lg"
                           />
                           <Button
@@ -867,14 +1083,14 @@ export function AssociationSettings() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="primaryColor">Primary Color</Label>
+                    <Label htmlFor="primaryColor">{t('associationSettings.primaryColor')}</Label>
                     <div className="flex items-center gap-2">
                       <Input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-10 p-1 border rounded" />
                       <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="Hex color code" className="flex-1" />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="secondaryColor">Secondary Color</Label>
+                    <Label htmlFor="secondaryColor">{t('associationSettings.secondaryColor')}</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id="secondaryColor"
@@ -889,12 +1105,12 @@ export function AssociationSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tagline">Association Tagline</Label>
+                  <Label htmlFor="tagline">{t('associationSettings.tagline')}</Label>
                   <Input
                     id="tagline"
-                    placeholder="Enter a memorable tagline"
+                    placeholder={`${t('associationSettings.tagline')}...`}
                     value={tagline}
-                    onChange={(e) => setTagline(e.target.value)}
+                    onChange={(e) => updateTagline(e.target.value)}
                   />
                 </div>
               </div>
@@ -908,12 +1124,12 @@ export function AssociationSettings() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {t('common.loading')}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Save Branding
+                      {t('associationSettings.saveSettings')}
                     </>
                   )}
                 </Button>

@@ -53,7 +53,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider>
+          {/* I18nProvider will be client-side only and initialized in the client */}
+          {children}
+        </ReduxProvider>
       </body>
     </html>
   );
