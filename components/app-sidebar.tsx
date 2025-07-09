@@ -12,6 +12,7 @@ import {
   Shield,
   Trophy,
   Truck,
+  UserCog,
   Users,
   Warehouse,
 } from "lucide-react"
@@ -71,6 +72,11 @@ const menuItems = [
     title: "Staff Management",
     icon: Users,
     id: "staff",
+  },
+  {
+    title: "HR Management",
+    icon: UserCog,
+    id: "hr",
   },
   {
     title: "Rental and Acquisitions",

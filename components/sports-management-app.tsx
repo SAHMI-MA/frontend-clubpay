@@ -20,6 +20,7 @@ import { SupplierManagement } from "./supplier-management"
 import { ContractManagement } from "./contract-management"
 import { ObjectivesManagement } from "./objective-management"
 import { I18nProvider } from "@/lib/i18n/provider"
+import { HRManagement } from "./hr-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -57,6 +58,8 @@ export function SportsManagementApp() {
         return <PlayerManagement />
       case "staff":
         return <StaffManagement />
+      case "hr":
+        return <HRManagement />
       case "rentals":
         return <RentalSupplierManagement />
       case "suppliers":
