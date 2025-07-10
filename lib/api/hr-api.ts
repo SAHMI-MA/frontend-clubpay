@@ -22,7 +22,12 @@ function buildQuery(params?: Record<string, any>): string {
 export interface Employee {
   id: number;
   employeeId: string;
-  user: { id: number; fullName: string; email?: string };
+  user: {
+    email: string;
+    firstName: string;
+    lastName: string; 
+    id: number; 
+};
   department: { id: number; name: string; code?: string };
   position: { id: number; title: string; level?: string };
   status: EmployeeStatus;

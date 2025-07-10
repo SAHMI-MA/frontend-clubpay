@@ -24,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Users,
   Building2,
@@ -47,6 +46,7 @@ import {
 import { hrApi, Employee, Department, Position } from "@/lib/api/hr-api"
 import { Combobox } from "@/components/ui/combobox"
 import { userService, User } from "@/lib/services"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 // statusColors and statusIcons moved above for use
 const statusColors = {
@@ -98,22 +98,24 @@ export function HRManagement() {
 
   // Employee form state
   const [employeeForm, setEmployeeForm] = useState({
-    employeeId: "",
     userId: "",
     departmentId: "",
     positionId: "",
+    employeeId: "",
     hireDate: "",
+    dateOfBirth: "",
+    nationalId: "",
+    status: "Active",
     phoneNumber: "",
     personalEmail: "",
     address: "",
-    dateOfBirth: "",
     maritalStatus: "Single",
     emergencyContactName: "",
     emergencyContactPhone: "",
     emergencyContactRelationship: "",
-    nationalId: "",
     bankAccountNumber: "",
     bankName: "",
+    notes: "",
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
   const [employeeFormError, setEmployeeFormError] = useState<string | null>(null)
@@ -139,17 +141,35 @@ export function HRManagement() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
 
+  // Add state for employee delete dialog
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
+  const [isDeletingEmployee, setIsDeletingEmployee] = useState(false)
+  const [deleteEmployeeError, setDeleteEmployeeError] = useState<string | null>(null)
+
+  // Add state for department and position delete dialogs
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
+  const [isDeletingDepartment, setIsDeletingDepartment] = useState(false)
+  const [deleteDepartmentError, setDeleteDepartmentError] = useState<string | null>(null)
+
+  const [positionToDelete, setPositionToDelete] = useState<Position | null>(null)
+  const [isDeletingPosition, setIsDeletingPosition] = useState(false)
+  const [deletePositionError, setDeletePositionError] = useState<string | null>(null)
+
   useEffect(() => {
     setLoading(true)
     setError(null)
     Promise.all([
-      hrApi.getEmployees().catch((e) => { setError("Failed to load employees"); return [] }),
       hrApi.getDepartments().catch((e) => { setError("Failed to load departments"); return [] }),
       hrApi.getPositions ? hrApi.getPositions().catch((e) => { setError("Failed to load positions"); return [] }) : Promise.resolve([])
-    ]).then(([emp, dept, pos]) => {
-      setEmployees(emp)
+    ]).then(([dept, pos]) => {
       setDepartments(dept)
       setPositions(pos)
+      // Flatten employees from all departments
+      const allEmployees = dept.flatMap((d: any) => (d.employees ?? []).map((emp: any) => ({
+        ...emp,
+        department: { id: d.id, name: d.name, code: d.code }
+      })))
+      setEmployees(allEmployees)
       setLoading(false)
     })
   }, [])
@@ -165,10 +185,11 @@ export function HRManagement() {
 
   // Filter employees based on search and filters
   const filteredEmployees = employees.filter((employee) => {
+    const user = employee.user;
+    const userEmail = user && 'email' in user && user.email ? user.email : '';
     const matchesSearch =
-      (employee.user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.user.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+      employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      userEmail.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || employee.status === statusFilter
     const matchesDepartment = departmentFilter === "all" || employee.department.id.toString() === departmentFilter
@@ -268,44 +289,62 @@ export function HRManagement() {
   useEffect(() => {
     if (selectedEmployee) {
       setEmployeeForm({
+        userId: selectedEmployee.user?.id?.toString() || "",
+        departmentId: selectedEmployee.department?.id?.toString() || "",
+        positionId: selectedEmployee.position?.id?.toString() || "",
         employeeId: selectedEmployee.employeeId || "",
-        userId: selectedEmployee.user.id?.toString() || "",
-        departmentId: selectedEmployee.department.id?.toString() || "",
-        positionId: selectedEmployee.position.id?.toString() || "",
-        hireDate: selectedEmployee.hireDate?.slice(0, 10) || "",
+        hireDate: selectedEmployee.hireDate || "",
+        dateOfBirth: selectedEmployee.dateOfBirth || "",
+        nationalId: selectedEmployee.nationalId || "",
+        status: selectedEmployee.status || "Active",
         phoneNumber: selectedEmployee.phoneNumber || "",
         personalEmail: selectedEmployee.personalEmail || "",
         address: selectedEmployee.address || "",
-        dateOfBirth: selectedEmployee.dateOfBirth?.slice(0, 10) || "",
         maritalStatus: selectedEmployee.maritalStatus || "Single",
         emergencyContactName: selectedEmployee.emergencyContactName || "",
         emergencyContactPhone: selectedEmployee.emergencyContactPhone || "",
         emergencyContactRelationship: selectedEmployee.emergencyContactRelationship || "",
-        nationalId: selectedEmployee.nationalId || "",
         bankAccountNumber: selectedEmployee.bankAccountNumber || "",
         bankName: selectedEmployee.bankName || "",
+        notes: selectedEmployee.notes || "",
       })
     } else {
       setEmployeeForm({
-        employeeId: "",
         userId: "",
         departmentId: "",
         positionId: "",
-        hireDate: "",
+        employeeId: Math.random().toString(36).substring(2, 10).toUpperCase(), // Generate random employeeId
+        hireDate: new Date().toISOString().slice(0, 10), // Default to today
+        dateOfBirth: "",
+        nationalId: "",
+        status: "Active",
         phoneNumber: "",
         personalEmail: "",
         address: "",
-        dateOfBirth: "",
         maritalStatus: "Single",
         emergencyContactName: "",
         emergencyContactPhone: "",
         emergencyContactRelationship: "",
-        nationalId: "",
         bankAccountNumber: "",
         bankName: "",
+        notes: "",
       })
     }
   }, [selectedEmployee, showEmployeeDialog])
+
+  // Generate Employee ID when department changes (for create only)
+  useEffect(() => {
+    if (!isEditEmployee && employeeForm.departmentId) {
+      const dept = departments.find((d) => d.id.toString() === employeeForm.departmentId)
+      if (dept && dept.code) {
+        const prefix = dept.code.substring(0, 2).toUpperCase()
+        const randomNum = Math.floor(10000 + Math.random() * 90000)
+        setEmployeeForm((prev) => ({ ...prev, employeeId: `${prefix}${randomNum}` }))
+      }
+    }
+    // Only run when departmentId changes and not editing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeForm.departmentId, isEditEmployee])
 
   function handleEmployeeFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setEmployeeForm({ ...employeeForm, [e.target.id]: e.target.value })
@@ -319,35 +358,48 @@ export function HRManagement() {
     setIsSubmittingEmployee(true)
     setEmployeeFormError(null)
     try {
-      // In handleEmployeeFormSubmit, generate a random employeeId if creating
-      let employeeId = employeeForm.employeeId
-      if (!isEditEmployee) {
-        employeeId = `EMP${Math.floor(10000 + Math.random() * 90000)}`
-      }
-      const payload = {
-        employeeId,
-        userId: Number(employeeForm.userId),
-        departmentId: Number(employeeForm.departmentId),
-        positionId: Number(employeeForm.positionId),
-        hireDate: employeeForm.hireDate,
-        phoneNumber: employeeForm.phoneNumber,
-        personalEmail: employeeForm.personalEmail,
-        address: employeeForm.address,
-        dateOfBirth: employeeForm.dateOfBirth,
-        maritalStatus: employeeForm.maritalStatus as import("@/lib/api/hr-api").MaritalStatus,
-        emergencyContactName: employeeForm.emergencyContactName,
-        emergencyContactPhone: employeeForm.emergencyContactPhone,
-        emergencyContactRelationship: employeeForm.emergencyContactRelationship,
-        nationalId: employeeForm.nationalId,
-        bankAccountNumber: employeeForm.bankAccountNumber,
-        bankName: employeeForm.bankName,
-      }
-      let employee: import("@/lib/api/hr-api").Employee
       if (isEditEmployee) {
-        employee = await hrApi.updateEmployee(selectedEmployee.id, payload)
+        // PATCH: only allowed fields
+        const payload = {
+          departmentId: Number(employeeForm.departmentId),
+          positionId: Number(employeeForm.positionId),
+          status: employeeForm.status as import("@/lib/api/hr-api").EmployeeStatus,
+          phoneNumber: employeeForm.phoneNumber,
+          personalEmail: employeeForm.personalEmail,
+          address: employeeForm.address,
+          maritalStatus: employeeForm.maritalStatus as import("@/lib/api/hr-api").MaritalStatus,
+          emergencyContactName: employeeForm.emergencyContactName,
+          emergencyContactPhone: employeeForm.emergencyContactPhone,
+          emergencyContactRelationship: employeeForm.emergencyContactRelationship,
+          bankAccountNumber: employeeForm.bankAccountNumber,
+          bankName: employeeForm.bankName,
+          notes: employeeForm.notes,
+        }
+        const employee = await hrApi.updateEmployee(selectedEmployee.id, payload)
         setEmployees((prev) => prev.map((e) => (e.id === employee.id ? employee : e)))
       } else {
-        employee = await hrApi.createEmployee(payload)
+        // CREATE: all required fields
+        const payload = {
+          userId: Number(employeeForm.userId),
+          departmentId: Number(employeeForm.departmentId),
+          positionId: Number(employeeForm.positionId),
+          employeeId: employeeForm.employeeId,
+          hireDate: employeeForm.hireDate,
+          dateOfBirth: employeeForm.dateOfBirth,
+          nationalId: employeeForm.nationalId,
+          status: employeeForm.status as import("@/lib/api/hr-api").EmployeeStatus,
+          phoneNumber: employeeForm.phoneNumber,
+          personalEmail: employeeForm.personalEmail,
+          address: employeeForm.address,
+          maritalStatus: employeeForm.maritalStatus as import("@/lib/api/hr-api").MaritalStatus,
+          emergencyContactName: employeeForm.emergencyContactName,
+          emergencyContactPhone: employeeForm.emergencyContactPhone,
+          emergencyContactRelationship: employeeForm.emergencyContactRelationship,
+          bankAccountNumber: employeeForm.bankAccountNumber,
+          bankName: employeeForm.bankName,
+          notes: employeeForm.notes,
+        }
+        const employee = await hrApi.createEmployee(payload)
         setEmployees((prev) => [...prev, employee])
       }
       setShowEmployeeDialog(false)
@@ -359,8 +411,9 @@ export function HRManagement() {
     }
   }
 
+  // Handle employee delete
   async function handleDeleteEmployee(id: number) {
-    if (!window.confirm("Are you sure you want to delete this employee?")) return
+    // if (!window.confirm("Are you sure you want to delete this employee?")) return
     try {
       await hrApi.deleteEmployee(id)
       setEmployees((prev) => prev.filter((e) => e.id !== id))
@@ -432,6 +485,54 @@ export function HRManagement() {
       setPositionFormError(err?.message || "Failed to save position")
     } finally {
       setIsSubmittingPosition(false)
+    }
+  }
+
+  // Confirm employee deletion
+  async function handleDeleteEmployeeConfirmed() {
+    if (!employeeToDelete) return;
+    setIsDeletingEmployee(true);
+    setDeleteEmployeeError(null);
+    try {
+      await hrApi.deleteEmployee(employeeToDelete.id);
+      setEmployees((prev) => prev.filter((e) => e.id !== employeeToDelete.id));
+      setEmployeeToDelete(null);
+    } catch (err: any) {
+      setDeleteEmployeeError(err?.message || "Failed to delete employee");
+    } finally {
+      setIsDeletingEmployee(false);
+    }
+  }
+
+  // Confirm department deletion
+  async function handleDeleteDepartmentConfirmed() {
+    if (!departmentToDelete) return;
+    setIsDeletingDepartment(true);
+    setDeleteDepartmentError(null);
+    try {
+      await hrApi.deleteDepartment(departmentToDelete.id);
+      setDepartments((prev) => prev.filter((d) => d.id !== departmentToDelete.id));
+      setDepartmentToDelete(null);
+    } catch (err: any) {
+      setDeleteDepartmentError(err?.message || "Failed to delete department");
+    } finally {
+      setIsDeletingDepartment(false);
+    }
+  }
+
+  // Confirm position deletion
+  async function handleDeletePositionConfirmed() {
+    if (!positionToDelete) return;
+    setIsDeletingPosition(true);
+    setDeletePositionError(null);
+    try {
+      await hrApi.deletePosition(positionToDelete.id);
+      setPositions((prev) => prev.filter((p) => p.id !== positionToDelete.id));
+      setPositionToDelete(null);
+    } catch (err: any) {
+      setDeletePositionError(err?.message || "Failed to delete position");
+    } finally {
+      setIsDeletingPosition(false);
     }
   }
 
@@ -508,7 +609,7 @@ export function HRManagement() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">    
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="employees">Employees</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
@@ -540,22 +641,31 @@ export function HRManagement() {
                     </DialogHeader>
                     <form onSubmit={handleEmployeeFormSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="userId">User</Label>
-                          <Combobox
-                            options={users.map((u) => ({
-                              value: u.id.toString(),
-                              label: `${u.firstName} ${u.lastName}`,
-                              keywords: `${u.email} ${u.firstName} ${u.lastName}`
-                            }))}
-                            value={employeeForm.userId}
-                            onValueChange={(v) => handleEmployeeSelectChange("userId", v)}
-                            placeholder={usersLoading ? "Loading users..." : "Select user"}
-                            searchPlaceholder="Search users..."
-                            emptyText={usersLoading ? "Loading..." : usersError || "No users found"}
-                            disabled={usersLoading}
-                          />
-                        </div>
+                        {!isEditEmployee && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="userId">User</Label>
+                              <Combobox
+                                value={employeeForm.userId}
+                                onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
+                                options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
+                                placeholder="Select user"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="hireDate">Hire Date</Label>
+                              <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                              <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="nationalId">National ID</Label>
+                              <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
+                            </div>
+                          </>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="departmentId">Department</Label>
                           <Select value={employeeForm.departmentId} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
@@ -587,8 +697,19 @@ export function HRManagement() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="hireDate">Hire Date</Label>
-                          <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} required />
+                          <Label htmlFor="status">Status</Label>
+                          <Select value={employeeForm.status} onValueChange={(v) => handleEmployeeSelectChange("status", v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                              <SelectItem value="On Leave">On Leave</SelectItem>
+                              <SelectItem value="Terminated">Terminated</SelectItem>
+                              <SelectItem value="Suspended">Suspended</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phoneNumber">Phone Number</Label>
@@ -601,10 +722,6 @@ export function HRManagement() {
                         <div className="space-y-2">
                           <Label htmlFor="address">Address</Label>
                           <Textarea id="address" placeholder="123 Main St, Apt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                          <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="maritalStatus">Marital Status</Label>
@@ -633,16 +750,16 @@ export function HRManagement() {
                           <Input id="emergencyContactRelationship" placeholder="Brother" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="nationalId">National ID</Label>
-                          <Input id="nationalId" placeholder="123456789" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
                           <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
                           <Input id="bankAccountNumber" placeholder="Account Number" value={employeeForm.bankAccountNumber} onChange={handleEmployeeFormChange} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="bankName">Bank Name</Label>
                           <Input id="bankName" placeholder="Bank Name" value={employeeForm.bankName} onChange={handleEmployeeFormChange} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="notes">Notes</Label>
+                          <Textarea id="notes" placeholder="Additional notes" value={employeeForm.notes} onChange={handleEmployeeFormChange} />
                         </div>
                       </div>
                       {employeeFormError && <div className="text-red-500 text-sm mb-2">{employeeFormError}</div>}
@@ -716,28 +833,38 @@ export function HRManagement() {
                   <TableBody>
                     {filteredEmployees.map((employee) => {
                       const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons]
+                      // Show user info if user object is present and has at least firstName, lastName, or email
+                      const user = employee.user;
+                      let userDisplay = "No user linked";
+                      if (user) {
+                        if (user.firstName || user.lastName) {
+                          userDisplay = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+                        } else if (user.email) {
+                          userDisplay = user.email;
+                        }
+                      }
                       return (
                         <TableRow key={employee.id}>
                           <TableCell>
                             <div>
                               <div className="font-medium">
-                                {employee.user.fullName}
+                                {userDisplay}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {employee.employeeId} • {employee.user.email}
+                                {employee.employeeId}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{employee.department.name}</div>
-                              <div className="text-sm text-gray-500">{employee.department.code}</div>
+                              <div className="font-medium">{employee.department?.name ?? ""}</div>
+                              <div className="text-sm text-gray-500">{employee.department?.code ?? ""}</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{employee.position.title}</div>
-                              <div className="text-sm text-gray-500">{employee.position.level}</div>
+                              <div className="font-medium">{employee.position?.title ?? ""}</div>
+                              <div className="text-sm text-gray-500">{employee.position?.level ?? ""}</div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -749,7 +876,7 @@ export function HRManagement() {
                           <TableCell>
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                              {new Date(employee.hireDate).toLocaleDateString()}
+                              {employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : ""}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -776,7 +903,7 @@ export function HRManagement() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => handleDeleteEmployee(employee.id)}>
+                              <Button variant="outline" size="sm" onClick={() => setEmployeeToDelete(employee)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -872,7 +999,7 @@ export function HRManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteDepartment(department.id)}>
+                          <Button variant="outline" size="sm" onClick={() => setDepartmentToDelete(department)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -900,11 +1027,18 @@ export function HRManagement() {
                         <div className="pt-2 border-t">
                           <div className="text-sm font-medium">Employees:</div>
                           <div className="mt-1 space-y-1">
-                            {(department.employees?.slice(0, 3) ?? []).map((emp: any) => (
-                              <div key={emp.id} className="text-xs text-gray-600">
-                                {emp.user.fullName} - {emp.position.title}
-                              </div>
-                            ))}
+                            {(department.employees?.slice(0, 3) ?? []).map((emp: any) => {
+                              const user = emp.user;
+                              const position = emp.position;
+                              const userDisplay = user
+                                ? `${user.firstName || ""} ${user.lastName || ""} (${user.email || "No email"})`
+                                : "No user linked";
+                              return (
+                                <div key={emp.id} className="text-xs text-gray-700 dark:text-gray-300">
+                                  {userDisplay} - {position?.title ?? "No position"}
+                                </div>
+                              );
+                            })}
                             {(department.employees?.length ?? 0) > 3 && (
                               <div className="text-xs text-gray-500">+{(department.employees?.length ?? 0) - 3} more</div>
                             )}
@@ -1071,7 +1205,7 @@ export function HRManagement() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => setPositionToDelete(position)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -1085,6 +1219,102 @@ export function HRManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Employee Delete Confirmation Dialog */}
+      <Dialog open={!!employeeToDelete} onOpenChange={(open) => { if (!open) setEmployeeToDelete(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Employee</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this employee? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteEmployeeError && <div className="text-red-500 text-sm mb-2">{deleteEmployeeError}</div>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmployeeToDelete(null)} disabled={isDeletingEmployee}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteEmployeeConfirmed} disabled={isDeletingEmployee}>
+              {isDeletingEmployee ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Department Delete Confirmation Dialog */}
+      <Dialog open={!!departmentToDelete} onOpenChange={open => { if (!open) setDepartmentToDelete(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Department</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this department? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteDepartmentError && <div className="text-red-500 text-sm mb-2">{deleteDepartmentError}</div>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepartmentToDelete(null)} disabled={isDeletingDepartment}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!departmentToDelete) return;
+                setIsDeletingDepartment(true);
+                setDeleteDepartmentError(null);
+                try {
+                  await hrApi.deleteDepartment(departmentToDelete.id);
+                  setDepartments(prev => prev.filter(d => d.id !== departmentToDelete.id));
+                  setDepartmentToDelete(null);
+                } catch (err: any) {
+                  setDeleteDepartmentError(err?.message || "Failed to delete department");
+                } finally {
+                  setIsDeletingDepartment(false);
+                }
+              }}
+              disabled={isDeletingDepartment}
+            >
+              {isDeletingDepartment ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Position Delete Confirmation Dialog */}
+      <Dialog open={!!positionToDelete} onOpenChange={open => { if (!open) setPositionToDelete(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Position</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this position? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deletePositionError && <div className="text-red-500 text-sm mb-2">{deletePositionError}</div>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPositionToDelete(null)} disabled={isDeletingPosition}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!positionToDelete) return;
+                setIsDeletingPosition(true);
+                setDeletePositionError(null);
+                try {
+                  await hrApi.deletePosition(positionToDelete.id);
+                  setPositions(prev => prev.filter(p => p.id !== positionToDelete.id));
+                  setPositionToDelete(null);
+                } catch (err: any) {
+                  setDeletePositionError(err?.message || "Failed to delete position");
+                } finally {
+                  setIsDeletingPosition(false);
+                }
+              }}
+              disabled={isDeletingPosition}
+            >
+              {isDeletingPosition ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
