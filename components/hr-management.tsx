@@ -116,6 +116,7 @@ export function HRManagement() {
     bankAccountNumber: "",
     bankName: "",
     notes: "",
+    currentSalary: ""
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
   const [employeeFormError, setEmployeeFormError] = useState<string | null>(null)
@@ -160,16 +161,13 @@ export function HRManagement() {
     setError(null)
     Promise.all([
       hrApi.getDepartments().catch((e) => { setError("Failed to load departments"); return [] }),
-      hrApi.getPositions ? hrApi.getPositions().catch((e) => { setError("Failed to load positions"); return [] }) : Promise.resolve([])
-    ]).then(([dept, pos]) => {
+      hrApi.getPositions ? hrApi.getPositions().catch((e) => { setError("Failed to load positions"); return [] }) : Promise.resolve([]),
+      hrApi.getEmployees().catch((e) => { setError("Failed to load employees"); return [] })
+    ]).then(([dept, pos, empList]) => {
       setDepartments(dept)
       setPositions(pos)
-      // Flatten employees from all departments
-      const allEmployees = dept.flatMap((d: any) => (d.employees ?? []).map((emp: any) => ({
-        ...emp,
-        department: { id: d.id, name: d.name, code: d.code }
-      })))
-      setEmployees(allEmployees)
+      // Use backend employees directly
+      setEmployees(empList)
       setLoading(false)
     })
   }, [])
@@ -307,6 +305,7 @@ export function HRManagement() {
         bankAccountNumber: selectedEmployee.bankAccountNumber || "",
         bankName: selectedEmployee.bankName || "",
         notes: selectedEmployee.notes || "",
+        currentSalary: selectedEmployee.currentSalary?.toString() || ""
       })
     } else {
       setEmployeeForm({
@@ -328,6 +327,7 @@ export function HRManagement() {
         bankAccountNumber: "",
         bankName: "",
         notes: "",
+        currentSalary: ""
       })
     }
   }, [selectedEmployee, showEmployeeDialog])
@@ -374,6 +374,7 @@ export function HRManagement() {
           bankAccountNumber: employeeForm.bankAccountNumber,
           bankName: employeeForm.bankName,
           notes: employeeForm.notes,
+          currentSalary: employeeForm.currentSalary.toString()
         }
         const employee = await hrApi.updateEmployee(selectedEmployee.id, payload)
         setEmployees((prev) => prev.map((e) => (e.id === employee.id ? employee : e)))
@@ -398,6 +399,7 @@ export function HRManagement() {
           bankAccountNumber: employeeForm.bankAccountNumber,
           bankName: employeeForm.bankName,
           notes: employeeForm.notes,
+          currentSalary: employeeForm.currentSalary.toString()
         }
         const employee = await hrApi.createEmployee(payload)
         setEmployees((prev) => [...prev, employee])
@@ -667,6 +669,10 @@ export function HRManagement() {
                           </>
                         )}
                         <div className="space-y-2">
+                          <Label htmlFor="currentSalary">Current Salary (MAD)</Label>
+                          <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Enter current salary" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
+                        </div>
+                        <div className="space-y-2">
                           <Label htmlFor="departmentId">Department</Label>
                           <Select value={employeeForm.departmentId} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
                             <SelectTrigger>
@@ -826,6 +832,7 @@ export function HRManagement() {
                       <TableHead>Position</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Hire Date</TableHead>
+                      <TableHead>Current Salary (MAD)</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -878,6 +885,9 @@ export function HRManagement() {
                               <Calendar className="h-4 w-4 mr-2 text-gray-400" />
                               {employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : ""}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{employee.currentSalary?.toLocaleString()} MAD</div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-1">

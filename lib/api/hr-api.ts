@@ -27,7 +27,8 @@ export interface Employee {
     firstName: string;
     lastName: string; 
     id: number; 
-};
+  };
+  currentSalary: string;
   department: { id: number; name: string; code?: string };
   position: { id: number; title: string; level?: string };
   status: EmployeeStatus;
@@ -62,11 +63,13 @@ export interface CreateEmployeeRequest {
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
   nationalId: string;
+  currentSalary: string;
 }
 export type UpdateEmployeeRequest = Partial<Omit<CreateEmployeeRequest, "employeeId" | "userId">> & {
   departmentId?: number;
   positionId?: number;
   maritalStatus?: MaritalStatus;
+  currentSalary?: string;
 };
 export interface UpdateEmployeeStatusRequest {
   status: EmployeeStatus;

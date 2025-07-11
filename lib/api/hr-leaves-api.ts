@@ -1,36 +1,57 @@
 // lib/api/hr-leaves-api.ts
 import { apiConfig } from "../api-config";
 import { getAuthHeaders as getAuthHeadersUtil } from "../../utils/auth";
+import { Employee } from "./hr-api";
 
 const BASE_URL = apiConfig.baseUrl || "http://localhost:8080";
 
 // --- Types ---
-export type LeaveType = "annual" | "sick" | "maternity" | "paternity" | "personal" | "training";
+export enum LeaveType {
+  VACATION = 'vacation',
+  SICK_LEAVE = 'sick leave',
+  PERSONAL = 'personal',
+  MATERNITY = 'maternity',
+  PATERNITY = 'paternity',
+  BEREAVEMENT = 'bereavement',
+  EMERGENCY = 'emergency',
+  UNPAID = 'unpaid',
+  COMPENSATORY = 'compensatory',
+  SABBATICAL = 'sabbatical'
+}
+
 export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface LeaveRequest {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  position: string;
+  id: number;
+  employeeId: number;
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
-  days: number;
+  daysRequested: number;
   reason: string;
   status: LeaveStatus;
-  requestDate: string;
-  approvedBy?: string;
-  approvalDate?: string;
-  comments?: string;
+  approvedByUserId?: number | null;
+  approvedAt?: string | null;
+  approverComments?: string | null;
+  isHalfDay?: boolean;
+  halfDayPeriod?: string | null;
+  documentPath?: string | null;
+  emergencyContact?: string | null;
+  coveringEmployeeId?: number | null;
+  isPaidLeave?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  employee: Employee;
 }
 
 export interface CreateLeaveRequestDto {
-  employeeId: string;
+  id: number;
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason: string;
+  daysRequested: number;
+  status?: LeaveStatus;
 }
 
 export interface UpdateLeaveRequestDto {
@@ -77,6 +98,28 @@ export const hrLeavesApi = {
     const res = await fetch(`${BASE_URL}/hr/leaves/${id}`, {
       method: "DELETE",
       headers: getAuthHeadersUtil(),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  // Approve leave request
+  async approveLeave(id: string, data: UpdateLeaveRequestDto): Promise<LeaveRequest> {
+    const res = await fetch(`${BASE_URL}/hr/leaves/${id}/approve`, {
+      method: "PATCH",
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  // Reject leave request
+  async rejectLeave(id: string, data: UpdateLeaveRequestDto): Promise<LeaveRequest> {
+    const res = await fetch(`${BASE_URL}/hr/leaves/${id}/reject`, {
+      method: "PATCH",
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
     return res.json();

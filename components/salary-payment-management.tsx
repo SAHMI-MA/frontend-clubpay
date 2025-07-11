@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DollarSign, Plus, Search, Filter, Download, Eye, CheckCircle, XCircle, Clock, FileText } from "lucide-react"
+import { DollarSign, Plus, Search, Filter, Download, Eye, CheckCircle, XCircle, Clock, FileText, Trash2 } from "lucide-react"
 import {
   listSalaryPayments,
   createSalaryPayment,
@@ -59,35 +59,25 @@ export function SalaryPaymentManagement() {
     payment: null,
   })
 
-  const [employees] = useState<Employee[]>([
-    {
-      id: "EMP001",
-      name: "John Smith",
-      position: "Head Coach",
-      baseSalary: 5000,
-      taxRate: 0.18,
-      benefits: 200,
-      bankAccount: "****1234",
-    },
-    {
-      id: "EMP002",
-      name: "Sarah Johnson",
-      position: "Assistant Coach",
-      baseSalary: 3500,
-      taxRate: 0.15,
-      benefits: 150,
-      bankAccount: "****5678",
-    },
-    {
-      id: "EMP003",
-      name: "Mike Wilson",
-      position: "Fitness Trainer",
-      baseSalary: 2800,
-      taxRate: 0.12,
-      benefits: 120,
-      bankAccount: "****9012",
-    },
-  ])
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  useEffect(() => {
+    import("@/lib/api/hr-api").then(({ hrApi }) => {
+      hrApi.getEmployees()
+        .then((empList) => {
+          // Map backend employees to local Employee type
+          setEmployees(empList.map((e: any) => ({
+            id: e.employeeId || e.id?.toString() || "",
+            name: (e.user?.firstName ? e.user.firstName : "") + (e.user?.lastName ? " " + e.user.lastName : ""),
+            position: e.position?.title || "",
+            baseSalary: Number(e.currentSalary) || 0,
+            taxRate: e.taxRate || 0,
+            benefits: e.benefits || 0,
+            bankAccount: e.bankAccountNumber ? "****" + e.bankAccountNumber.slice(-4) : "",
+          })));
+        })
+        .catch(() => setEmployees([]));
+    });
+  }, []);
 
   // Fetch payments from backend
   useEffect(() => {
@@ -99,13 +89,20 @@ export function SalaryPaymentManagement() {
   }, [])
 
   const filteredPayments = payments.filter((payment) => {
+    // Use nested employee and string fields from API
+    const employeeName = payment.employee?.employeeId
+      ? payment.employee.employeeId.toLowerCase()
+      : payment.employeeId?.toLowerCase() || "";
+    let id = "";
+    if (typeof payment.id === "string" || typeof payment.id === "number") {
+      id = String(payment.id).toLowerCase();
+    }
     const matchesSearch =
-      payment.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      employeeName.includes(searchTerm.toLowerCase()) ||
+      id.includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -166,7 +163,7 @@ export function SalaryPaymentManagement() {
       const created = await createSalaryPayment(body)
       setPayments((prev) => [
         ...prev,
-        { ...created, deductions: totalDeductions, grossPay: created.grossPay, netPay: created.netPay },
+        created,
       ])
       setShowNewPaymentDialog(false)
       setNewPayment({
@@ -183,13 +180,23 @@ export function SalaryPaymentManagement() {
   }
 
   // Replace handleProcessPayment and handleFailPayment with API calls
+  // Add handleCancelPayment to refresh page after canceling
+  const handleCancelPayment = async (paymentId: string) => {
+    try {
+      const updated = await updateSalaryPayment(paymentId, { status: "cancelled" })
+      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)))
+      window.location.reload(); // Refresh page immediately after cancellation
+    } catch (e) {
+      setError("Failed to cancel payment")
+    }
+  }
   const handleProcessPayment = async (paymentId: string) => {
     try {
       const updated = await updateSalaryPayment(paymentId, {
-        status: "processed",
-        processedDate: new Date().toISOString().split("T")[0],
+        status: "processed"
       })
       setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)))
+      window.location.reload(); // Refresh page immediately after approval
     } catch (e) {
       setError("Failed to process payment")
     }
@@ -207,15 +214,15 @@ export function SalaryPaymentManagement() {
   const handleDeletePayment = async () => {
     if (!deleteDialog.payment) return
     try {
-      await deleteSalaryPayment(deleteDialog.payment.id)
-      setPayments((prev) => prev.filter((p) => p.id !== deleteDialog.payment!.id))
+      await deleteSalaryPayment(String(deleteDialog.payment!.id))
+      setPayments((prev) => prev.filter((p) => String(p.id) !== String(deleteDialog.payment!.id)))
       setDeleteDialog({ open: false, payment: null })
     } catch (e) {
       setError("Failed to delete payment")
     }
   }
 
-  const totalPayments = payments.reduce((sum, payment) => sum + payment.netPay, 0)
+  const totalPayments = payments.reduce((sum, payment) => sum + Number(payment.amount), 0)
   const pendingPayments = payments.filter((p) => p.status === "pending").length
   const processedPayments = payments.filter((p) => p.status === "processed").length
   const failedPayments = payments.filter((p) => p.status === "failed").length
@@ -326,15 +333,15 @@ export function SalaryPaymentManagement() {
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Gross Pay:</span>
-                    <p className="font-semibold">${calculatePayment().grossPay.toLocaleString()}</p>
+                    <p className="font-semibold">{calculatePayment().grossPay.toLocaleString()} MAD</p>
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Deductions:</span>
-                    <p className="font-semibold">${calculatePayment().totalDeductions.toLocaleString()}</p>
+                    <p className="font-semibold">{calculatePayment().totalDeductions.toLocaleString()} MAD</p>
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Net Pay:</span>
-                    <p className="font-semibold text-green-600">${calculatePayment().netPay.toLocaleString()}</p>
+                    <p className="font-semibold text-green-600">{calculatePayment().netPay.toLocaleString()} MAD</p>
                   </div>
                 </div>
               </div>
@@ -359,7 +366,7 @@ export function SalaryPaymentManagement() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalPayments.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalPayments.toLocaleString()} MAD</div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
@@ -440,67 +447,70 @@ export function SalaryPaymentManagement() {
                   <TableHead>Payment ID</TableHead>
                   <TableHead>Employee</TableHead>
                   <TableHead>Pay Period</TableHead>
-                  <TableHead>Gross Pay</TableHead>
-                  <TableHead>Deductions</TableHead>
-                  <TableHead>Net Pay</TableHead>
-                  <TableHead>Method</TableHead>
+                  <TableHead>Gross Pay (MAD)</TableHead>
+                  <TableHead>Deductions (MAD)</TableHead>
+                  <TableHead>Net Pay (MAD)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell className="font-medium">{payment.id}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{payment.employeeName}</div>
-                        <div className="text-sm text-gray-500">{payment.position}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{payment.payPeriod}</TableCell>
-                    <TableCell>${payment.grossPay.toLocaleString()}</TableCell>
-                    <TableCell>${payment.deductions.toLocaleString()}</TableCell>
-                    <TableCell className="font-semibold text-green-600">${payment.netPay.toLocaleString()}</TableCell>
-                    <TableCell>{payment.paymentMethod}</TableCell>
-                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedPayment(payment)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {payment.status === "pending" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleProcessPayment(payment.id)}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleFailPayment(payment.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => setDeleteDialog({ open: true, payment })}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredPayments.map((payment) => {
+                  const employeeName = payment.employee?.employeeId || payment.employeeId || "";
+                  const grossPay = Number(payment.baseSalary) + Number(payment.overtime) + Number(payment.bonuses);
+                  const deductions = 0; // If you have deduction logic, update here
+                  const netPay = Number(payment.amount);
+                  return (
+                    <TableRow key={payment.id}>
+                      <TableCell className="font-medium">{payment.id}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{employeeName}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{payment.payPeriod}</TableCell>
+                      <TableCell>{grossPay.toLocaleString()} MAD</TableCell>
+                      <TableCell>{deductions.toLocaleString()} MAD</TableCell>
+                      <TableCell className="font-semibold text-green-600">{netPay.toLocaleString()} MAD</TableCell>
+                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedPayment(payment)}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {payment.status === "pending" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleProcessPayment(String(payment.id))}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleFailPayment(String(payment.id))}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => setDeleteDialog({ open: true, payment })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -524,8 +534,7 @@ export function SalaryPaymentManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Employee</Label>
-                    <p className="text-lg font-semibold">{selectedPayment.employeeName}</p>
-                    <p className="text-sm text-gray-600">{selectedPayment.position}</p>
+                    <p className="text-lg font-semibold">{selectedPayment.employee?.employeeId || selectedPayment.employeeId}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Pay Period</Label>
@@ -556,30 +565,30 @@ export function SalaryPaymentManagement() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <Label className="text-sm font-medium text-blue-600">Base Salary</Label>
-                      <p className="text-2xl font-bold text-blue-800">${selectedPayment.baseSalary.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-blue-800">{Number(selectedPayment.baseSalary).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                       <Label className="text-sm font-medium text-green-600">Overtime</Label>
-                      <p className="text-2xl font-bold text-green-800">${selectedPayment.overtime.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-green-800">{Number(selectedPayment.overtime).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                       <Label className="text-sm font-medium text-purple-600">Bonuses</Label>
-                      <p className="text-2xl font-bold text-purple-800">${selectedPayment.bonuses.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-purple-800">{Number(selectedPayment.bonuses).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <Label className="text-sm font-medium text-red-600">Deductions</Label>
-                      <p className="text-2xl font-bold text-red-800">${selectedPayment.deductions.toLocaleString()}</p>
+                      <Label className="text-sm font-medium text-red-600">Amount</Label>
+                      <p className="text-2xl font-bold text-red-800">{Number(selectedPayment.amount).toLocaleString()} MAD</p>
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700">
                     <div className="flex justify-between items-center">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Gross Pay</Label>
-                        <p className="text-xl font-semibold">${selectedPayment.grossPay.toLocaleString()}</p>
+                        <p className="text-xl font-semibold">{(Number(selectedPayment.baseSalary) + Number(selectedPayment.overtime) + Number(selectedPayment.bonuses)).toLocaleString()} MAD</p>
                       </div>
                       <div className="text-right">
                         <Label className="text-sm font-medium text-green-600">Net Pay</Label>
-                        <p className="text-2xl font-bold text-green-800">${selectedPayment.netPay.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-green-800">{Number(selectedPayment.amount).toLocaleString()} MAD</p>
                       </div>
                     </div>
                   </div>
@@ -589,10 +598,6 @@ export function SalaryPaymentManagement() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedPayment(null)}>
                 Close
-              </Button>
-              <Button>
-                <FileText className="w-4 h-4 mr-2" />
-                Download Slip
               </Button>
             </DialogFooter>
           </DialogContent>

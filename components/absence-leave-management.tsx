@@ -34,24 +34,11 @@ import {
   Baby,
   GraduationCap,
 } from "lucide-react"
-import { hrLeavesApi, LeaveRequest as ApiLeaveRequest, CreateLeaveRequestDto, UpdateLeaveRequestDto } from "@/lib/api/hr-leaves-api"
+import { hrApi } from "@/lib/api/hr-api"
+import { hrLeavesApi, CreateLeaveRequestDto, UpdateLeaveRequestDto, LeaveStatus, LeaveType } from "@/lib/api/hr-leaves-api"
+import { useSelector } from "react-redux"
+import { RootState } from "@/lib/redux/store"
 
-interface LeaveRequest {
-  id: string
-  employeeId: string
-  employeeName: string
-  position: string
-  leaveType: "annual" | "sick" | "maternity" | "paternity" | "personal" | "training"
-  startDate: string
-  endDate: string
-  days: number
-  reason: string
-  status: "pending" | "approved" | "rejected" | "cancelled"
-  requestDate: string
-  approvedBy?: string
-  approvalDate?: string
-  comments?: string
-}
 
 interface LeaveBalance {
   employeeId: string
@@ -59,6 +46,97 @@ interface LeaveBalance {
   annual: { total: number; used: number; remaining: number }
   sick: { total: number; used: number; remaining: number }
   personal: { total: number; used: number; remaining: number }
+}
+
+// Match API LeaveRequest type exactly
+interface LeaveRequest {
+  id: number;
+  employeeId: number;
+  leaveType: string; // Accept CamelCase string
+  startDate: string;
+  endDate: string;
+  daysRequested: number;
+  reason: string;
+  status: LeaveStatus;
+  approvedByUserId?: number | null;
+  approvedAt?: string | null;
+  approverComments?: string | null;
+  isHalfDay?: boolean;
+  halfDayPeriod?: string | null;
+  documentPath?: string | null;
+  emergencyContact?: string | null;
+  coveringEmployeeId?: number | null;
+  isPaidLeave?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  employee: any;
+}
+
+// Use backend leave types exactly
+const allowedLeaveTypes = [
+  "vacation",
+  "sick leave",
+  "personal",
+  "maternity",
+  "paternity",
+  "bereavement",
+  "emergency",
+  "unpaid",
+  "compensatory",
+  "sabbatical",
+];
+const sanitizeLeaveType = (type: string): LeaveType => {
+  return allowedLeaveTypes.includes(type) ? (type as LeaveType) : LeaveType.PERSONAL;
+}
+
+// Update leaveTypeOptions to match backend display
+const leaveTypeOptions = [
+  "Vacation",
+  "Sick Leave",
+  "Personal",
+  "Maternity",
+  "Paternity",
+  "Bereavement",
+  "Emergency",
+  "Unpaid",
+  "Compensatory",
+  "Sabbatical",
+]
+const leaveTypeMap: Record<string, string> = {
+  "vacation": "Vacation",
+  "sick leave": "Sick Leave",
+  "personal": "Personal",
+  "maternity": "Maternity",
+  "paternity": "Paternity",
+  "bereavement": "Bereavement",
+  "emergency": "Emergency",
+  "unpaid": "Unpaid",
+  "compensatory": "Compensatory",
+  "sabbatical": "Sabbatical",
+}
+function normalizeLeaveType(type: string): string {
+  return leaveTypeMap[type] || (leaveTypeOptions.includes(type) ? type : "Personal")
+}
+
+// Update all status values and allowedStatusValues to use lowercase: ["pending", "approved", "declined", "rejected", "cancelled"]
+const allowedStatusValues = ["pending", "approved", "rejected", "cancelled"] as const
+function normalizeStatus(status: string): LeaveStatus {
+  const match = allowedStatusValues.find(
+    (s) => s.toLowerCase() === status.toLowerCase()
+  )
+  return match || "pending"
+}
+
+// When displaying status, you can map to PascalCase for UI only:
+function displayStatus(status: string) {
+  switch (status) {
+    case "pending": return "Pending";
+    case "approved": return "Approved";
+    case "declined": return "Declined";
+    case "rejected": return "Rejected";
+    case "cancelled": return "Cancelled";
+    default: return status;
+  }
 }
 
 export function AbsenceLeaveManagement() {
@@ -70,26 +148,82 @@ export function AbsenceLeaveManagement() {
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null)
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false)
   const [newRequest, setNewRequest] = useState({
-    employeeId: "",
-    leaveType: "annual" as const,
+    id: 0,
+    leaveType: "Vacation",
     startDate: "",
     endDate: "",
     reason: "",
   })
+  const [employees, setEmployees] = useState<{ id: number; name: string; position: string }[]>([])
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const currentUser = useSelector((state: RootState) => state.auth.user)
 
   // Fetch leave requests from backend
   useEffect(() => {
-    hrLeavesApi.getLeaves().then(setLeaveRequests)
+    hrLeavesApi.getLeaves().then((data: LeaveRequest[]) => setLeaveRequests(data))
   }, [])
 
+  // Fetch employees from backend
+  useEffect(() => {
+    hrApi.getEmployees().then((data: Array<{ id: number; employeeId: string; user: { firstName: string; lastName: string }; position?: { title?: string } }>) => {
+      setEmployees(
+        data.map((emp) => ({
+          id: emp.id,
+          employeeId: emp.employeeId,
+          name: `${emp.user.firstName} ${emp.user.lastName}`,
+          position: emp.position?.title || "",
+        }))
+      );
+    });
+  }, [])
+
+  // Compute leave balances whenever leaveRequests or employees change
+  useEffect(() => {
+    if (employees.length === 0) return;
+    const balances: LeaveBalance[] = employees.map((emp) => {
+      // Filter leave requests for this employee
+      const empRequests = leaveRequests.filter(r => r.employeeId === emp.id);
+      // Used days for each type
+      const annualUsed = empRequests.filter(r => r.leaveType === "annual" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
+      const sickUsed = empRequests.filter(r => r.leaveType === "sick" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
+      const personalUsed = empRequests.filter(r => r.leaveType === "personal" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
+      // Default totals (can be replaced with backend values if available)
+      const annualTotal = 20;
+      const sickTotal = 10;
+      const personalTotal = 5;
+      return {
+        employeeId: emp.id.toString(),
+        employeeName: emp.name,
+        annual: {
+          total: annualTotal,
+          used: annualUsed,
+          remaining: Math.max(annualTotal - annualUsed, 0),
+        },
+        sick: {
+          total: sickTotal,
+          used: sickUsed,
+          remaining: Math.max(sickTotal - sickUsed, 0),
+        },
+        personal: {
+          total: personalTotal,
+          used: personalUsed,
+          remaining: Math.max(personalTotal - personalUsed, 0),
+        },
+      };
+    });
+    setLeaveBalances(balances);
+  }, [leaveRequests, employees]);
+
   const filteredRequests = leaveRequests.filter((request) => {
+    const employeeName = request.employee?.user ? `${request.employee.user.firstName} ${request.employee.user.lastName}` : "";
+    const position = request.employee?.position?.title || "";
     const matchesSearch =
-      request.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.position.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || request.status === statusFilter
-    const matchesType = typeFilter === "all" || request.leaveType === typeFilter
-    return matchesSearch && matchesStatus && matchesType
+      employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      position.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || request.status === statusFilter;
+    const matchesType = typeFilter === "all" || request.leaveType === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
   })
 
   const getLeaveTypeIcon = (type: string) => {
@@ -112,50 +246,54 @@ export function AbsenceLeaveManagement() {
   }
 
   const getLeaveTypeBadge = (type: string) => {
+    const normalized = normalizeLeaveType(type)
     const colors = {
-      annual: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-      sick: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-      maternity: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
-      paternity: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-      personal: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-      training: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      Vacation: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      "Sick Leave": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+      Maternity: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
+      Paternity: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+      Personal: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
+      Bereavement: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
+      Emergency: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+      Unpaid: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
+      Compensatory: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      Sabbatical: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
     }
-
     return (
-      <Badge className={colors[type as keyof typeof colors]}>
-        {getLeaveTypeIcon(type)}
-        <span className="ml-1 capitalize">{type}</span>
+      <Badge className={colors[normalized as keyof typeof colors] || "bg-gray-100 text-gray-800"}>
+        {normalized}
       </Badge>
     )
   }
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const normalized = status.toLowerCase();
+    switch (normalized) {
       case "approved":
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             <CheckCircle className="w-3 h-3 mr-1" />
             Approved
           </Badge>
-        )
+        );
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
             <Clock className="w-3 h-3 mr-1" />
             Pending
           </Badge>
-        )
+        );
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
           </Badge>
-        )
+        );
       case "cancelled":
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Cancelled</Badge>
+        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Cancelled</Badge>;
       default:
-        return <Badge>Unknown</Badge>
+        return <Badge>Unknown</Badge>;
     }
   }
 
@@ -167,22 +305,60 @@ export function AbsenceLeaveManagement() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
   }
 
+  // Helper to map display value to backend value
+  const displayToBackendLeaveType: Record<string, string> = {
+    "Vacation": "vacation",
+    "Sick Leave": "sick leave",
+    "Personal": "personal",
+    "Maternity": "maternity",
+    "Paternity": "paternity",
+    "Bereavement": "bereavement",
+    "Emergency": "emergency",
+    "Unpaid": "unpaid",
+    "Compensatory": "compensatory",
+    "Sabbatical": "sabbatical",
+  };
+
   const handleCreateRequest = async () => {
-    const days = calculateDays(newRequest.startDate, newRequest.endDate)
+    const daysRequested = calculateDays(newRequest.startDate, newRequest.endDate)
+    // Always use 'Pending' for new requests
+    const status: LeaveStatus = allowedStatusValues[0]
+    // Map display value to backend value
+    const backendLeaveType = displayToBackendLeaveType[newRequest.leaveType] || "personal"
     const payload: CreateLeaveRequestDto = {
-      employeeId: newRequest.employeeId,
-      leaveType: newRequest.leaveType,
+      id: Number(newRequest.id),
+      leaveType: backendLeaveType as LeaveType,
       startDate: newRequest.startDate,
       endDate: newRequest.endDate,
+      daysRequested,
       reason: newRequest.reason,
+      status: "pending" as LeaveStatus,
     }
     try {
       const created = await hrLeavesApi.createLeave(payload)
-      setLeaveRequests((prev) => [...prev, { ...created, days }])
+      // Find the employee object for the created request
+      const employeeObj = employees.find(e => e.id === created.employeeId)
+      setLeaveRequests((prev) => [
+        ...prev,
+        {
+          ...created,
+          leaveType: sanitizeLeaveType(created.leaveType),
+          daysRequested,
+          employee: employeeObj
+            ? {
+                user: {
+                  firstName: employeeObj.name.split(' ')[0] || '',
+                  lastName: employeeObj.name.split(' ').slice(1).join(' ') || '',
+                },
+                position: { title: employeeObj.position || '' },
+              }
+            : undefined,
+        },
+      ])
       setShowNewRequestDialog(false)
       setNewRequest({
-        employeeId: "",
-        leaveType: "annual",
+        id: 0,
+        leaveType: "Vacation",
         startDate: "",
         endDate: "",
         reason: "",
@@ -192,46 +368,75 @@ export function AbsenceLeaveManagement() {
     }
   }
 
-  const handleApproveRequest = async (requestId: string) => {
+  const handleApproveRequest = async (requestId: number) => {
+    const idStr = String(requestId);
     try {
-      const updated = await hrLeavesApi.updateLeave(requestId, {
-        status: "approved",
-        approvedBy: "Current User",
+      const payload: UpdateLeaveRequestDto = {
+        status: "approved", // lowercase for DTO
+        approvedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Unknown",
         approvalDate: new Date().toISOString().split("T")[0],
-      })
-      setLeaveRequests((prev) => prev.map((r) => r.id === requestId ? { ...updated, days: r.days } : r))
+        approverComments: "Approved by manager",
+      };
+      const updated = await hrLeavesApi.updateLeave(idStr, payload);
+      setLeaveRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId
+            ? {
+                ...updated,
+                leaveType: sanitizeLeaveType(updated.leaveType),
+                daysRequested: r.daysRequested,
+                status: (updated.status || "approved") as LeaveStatus,
+              }
+            : r
+        )
+      );
     } catch (err: any) {
-      alert(err?.message || "Failed to approve leave request")
+      alert(err?.message || "Failed to approve leave request");
     }
   }
 
-  const handleRejectRequest = async (requestId: string) => {
+  const handleRejectRequest = async (requestId: number) => {
+    const idStr = String(requestId);
     try {
-      const updated = await hrLeavesApi.updateLeave(requestId, {
-        status: "rejected",
-        approvedBy: "Current User",
+      const payload: UpdateLeaveRequestDto = {
+        status: "rejected", // lowercase for DTO
+        approvedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Current User",
         approvalDate: new Date().toISOString().split("T")[0],
-      })
-      setLeaveRequests((prev) => prev.map((r) => r.id === requestId ? { ...updated, days: r.days } : r))
+        approverComments: "Rejected by manager",
+      };
+      const updated = await hrLeavesApi.updateLeave(idStr, payload);
+      setLeaveRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId
+            ? {
+                ...updated,
+                leaveType: sanitizeLeaveType(updated.leaveType),
+                daysRequested: r.daysRequested,
+                status: (updated.status || "rejected") as LeaveStatus,
+              }
+            : r
+        )
+      );
     } catch (err: any) {
       alert(err?.message || "Failed to reject leave request")
     }
   }
 
   // Add delete handler
-  const handleDeleteRequest = async (requestId: string) => {
+  const handleDeleteRequest = async (requestId: number) => {
+    const idStr = String(requestId);
     try {
-      await hrLeavesApi.deleteLeave(requestId)
+      await hrLeavesApi.deleteLeave(idStr)
       setLeaveRequests((prev) => prev.filter((r) => r.id !== requestId))
     } catch (err: any) {
       alert(err?.message || "Failed to delete leave request")
     }
   }
 
-  const totalRequests = leaveRequests.length
-  const pendingRequests = leaveRequests.filter((r) => r.status === "pending").length
-  const approvedRequests = leaveRequests.filter((r) => r.status === "approved").length
-  const rejectedRequests = leaveRequests.filter((r) => r.status === "rejected").length
+  const totalRequests = leaveRequests.length;
+  const pendingRequests = leaveRequests.filter((r) => r.status === "pending").length;
+  const approvedRequests = leaveRequests.filter((r) => r.status === "approved").length;
+  const rejectedRequests = leaveRequests.filter((r) => r.status === "rejected").length;
 
   return (
     <div className="space-y-6">
@@ -255,30 +460,36 @@ export function AbsenceLeaveManagement() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="employeeId">Employee ID</Label>
-                <Input
-                  id="employeeId"
-                  value={newRequest.employeeId}
-                  onChange={(e) => setNewRequest({ ...newRequest, employeeId: e.target.value })}
-                  placeholder="Enter employee ID"
-                />
+                <Label htmlFor="employeeId">Employee</Label>
+                <Select
+                  value={newRequest.id.toString()}
+                  onValueChange={(value) => setNewRequest({ ...newRequest, id: Number(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id.toString()}>
+                        {employee.name} - {employee.position}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="leaveType">Leave Type</Label>
                 <Select
                   value={newRequest.leaveType}
-                  onValueChange={(value: any) => setNewRequest({ ...newRequest, leaveType: value })}
+                  onValueChange={(value) => setNewRequest({ ...newRequest, leaveType: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select leave type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="annual">Annual Leave</SelectItem>
-                    <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="maternity">Maternity Leave</SelectItem>
-                    <SelectItem value="paternity">Paternity Leave</SelectItem>
-                    <SelectItem value="personal">Personal Leave</SelectItem>
-                    <SelectItem value="training">Training Leave</SelectItem>
+                    {leaveTypeOptions.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -326,7 +537,7 @@ export function AbsenceLeaveManagement() {
               </Button>
               <Button
                 onClick={handleCreateRequest}
-                disabled={!newRequest.employeeId || !newRequest.startDate || !newRequest.endDate}
+                disabled={!newRequest.id || !newRequest.startDate || !newRequest.endDate}
               >
                 Submit Request
               </Button>
@@ -424,12 +635,9 @@ export function AbsenceLeaveManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="annual">Annual</SelectItem>
-                    <SelectItem value="sick">Sick</SelectItem>
-                    <SelectItem value="maternity">Maternity</SelectItem>
-                    <SelectItem value="paternity">Paternity</SelectItem>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="training">Training</SelectItem>
+                    {leaveTypeOptions.map((type: string) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -453,8 +661,24 @@ export function AbsenceLeaveManagement() {
                         <TableCell className="font-medium">{request.id}</TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{request.employeeName}</div>
-                            <div className="text-sm text-gray-500">{request.position}</div>
+                            <div className="font-medium">
+                              {request.employee?.user
+                                ? `${request.employee.user.firstName} ${request.employee.user.lastName}`
+                                : (() => {
+                                    const emp = employees.find(e => e.id === request.employeeId);
+                                    return emp ? emp.name : "";
+                                  })()
+                              }
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {request.employee?.position?.title
+                                ? request.employee.position.title
+                                : (() => {
+                                    const emp = employees.find(e => e.id === request.employeeId);
+                                    return emp ? emp.position : "";
+                                  })()
+                              }
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>{getLeaveTypeBadge(request.leaveType)}</TableCell>
@@ -464,7 +688,7 @@ export function AbsenceLeaveManagement() {
                             <div className="text-gray-500">to {request.endDate}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-semibold">{request.days}</TableCell>
+                        <TableCell className="font-semibold">{request.daysRequested}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -492,10 +716,9 @@ export function AbsenceLeaveManagement() {
                               </>
                             )}
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               size="sm"
-                              onClick={() => handleDeleteRequest(request.id)}
-                              className="text-red-600 hover:text-red-700"
+                              onClick={() => setConfirmDeleteId(String(request.id))}
                             >
                               <XCircle className="w-4 h-4" />
                             </Button>
@@ -506,6 +729,31 @@ export function AbsenceLeaveManagement() {
                   </TableBody>
                 </Table>
               </div>
+              {/* Delete Confirmation Dialog */}
+              <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm Deletion</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete this leave request? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        if (confirmDeleteId) handleDeleteRequest(Number(confirmDeleteId))
+                        setConfirmDeleteId(null)
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -540,11 +788,13 @@ export function AbsenceLeaveManagement() {
                               <span>Used: {balance.annual.used}</span>
                               <span>Remaining: {balance.annual.remaining}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${(balance.annual.used / balance.annual.total) * 100}%` }}
-                              ></div>
+                            <div className="w-full flex justify-center">
+                              <div className="bg-gray-200 rounded-full h-2 w-[120px]">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${(balance.annual.used / balance.annual.total) * 100}%` }}
+                                ></div>
+                              </div>
                             </div>
                             <div className="text-xs text-gray-500">Total: {balance.annual.total} days</div>
                           </div>
@@ -555,11 +805,13 @@ export function AbsenceLeaveManagement() {
                               <span>Used: {balance.sick.used}</span>
                               <span>Remaining: {balance.sick.remaining}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-red-600 h-2 rounded-full"
-                                style={{ width: `${(balance.sick.used / balance.sick.total) * 100}%` }}
-                              ></div>
+                            <div className="w-full flex justify-center">
+                              <div className="bg-gray-200 rounded-full h-2 w-[120px]">
+                                <div
+                                  className="bg-red-600 h-2 rounded-full"
+                                  style={{ width: `${(balance.sick.used / balance.sick.total) * 100}%` }}
+                                ></div>
+                              </div>
                             </div>
                             <div className="text-xs text-gray-500">Total: {balance.sick.total} days</div>
                           </div>
@@ -570,11 +822,13 @@ export function AbsenceLeaveManagement() {
                               <span>Used: {balance.personal.used}</span>
                               <span>Remaining: {balance.personal.remaining}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-gray-600 h-2 rounded-full"
-                                style={{ width: `${(balance.personal.used / balance.personal.total) * 100}%` }}
-                              ></div>
+                            <div className="w-full flex justify-center">
+                              <div className="bg-gray-200 rounded-full h-2 w-[120px]">
+                                <div
+                                  className="bg-gray-600 h-2 rounded-full"
+                                  style={{ width: `${(balance.personal.used / balance.personal.total) * 100}%` }}
+                                ></div>
+                              </div>
                             </div>
                             <div className="text-xs text-gray-500">Total: {balance.personal.total} days</div>
                           </div>
@@ -594,61 +848,71 @@ export function AbsenceLeaveManagement() {
         <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Leave Request Details - {selectedRequest.id}</DialogTitle>
+              <DialogTitle>Leave Request Details - {selectedRequest?.id}</DialogTitle>
               <DialogDescription>Complete leave request information</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Employee</Label>
-                  <p className="text-lg font-semibold">{selectedRequest.employeeName}</p>
-                  <p className="text-sm text-gray-600">{selectedRequest.position}</p>
+                  <p className="text-lg font-semibold">
+                    {selectedRequest?.employee?.user
+                      ? `${selectedRequest.employee.user.firstName} ${selectedRequest.employee.user.lastName}`
+                      : (() => {
+                          const emp = employees.find(e => e.id === selectedRequest?.employeeId);
+                          return emp ? emp.name : "";
+                        })()
+                    }
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedRequest?.employee?.position?.title
+                      ? selectedRequest.employee.position.title
+                      : (() => {
+                          const emp = employees.find(e => e.id === selectedRequest?.employeeId);
+                          return emp ? emp.position : "";
+                        })()
+                    }
+                  </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Leave Type</Label>
-                  <div className="mt-1">{getLeaveTypeBadge(selectedRequest.leaveType)}</div>
+                  <div className="mt-1">{getLeaveTypeBadge(selectedRequest?.leaveType ?? "")}</div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Start Date</Label>
-                  <p className="text-lg">{selectedRequest.startDate}</p>
+                  <p className="text-lg">{selectedRequest?.startDate}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">End Date</Label>
-                  <p className="text-lg">{selectedRequest.endDate}</p>
+                  <p className="text-lg">{selectedRequest?.endDate}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Total Days</Label>
-                  <p className="text-lg font-semibold">{selectedRequest.days}</p>
+                  <p className="text-lg font-semibold">{selectedRequest?.daysRequested}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                  <div className="mt-1">{getStatusBadge(selectedRequest?.status ?? "")}</div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Request Date</Label>
-                  <p className="text-lg">{selectedRequest.requestDate}</p>
+                  <p className="text-lg">{selectedRequest?.createdAt}</p>
                 </div>
-                {selectedRequest.approvalDate && (
+                {selectedRequest?.approvedAt && (
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Approval Date</Label>
-                    <p className="text-lg">{selectedRequest.approvalDate}</p>
+                    <p className="text-lg">{selectedRequest.approvedAt}</p>
                   </div>
                 )}
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">Reason</Label>
-                <p className="text-lg mt-1">{selectedRequest.reason}</p>
+                <p className="text-lg mt-1">{selectedRequest?.reason}</p>
               </div>
-              {selectedRequest.approvedBy && (
+              {selectedRequest?.approvedByUserId && (
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Approved By</Label>
-                  <p className="text-lg">{selectedRequest.approvedBy}</p>
-                </div>
-              )}
-              {selectedRequest.comments && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">Comments</Label>
-                  <p className="text-lg">{selectedRequest.comments}</p>
+                  <p className="text-lg">{selectedRequest.approvedByUserId}</p>
                 </div>
               )}
             </div>
@@ -656,7 +920,7 @@ export function AbsenceLeaveManagement() {
               <Button variant="outline" onClick={() => setSelectedRequest(null)}>
                 Close
               </Button>
-              {selectedRequest.status === "pending" && (
+              {selectedRequest && selectedRequest.status?.toLowerCase() === "pending" && (
                 <>
                   <Button
                     onClick={() => {
