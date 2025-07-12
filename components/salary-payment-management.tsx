@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Alert } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -53,6 +55,10 @@ export function SalaryPaymentManagement() {
     overtime: 0,
     bonuses: 0,
     paymentMethod: "Bank Transfer",
+    amount: 0,
+    paymentDate: null as Date | null,
+    periodStart: null as Date | null,
+    periodEnd: null as Date | null,
   })
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; payment: ApiSalaryPayment | null }>({
     open: false,
@@ -149,7 +155,6 @@ export function SalaryPaymentManagement() {
   const handleCreatePayment = async () => {
     const employee = employees.find((emp) => emp.id === newPayment.employeeId)
     if (!employee) return
-    const { grossPay, totalDeductions } = calculatePayment()
     const body: CreateSalaryPaymentBody = {
       employeeId: newPayment.employeeId,
       payPeriod: newPayment.payPeriod,
@@ -158,6 +163,9 @@ export function SalaryPaymentManagement() {
       bonuses: newPayment.bonuses,
       paymentMethod: newPayment.paymentMethod,
       status: "pending",
+      paymentDate: newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : "",
+      periodStart: newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : undefined,
+      periodEnd: newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : undefined,
     }
     try {
       const created = await createSalaryPayment(body)
@@ -173,6 +181,10 @@ export function SalaryPaymentManagement() {
         overtime: 0,
         bonuses: 0,
         paymentMethod: "Bank Transfer",
+        amount: 0,
+        paymentDate: null,
+        periodStart: null,
+        periodEnd: null,
       })
     } catch (e) {
       setError("Failed to create payment")
@@ -183,22 +195,28 @@ export function SalaryPaymentManagement() {
   // Add handleCancelPayment to refresh page after canceling
   const handleCancelPayment = async (paymentId: string) => {
     try {
-      const updated = await updateSalaryPayment(paymentId, { status: "cancelled" })
-      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)))
-      window.location.reload(); // Refresh page immediately after cancellation
+      setLoading(true);
+      await updateSalaryPayment(paymentId, { status: "cancelled" });
+      // Refetch payments to update UI
+      const refreshedPayments = await listSalaryPayments();
+      setPayments(refreshedPayments);
+      setLoading(false);
     } catch (e) {
       setError("Failed to cancel payment")
+      setLoading(false);
     }
   }
   const handleProcessPayment = async (paymentId: string) => {
     try {
-      const updated = await updateSalaryPayment(paymentId, {
-        status: "processed"
-      })
-      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)))
-      window.location.reload(); // Refresh page immediately after approval
+      setLoading(true);
+      await updateSalaryPayment(paymentId, { status: "processed" });
+      // Refetch payments to update UI
+      const refreshedPayments = await listSalaryPayments();
+      setPayments(refreshedPayments);
+      setLoading(false);
     } catch (e) {
       setError("Failed to process payment")
+      setLoading(false);
     }
   }
   const handleFailPayment = async (paymentId: string) => {
@@ -229,6 +247,18 @@ export function SalaryPaymentManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Loading and Error Alerts */}
+      {loading && (
+        <Alert variant="default" className="flex items-center gap-2">
+          <Loader2 className="animate-spin w-5 h-5 mr-2" />
+          Loading salary payments...
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          {error}
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -283,6 +313,24 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="periodStart">Period Start</Label>
+                <Input
+                  id="periodStart"
+                  type="date"
+                  value={newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, periodStart: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="periodEnd">Period End</Label>
+                <Input
+                  id="periodEnd"
+                  type="date"
+                  value={newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, periodEnd: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="baseSalary">Base Salary</Label>
                 <Input
                   id="baseSalary"
@@ -307,6 +355,15 @@ export function SalaryPaymentManagement() {
                   type="number"
                   value={newPayment.bonuses}
                   onChange={(e) => setNewPayment({ ...newPayment, bonuses: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentDate">Payment Date</Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, paymentDate: e.target.value ? new Date(e.target.value) : null })}
                 />
               </div>
               <div className="space-y-2">

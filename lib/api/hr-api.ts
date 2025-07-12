@@ -20,7 +20,6 @@ function buildQuery(params?: Record<string, any>): string {
 
 // Employee
 export interface Employee {
-  id: number;
   employeeId: string;
   user: {
     email: string;
@@ -49,13 +48,13 @@ export type EmployeeStatus = "Active" | "Inactive" | "Terminated" | "On Leave" |
 export type MaritalStatus = "Single" | "Married" | "Divorced" | "Widowed";
 
 export interface CreateEmployeeRequest {
-  employeeId: string;
   userId: number;
   departmentId: number;
   positionId: number;
   hireDate: string;
   phoneNumber: string;
   personalEmail: string;
+  status: EmployeeStatus;
   address: string;
   dateOfBirth: string;
   maritalStatus: MaritalStatus;
@@ -204,17 +203,12 @@ export const hrApi = {
     if (!res.ok) throw await res.json();
     return res.json();
   },
-  async getEmployeeById(id: number): Promise<Employee> {
+  async getEmployeeById(id: string): Promise<Employee> {
     const res = await fetch(`${BASE_URL}/hr/employees/${id}`, { headers: getAuthHeadersUtil() });
     if (!res.ok) throw await res.json();
     return res.json();
   },
-  async getEmployeeByEmployeeId(employeeId: string): Promise<Employee> {
-    const res = await fetch(`${BASE_URL}/hr/employees/employee-id/${employeeId}`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async updateEmployee(id: number, data: UpdateEmployeeRequest): Promise<Employee> {
+  async updateEmployee(id: string, data: UpdateEmployeeRequest): Promise<Employee> {
     const res = await fetch(`${BASE_URL}/hr/employees/${id}`, {
       method: "PATCH",
       headers: getAuthHeadersUtil(),
@@ -223,7 +217,7 @@ export const hrApi = {
     if (!res.ok) throw await res.json();
     return res.json();
   },
-  async updateEmployeeStatus(id: number, data: UpdateEmployeeStatusRequest): Promise<Employee> {
+  async updateEmployeeStatus(id: string, data: UpdateEmployeeStatusRequest): Promise<Employee> {
     const res = await fetch(`${BASE_URL}/hr/employees/${id}/status`, {
       method: "PATCH",
       headers: getAuthHeadersUtil(),
@@ -232,7 +226,7 @@ export const hrApi = {
     if (!res.ok) throw await res.json();
     return res.json();
   },
-  async deleteEmployee(id: number): Promise<{ message: string }> {
+  async deleteEmployee(id: string): Promise<{ message: string }> {
     const res = await fetch(`${BASE_URL}/hr/employees/${id}`, {
       method: "DELETE",
       headers: getAuthHeadersUtil(),

@@ -1,3 +1,22 @@
+export interface EditSalaryPaymentBody {
+  employeeId: string;
+  payPeriod: string;
+  baseSalary: number;
+  overtime: number;
+  bonuses: number;
+  paymentMethod: string;
+  status: "pending" | "processed" | "failed" | "cancelled";
+  paymentDate: string;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export async function editSalaryPayment(id: string, body: EditSalaryPaymentBody): Promise<SalaryPayment> {
+  // PATCH /hr/salary-payments/{id} with all editable fields
+  console.log("PATCH /hr/salary-payments/" + id, body);
+  const res = await axiosInstance.patch<SalaryPayment>(`/hr/salary-payments/${id}`, body);
+  return res.data;
+}
 // lib/api/hr-salary-api.ts
 import { apiConfig } from "../api-config";
 import axios from "axios"
@@ -46,13 +65,16 @@ export interface SalaryPayment {
 }
 
 export interface CreateSalaryPaymentBody {
-  employeeId: string
-  payPeriod: string
-  baseSalary: number
-  overtime: number
-  bonuses: number
-  paymentMethod: string
-  status: "pending" | "processed" | "failed" | "cancelled"
+  employeeId: string;
+  payPeriod: string;
+  baseSalary: number;
+  overtime: number;
+  bonuses: number;
+  paymentMethod: string;
+  status: "pending" | "processed" | "failed" | "cancelled";
+  paymentDate: string;
+  periodStart?: string;
+  periodEnd?: string;
 }
 
 export interface UpdateSalaryPaymentBody {
@@ -85,6 +107,7 @@ export async function listSalaryPayments(): Promise<SalaryPayment[]> {
 }
 
 export async function createSalaryPayment(body: CreateSalaryPaymentBody): Promise<SalaryPayment> {
+  console.log("POST /hr/salary-payments", body);
   const res = await axiosInstance.post<SalaryPayment>("/hr/salary-payments", body)
   return res.data
 }

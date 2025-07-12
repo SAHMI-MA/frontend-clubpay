@@ -43,7 +43,7 @@ import {
   Clock,
   UserX,
 } from "lucide-react"
-import { hrApi, Employee, Department, Position } from "@/lib/api/hr-api"
+import { hrApi, Employee, Department, Position, CreateEmployeeRequest,type EmployeeStatus } from "@/lib/api/hr-api"
 import { Combobox } from "@/components/ui/combobox"
 import { userService, User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -96,12 +96,11 @@ export function HRManagement() {
   const [departmentFormError, setDepartmentFormError] = useState<string | null>(null)
   const isEditDepartment = Boolean(selectedDepartment)
 
-  // Employee form state
-  const [employeeForm, setEmployeeForm] = useState({
-    userId: "",
-    departmentId: "",
-    positionId: "",
-    employeeId: "",
+  // Employee form state using CreateEmployeeRequest
+  const [employeeForm, setEmployeeForm] = useState<CreateEmployeeRequest>({
+    userId: 0,
+    departmentId: 0,
+    positionId: 0,
     hireDate: "",
     dateOfBirth: "",
     nationalId: "",
@@ -113,9 +112,6 @@ export function HRManagement() {
     emergencyContactName: "",
     emergencyContactPhone: "",
     emergencyContactRelationship: "",
-    bankAccountNumber: "",
-    bankName: "",
-    notes: "",
     currentSalary: ""
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
@@ -287,10 +283,9 @@ export function HRManagement() {
   useEffect(() => {
     if (selectedEmployee) {
       setEmployeeForm({
-        userId: selectedEmployee.user?.id?.toString() || "",
-        departmentId: selectedEmployee.department?.id?.toString() || "",
-        positionId: selectedEmployee.position?.id?.toString() || "",
-        employeeId: selectedEmployee.employeeId || "",
+        userId: selectedEmployee.user?.id ?? 0,
+        departmentId: selectedEmployee.department?.id ?? 0,
+        positionId: selectedEmployee.position?.id ?? 0,
         hireDate: selectedEmployee.hireDate || "",
         dateOfBirth: selectedEmployee.dateOfBirth || "",
         nationalId: selectedEmployee.nationalId || "",
@@ -302,18 +297,14 @@ export function HRManagement() {
         emergencyContactName: selectedEmployee.emergencyContactName || "",
         emergencyContactPhone: selectedEmployee.emergencyContactPhone || "",
         emergencyContactRelationship: selectedEmployee.emergencyContactRelationship || "",
-        bankAccountNumber: selectedEmployee.bankAccountNumber || "",
-        bankName: selectedEmployee.bankName || "",
-        notes: selectedEmployee.notes || "",
         currentSalary: selectedEmployee.currentSalary?.toString() || ""
       })
     } else {
       setEmployeeForm({
-        userId: "",
-        departmentId: "",
-        positionId: "",
-        employeeId: Math.random().toString(36).substring(2, 10).toUpperCase(), // Generate random employeeId
-        hireDate: new Date().toISOString().slice(0, 10), // Default to today
+        userId: 0,
+        departmentId: 0,
+        positionId: 0,
+        hireDate: new Date().toISOString().slice(0, 10),
         dateOfBirth: "",
         nationalId: "",
         status: "Active",
@@ -324,9 +315,6 @@ export function HRManagement() {
         emergencyContactName: "",
         emergencyContactPhone: "",
         emergencyContactRelationship: "",
-        bankAccountNumber: "",
-        bankName: "",
-        notes: "",
         currentSalary: ""
       })
     }
@@ -335,11 +323,12 @@ export function HRManagement() {
   // Generate Employee ID when department changes (for create only)
   useEffect(() => {
     if (!isEditEmployee && employeeForm.departmentId) {
-      const dept = departments.find((d) => d.id.toString() === employeeForm.departmentId)
+      const dept = departments.find((d) => d.id === employeeForm.departmentId)
       if (dept && dept.code) {
         const prefix = dept.code.substring(0, 2).toUpperCase()
         const randomNum = Math.floor(10000 + Math.random() * 90000)
-        setEmployeeForm((prev) => ({ ...prev, employeeId: `${prefix}${randomNum}` }))
+        // If employeeId is part of CreateEmployeeRequest, set it here
+        // setEmployeeForm((prev) => ({ ...prev, employeeId: `${prefix}${randomNum}` }))
       }
     }
     // Only run when departmentId changes and not editing
@@ -347,10 +336,19 @@ export function HRManagement() {
   }, [employeeForm.departmentId, isEditEmployee])
 
   function handleEmployeeFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setEmployeeForm({ ...employeeForm, [e.target.id]: e.target.value })
+    const { id, value, type } = e.target;
+    if (id === "userId" || id === "departmentId" || id === "positionId") {
+      setEmployeeForm({ ...employeeForm, [id]: value === "" ? 0 : parseInt(value, 10) })
+    } else {
+      setEmployeeForm({ ...employeeForm, [id]: value })
+    }
   }
   function handleEmployeeSelectChange(id: string, value: string) {
-    setEmployeeForm({ ...employeeForm, [id]: value })
+    if (id === "userId" || id === "departmentId" || id === "positionId") {
+      setEmployeeForm({ ...employeeForm, [id]: value === "" ? 0 : parseInt(value, 10) })
+    } else {
+      setEmployeeForm({ ...employeeForm, [id]: value })
+    }
   }
 
   async function handleEmployeeFormSubmit(e: React.FormEvent) {
@@ -359,68 +357,24 @@ export function HRManagement() {
     setEmployeeFormError(null)
     try {
       if (isEditEmployee) {
-        // PATCH: only allowed fields
-        const payload = {
-          departmentId: Number(employeeForm.departmentId),
-          positionId: Number(employeeForm.positionId),
-          status: employeeForm.status as import("@/lib/api/hr-api").EmployeeStatus,
-          phoneNumber: employeeForm.phoneNumber,
-          personalEmail: employeeForm.personalEmail,
-          address: employeeForm.address,
-          maritalStatus: employeeForm.maritalStatus as import("@/lib/api/hr-api").MaritalStatus,
-          emergencyContactName: employeeForm.emergencyContactName,
-          emergencyContactPhone: employeeForm.emergencyContactPhone,
-          emergencyContactRelationship: employeeForm.emergencyContactRelationship,
-          bankAccountNumber: employeeForm.bankAccountNumber,
-          bankName: employeeForm.bankName,
-          notes: employeeForm.notes,
-          currentSalary: employeeForm.currentSalary.toString()
-        }
-        const employee = await hrApi.updateEmployee(selectedEmployee.id, payload)
-        setEmployees((prev) => prev.map((e) => (e.id === employee.id ? employee : e)))
+        // PATCH: only allowed fields, use CreateEmployeeRequest for type safety
+        // Remove userId, hireDate, dateOfBirth, nationalId from payload
+        const { userId, hireDate, dateOfBirth, nationalId, ...updatePayload } = employeeForm;
+        // Use employee.employeeId for update, not selectedEmployee.id
+        const employee = await hrApi.updateEmployee(selectedEmployee.employeeId, updatePayload);
+        setEmployees((prev) => prev.map((e) => (e.employeeId === employee.employeeId ? employee : e)));
       } else {
-        // CREATE: all required fields
-        const payload = {
-          userId: Number(employeeForm.userId),
-          departmentId: Number(employeeForm.departmentId),
-          positionId: Number(employeeForm.positionId),
-          employeeId: employeeForm.employeeId,
-          hireDate: employeeForm.hireDate,
-          dateOfBirth: employeeForm.dateOfBirth,
-          nationalId: employeeForm.nationalId,
-          status: employeeForm.status as import("@/lib/api/hr-api").EmployeeStatus,
-          phoneNumber: employeeForm.phoneNumber,
-          personalEmail: employeeForm.personalEmail,
-          address: employeeForm.address,
-          maritalStatus: employeeForm.maritalStatus as import("@/lib/api/hr-api").MaritalStatus,
-          emergencyContactName: employeeForm.emergencyContactName,
-          emergencyContactPhone: employeeForm.emergencyContactPhone,
-          emergencyContactRelationship: employeeForm.emergencyContactRelationship,
-          bankAccountNumber: employeeForm.bankAccountNumber,
-          bankName: employeeForm.bankName,
-          notes: employeeForm.notes,
-          currentSalary: employeeForm.currentSalary.toString()
-        }
-        const employee = await hrApi.createEmployee(payload)
-        setEmployees((prev) => [...prev, employee])
+        // CREATE: use CreateEmployeeRequest directly
+        const payload: import("@/lib/api/hr-api").CreateEmployeeRequest = { ...employeeForm };
+        const employee = await hrApi.createEmployee(payload);
+        setEmployees((prev) => [...prev, employee]);
       }
-      setShowEmployeeDialog(false)
-      setSelectedEmployee(null)
+      setShowEmployeeDialog(false);
+      setSelectedEmployee(null);
     } catch (err: any) {
-      setEmployeeFormError(err?.message || "Failed to save employee")
+      setEmployeeFormError(err?.message || "Failed to save employee");
     } finally {
-      setIsSubmittingEmployee(false)
-    }
-  }
-
-  // Handle employee delete
-  async function handleDeleteEmployee(id: number) {
-    // if (!window.confirm("Are you sure you want to delete this employee?")) return
-    try {
-      await hrApi.deleteEmployee(id)
-      setEmployees((prev) => prev.filter((e) => e.id !== id))
-    } catch (err: any) {
-      alert(err?.message || "Failed to delete employee")
+      setIsSubmittingEmployee(false);
     }
   }
 
@@ -496,8 +450,8 @@ export function HRManagement() {
     setIsDeletingEmployee(true);
     setDeleteEmployeeError(null);
     try {
-      await hrApi.deleteEmployee(employeeToDelete.id);
-      setEmployees((prev) => prev.filter((e) => e.id !== employeeToDelete.id));
+      await hrApi.deleteEmployee(employeeToDelete.employeeId);
+      setEmployees((prev) => prev.filter((e) => e.employeeId !== employeeToDelete.employeeId));
       setEmployeeToDelete(null);
     } catch (err: any) {
       setDeleteEmployeeError(err?.message || "Failed to delete employee");
@@ -642,132 +596,132 @@ export function HRManagement() {
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleEmployeeFormSubmit}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                        {!isEditEmployee && (
-                          <>
+                      <Tabs defaultValue="personal" className="space-y-4">
+                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                          <TabsTrigger value="personal">Personal Info</TabsTrigger>
+                          <TabsTrigger value="job">Job Details</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="personal">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                            {!isEditEmployee && (
+                              <>
+                                <div className="space-y-2">
+                                  <Label htmlFor="userId">User</Label>
+                                  <Combobox
+                                    value={employeeForm.userId.toString()}
+                                    onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
+                                    options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
+                                    placeholder="Select user"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="hireDate">Hire Date</Label>
+                                  <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                                  <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="nationalId">National ID</Label>
+                                  <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
+                                </div>
+                              </>
+                            )}
                             <div className="space-y-2">
-                              <Label htmlFor="userId">User</Label>
-                              <Combobox
-                                value={employeeForm.userId}
-                                onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
-                                options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
-                                placeholder="Select user"
-                              />
+                              <Label htmlFor="phoneNumber">Phone Number</Label>
+                              <Input id="phoneNumber" placeholder="123-456-7890" value={employeeForm.phoneNumber} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="hireDate">Hire Date</Label>
-                              <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="personalEmail">Personal Email</Label>
+                              <Input id="personalEmail" type="email" placeholder="you@example.com" value={employeeForm.personalEmail} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                              <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="address">Address</Label>
+                              <Textarea id="address" placeholder="123 Main St, Apt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="nationalId">National ID</Label>
-                              <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="maritalStatus">Marital Status</Label>
+                              <Select value={employeeForm.maritalStatus} onValueChange={(v) => handleEmployeeSelectChange("maritalStatus", v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Single">Single</SelectItem>
+                                  <SelectItem value="Married">Married</SelectItem>
+                                  <SelectItem value="Divorced">Divorced</SelectItem>
+                                  <SelectItem value="Widowed">Widowed</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          </>
-                        )}
-                        <div className="space-y-2">
-                          <Label htmlFor="currentSalary">Current Salary (MAD)</Label>
-                          <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Enter current salary" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="departmentId">Department</Label>
-                          <Select value={employeeForm.departmentId} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept.id} value={dept.id.toString()}>
-                                  {dept.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="positionId">Position</Label>
-                          <Select value={employeeForm.positionId} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select position" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {positions.map((pos) => (
-                                <SelectItem key={pos.id} value={pos.id.toString()}>
-                                  {pos.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="status">Status</Label>
-                          <Select value={employeeForm.status} onValueChange={(v) => handleEmployeeSelectChange("status", v)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Active">Active</SelectItem>
-                              <SelectItem value="Inactive">Inactive</SelectItem>
-                              <SelectItem value="On Leave">On Leave</SelectItem>
-                              <SelectItem value="Terminated">Terminated</SelectItem>
-                              <SelectItem value="Suspended">Suspended</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="phoneNumber">Phone Number</Label>
-                          <Input id="phoneNumber" placeholder="123-456-7890" value={employeeForm.phoneNumber} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="personalEmail">Personal Email</Label>
-                          <Input id="personalEmail" type="email" placeholder="you@example.com" value={employeeForm.personalEmail} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="address">Address</Label>
-                          <Textarea id="address" placeholder="123 Main St, Apt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="maritalStatus">Marital Status</Label>
-                          <Select value={employeeForm.maritalStatus} onValueChange={(v) => handleEmployeeSelectChange("maritalStatus", v)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Single">Single</SelectItem>
-                              <SelectItem value="Married">Married</SelectItem>
-                              <SelectItem value="Divorced">Divorced</SelectItem>
-                              <SelectItem value="Widowed">Widowed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emergencyContactName">Emergency Contact Name</Label>
-                          <Input id="emergencyContactName" placeholder="John Doe" value={employeeForm.emergencyContactName} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emergencyContactPhone">Emergency Contact Phone</Label>
-                          <Input id="emergencyContactPhone" placeholder="987-654-3210" value={employeeForm.emergencyContactPhone} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emergencyContactRelationship">Emergency Contact Relationship</Label>
-                          <Input id="emergencyContactRelationship" placeholder="Brother" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
-                          <Input id="bankAccountNumber" placeholder="Account Number" value={employeeForm.bankAccountNumber} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="bankName">Bank Name</Label>
-                          <Input id="bankName" placeholder="Bank Name" value={employeeForm.bankName} onChange={handleEmployeeFormChange} />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="notes">Notes</Label>
-                          <Textarea id="notes" placeholder="Additional notes" value={employeeForm.notes} onChange={handleEmployeeFormChange} />
-                        </div>
-                      </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="emergencyContactName">Emergency Contact Name</Label>
+                              <Input id="emergencyContactName" placeholder="John Doe" value={employeeForm.emergencyContactName} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="emergencyContactPhone">Emergency Contact Phone</Label>
+                              <Input id="emergencyContactPhone" placeholder="987-654-3210" value={employeeForm.emergencyContactPhone} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="emergencyContactRelationship">Emergency Contact Relationship</Label>
+                              <Input id="emergencyContactRelationship" placeholder="Brother" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
+                            </div>
+                          </div>
+                        </TabsContent>
+                        <TabsContent value="job">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="departmentId">Department</Label>
+                              <Select value={employeeForm.departmentId.toString()} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {departments.map((dept) => (
+                                    <SelectItem key={dept.id} value={dept.id.toString()}>
+                                      {dept.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="positionId">Position</Label>
+                              <Select value={employeeForm.positionId.toString()} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select position" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {positions.map((pos) => (
+                                    <SelectItem key={pos.id} value={pos.id.toString()}>
+                                      {pos.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="status">Status</Label>
+                              <Select value={employeeForm.status} onValueChange={(v) => handleEmployeeSelectChange("status", v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Active">Active</SelectItem>
+                                  <SelectItem value="Inactive">Inactive</SelectItem>
+                                  <SelectItem value="On Leave">On Leave</SelectItem>
+                                  <SelectItem value="Terminated">Terminated</SelectItem>
+                                  <SelectItem value="Suspended">Suspended</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="currentSalary">Current Salary (MAD)</Label>
+                              <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Enter current salary" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
+                            </div>
+                          </div>
+                        </TabsContent>
+                      </Tabs>
                       {employeeFormError && <div className="text-red-500 text-sm mb-2">{employeeFormError}</div>}
                       <DialogFooter>
                         <Button variant="outline" type="button" onClick={() => setShowEmployeeDialog(false)} disabled={isSubmittingEmployee}>
@@ -851,7 +805,7 @@ export function HRManagement() {
                         }
                       }
                       return (
-                        <TableRow key={employee.id}>
+                        <TableRow key={employee.employeeId}>
                           <TableCell>
                             <div>
                               <div className="font-medium">

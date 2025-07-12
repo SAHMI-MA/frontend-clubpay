@@ -1,4 +1,5 @@
 "use client"
+// State for approval/rejection dialog
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -33,8 +34,9 @@ import {
   Heart,
   Baby,
   GraduationCap,
+  Trash2,
 } from "lucide-react"
-import { hrApi } from "@/lib/api/hr-api"
+import { Employee, hrApi } from "@/lib/api/hr-api"
 import { hrLeavesApi, CreateLeaveRequestDto, UpdateLeaveRequestDto, LeaveStatus, LeaveType } from "@/lib/api/hr-leaves-api"
 import { useSelector } from "react-redux"
 import { RootState } from "@/lib/redux/store"
@@ -48,14 +50,13 @@ interface LeaveBalance {
   personal: { total: number; used: number; remaining: number }
 }
 
-// Match API LeaveRequest type exactly
 interface LeaveRequest {
   id: number;
-  employeeId: number;
-  leaveType: string; // Accept CamelCase string
+  employeeId: string;
+  leaveType: string;
   startDate: string;
   endDate: string;
-  daysRequested: number;
+  daysRequested: string;
   reason: string;
   status: LeaveStatus;
   approvedByUserId?: number | null;
@@ -65,7 +66,7 @@ interface LeaveRequest {
   halfDayPeriod?: string | null;
   documentPath?: string | null;
   emergencyContact?: string | null;
-  coveringEmployeeId?: number | null;
+  coveringEmployeeId?: string | null;
   isPaidLeave?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -140,6 +141,20 @@ function displayStatus(status: string) {
 }
 
 export function AbsenceLeaveManagement() {
+  // Format ISO date string to readable format
+  function formatDate(dateStr?: string | null) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  const [actionDialog, setActionDialog] = useState<{ open: boolean; type: 'approve' | 'reject' | null; request: LeaveRequest | null }>({ open: false, type: null, request: null });
+  const [approverComments, setApproverComments] = useState("");
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -148,13 +163,13 @@ export function AbsenceLeaveManagement() {
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null)
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false)
   const [newRequest, setNewRequest] = useState({
-    id: 0,
+    employeeId: "",
     leaveType: "Vacation",
     startDate: "",
     endDate: "",
     reason: "",
   })
-  const [employees, setEmployees] = useState<{ id: number; name: string; position: string }[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const currentUser = useSelector((state: RootState) => state.auth.user)
 
@@ -165,15 +180,8 @@ export function AbsenceLeaveManagement() {
 
   // Fetch employees from backend
   useEffect(() => {
-    hrApi.getEmployees().then((data: Array<{ id: number; employeeId: string; user: { firstName: string; lastName: string }; position?: { title?: string } }>) => {
-      setEmployees(
-        data.map((emp) => ({
-          id: emp.id,
-          employeeId: emp.employeeId,
-          name: `${emp.user.firstName} ${emp.user.lastName}`,
-          position: emp.position?.title || "",
-        }))
-      );
+    hrApi.getEmployees().then((data: Employee[]) => {
+      setEmployees(data);
     });
   }, [])
 
@@ -182,18 +190,22 @@ export function AbsenceLeaveManagement() {
     if (employees.length === 0) return;
     const balances: LeaveBalance[] = employees.map((emp) => {
       // Filter leave requests for this employee
-      const empRequests = leaveRequests.filter(r => r.employeeId === emp.id);
+      const empRequests = leaveRequests.filter(r => r.employeeId === emp.employeeId);
       // Used days for each type
-      const annualUsed = empRequests.filter(r => r.leaveType === "annual" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
-      const sickUsed = empRequests.filter(r => r.leaveType === "sick" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
-      const personalUsed = empRequests.filter(r => r.leaveType === "personal" && r.status === "approved").reduce((sum, r) => sum + (r.daysRequested || 0), 0);
+      const annualUsed = empRequests
+        .filter(r => r.leaveType === "annual" && r.status === "approved")
+        .reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
+      const sickUsed = empRequests.filter(r => r.leaveType === "sick" && r.status === "approved").reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
+      const personalUsed = empRequests
+        .filter(r => r.leaveType === "personal" && r.status === "approved")
+        .reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
       // Default totals (can be replaced with backend values if available)
       const annualTotal = 20;
       const sickTotal = 10;
       const personalTotal = 5;
       return {
-        employeeId: emp.id.toString(),
-        employeeName: emp.name,
+        employeeId: emp.employeeId,
+        employeeName: emp.user.firstName + " " + emp.user.lastName,
         annual: {
           total: annualTotal,
           used: annualUsed,
@@ -326,7 +338,7 @@ export function AbsenceLeaveManagement() {
     // Map display value to backend value
     const backendLeaveType = displayToBackendLeaveType[newRequest.leaveType] || "personal"
     const payload: CreateLeaveRequestDto = {
-      id: Number(newRequest.id),
+      employeeId: newRequest.employeeId,
       leaveType: backendLeaveType as LeaveType,
       startDate: newRequest.startDate,
       endDate: newRequest.endDate,
@@ -337,27 +349,29 @@ export function AbsenceLeaveManagement() {
     try {
       const created = await hrLeavesApi.createLeave(payload)
       // Find the employee object for the created request
-      const employeeObj = employees.find(e => e.id === created.employeeId)
+      const employeeObj = employees.find(e => e.employeeId === created.employeeId)
       setLeaveRequests((prev) => [
         ...prev,
         {
           ...created,
           leaveType: sanitizeLeaveType(created.leaveType),
-          daysRequested,
+          daysRequested: daysRequested.toString(),
           employee: employeeObj
             ? {
-                user: {
-                  firstName: employeeObj.name.split(' ')[0] || '',
-                  lastName: employeeObj.name.split(' ').slice(1).join(' ') || '',
-                },
-                position: { title: employeeObj.position || '' },
-              }
+              user: {
+                firstName: employeeObj.user.firstName.split(' ')[0] || '',
+                lastName: employeeObj.user.lastName.split(' ').slice(1).join(' ') || '',
+              },
+              position: employeeObj.position && typeof employeeObj.position === "object"
+                ? { title: employeeObj.position.title || '' }
+                : { title: employeeObj.position || '' },
+            }
             : undefined,
         },
       ])
       setShowNewRequestDialog(false)
       setNewRequest({
-        id: 0,
+        employeeId: "",
         leaveType: "Vacation",
         startDate: "",
         endDate: "",
@@ -372,54 +386,56 @@ export function AbsenceLeaveManagement() {
     const idStr = String(requestId);
     try {
       const payload: UpdateLeaveRequestDto = {
-        status: "approved", // lowercase for DTO
-        approvedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Unknown",
-        approvalDate: new Date().toISOString().split("T")[0],
-        approverComments: "Approved by manager",
+        approverComments,
+        approvedBy: currentUser?.id ?? 0,
+        approvalDate: new Date().toISOString(),
       };
-      const updated = await hrLeavesApi.updateLeave(idStr, payload);
+      const updated = await hrLeavesApi.approveLeave(idStr, payload);
       setLeaveRequests((prev) =>
         prev.map((r) =>
           r.id === requestId
             ? {
-                ...updated,
-                leaveType: sanitizeLeaveType(updated.leaveType),
-                daysRequested: r.daysRequested,
-                status: (updated.status || "approved") as LeaveStatus,
-              }
+              ...updated,
+              leaveType: sanitizeLeaveType(updated.leaveType),
+              daysRequested: updated.daysRequested,
+              status: (updated.status || "approved") as LeaveStatus,
+            }
             : r
         )
       );
     } catch (err: any) {
       alert(err?.message || "Failed to approve leave request");
     }
+    setActionDialog({ open: false, type: null, request: null });
+    setApproverComments("");
   }
 
   const handleRejectRequest = async (requestId: number) => {
     const idStr = String(requestId);
     try {
       const payload: UpdateLeaveRequestDto = {
-        status: "rejected", // lowercase for DTO
-        approvedBy: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Current User",
-        approvalDate: new Date().toISOString().split("T")[0],
-        approverComments: "Rejected by manager",
+        approverComments,
+        approvedBy: currentUser?.id ?? 0,
+        approvalDate: new Date().toISOString(),
       };
-      const updated = await hrLeavesApi.updateLeave(idStr, payload);
+      const updated = await hrLeavesApi.rejectLeave(idStr, payload);
       setLeaveRequests((prev) =>
         prev.map((r) =>
           r.id === requestId
             ? {
-                ...updated,
-                leaveType: sanitizeLeaveType(updated.leaveType),
-                daysRequested: r.daysRequested,
-                status: (updated.status || "rejected") as LeaveStatus,
-              }
+              ...updated,
+              leaveType: sanitizeLeaveType(updated.leaveType),
+              daysRequested: updated.daysRequested,
+              status: (updated.status || "rejected") as LeaveStatus,
+            }
             : r
         )
       );
     } catch (err: any) {
       alert(err?.message || "Failed to reject leave request")
     }
+    setActionDialog({ open: false, type: null, request: null });
+    setApproverComments("");
   }
 
   // Add delete handler
@@ -462,16 +478,16 @@ export function AbsenceLeaveManagement() {
               <div className="space-y-2">
                 <Label htmlFor="employeeId">Employee</Label>
                 <Select
-                  value={newRequest.id.toString()}
-                  onValueChange={(value) => setNewRequest({ ...newRequest, id: Number(value) })}
+                  value={newRequest.employeeId.toString()}
+                  onValueChange={(value) => setNewRequest({ ...newRequest, employeeId: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id.toString()}>
-                        {employee.name} - {employee.position}
+                      <SelectItem key={employee.employeeId} value={employee.employeeId}>
+                        {employee.user.lastName} - {employee.position?.title || "No Position"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -537,7 +553,7 @@ export function AbsenceLeaveManagement() {
               </Button>
               <Button
                 onClick={handleCreateRequest}
-                disabled={!newRequest.id || !newRequest.startDate || !newRequest.endDate}
+                disabled={!newRequest.employeeId || !newRequest.startDate || !newRequest.endDate}
               >
                 Submit Request
               </Button>
@@ -665,18 +681,18 @@ export function AbsenceLeaveManagement() {
                               {request.employee?.user
                                 ? `${request.employee.user.firstName} ${request.employee.user.lastName}`
                                 : (() => {
-                                    const emp = employees.find(e => e.id === request.employeeId);
-                                    return emp ? emp.name : "";
-                                  })()
+                                  const emp = employees.find(e => e.employeeId === request.employeeId);
+                                  return emp ? emp.user.lastName : "";
+                                })()
                               }
                             </div>
                             <div className="text-sm text-gray-500">
                               {request.employee?.position?.title
                                 ? request.employee.position.title
                                 : (() => {
-                                    const emp = employees.find(e => e.id === request.employeeId);
-                                    return emp ? emp.position : "";
-                                  })()
+                                  const emp = employees.find(e => e.employeeId === request.employeeId);
+                                  return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                                })()
                               }
                             </div>
                           </div>
@@ -695,32 +711,12 @@ export function AbsenceLeaveManagement() {
                             <Button variant="ghost" size="sm" onClick={() => setSelectedRequest(request)}>
                               <Eye className="w-4 h-4" />
                             </Button>
-                            {request.status === "pending" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleApproveRequest(request.id)}
-                                  className="text-green-600 hover:text-green-700"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRejectRequest(request.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => setConfirmDeleteId(String(request.id))}
                             >
-                              <XCircle className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -859,18 +855,18 @@ export function AbsenceLeaveManagement() {
                     {selectedRequest?.employee?.user
                       ? `${selectedRequest.employee.user.firstName} ${selectedRequest.employee.user.lastName}`
                       : (() => {
-                          const emp = employees.find(e => e.id === selectedRequest?.employeeId);
-                          return emp ? emp.name : "";
-                        })()
+                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                        return emp ? emp.user.lastName : "";
+                      })()
                     }
                   </p>
                   <p className="text-sm text-gray-600">
                     {selectedRequest?.employee?.position?.title
                       ? selectedRequest.employee.position.title
                       : (() => {
-                          const emp = employees.find(e => e.id === selectedRequest?.employeeId);
-                          return emp ? emp.position : "";
-                        })()
+                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                        return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                      })()
                     }
                   </p>
                 </div>
@@ -896,12 +892,24 @@ export function AbsenceLeaveManagement() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Request Date</Label>
-                  <p className="text-lg">{selectedRequest?.createdAt}</p>
+                  <p className="text-lg">{formatDate(selectedRequest?.createdAt)}</p>
                 </div>
                 {selectedRequest?.approvedAt && (
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Approval Date</Label>
-                    <p className="text-lg">{selectedRequest.approvedAt}</p>
+                    <p className="text-lg">{formatDate(selectedRequest.approvedAt)}</p>
+                  </div>
+                )}
+                {selectedRequest?.approvedByUserId !== undefined && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Approved By User ID</Label>
+                    <p className="text-lg">{selectedRequest.approvedByUserId ?? "N/A"}</p>
+                  </div>
+                )}
+                {selectedRequest?.approverComments && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Approver Comments</Label>
+                    <p className="text-lg">{selectedRequest.approverComments}</p>
                   </div>
                 )}
               </div>
@@ -909,12 +917,6 @@ export function AbsenceLeaveManagement() {
                 <Label className="text-sm font-medium text-gray-500">Reason</Label>
                 <p className="text-lg mt-1">{selectedRequest?.reason}</p>
               </div>
-              {selectedRequest?.approvedByUserId && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">Approved By</Label>
-                  <p className="text-lg">{selectedRequest.approvedByUserId}</p>
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedRequest(null)}>
@@ -924,8 +926,7 @@ export function AbsenceLeaveManagement() {
                 <>
                   <Button
                     onClick={() => {
-                      handleApproveRequest(selectedRequest.id)
-                      setSelectedRequest(null)
+                      setActionDialog({ open: true, type: 'approve', request: selectedRequest });
                     }}
                     className="bg-green-600 hover:bg-green-700"
                   >
@@ -934,8 +935,7 @@ export function AbsenceLeaveManagement() {
                   </Button>
                   <Button
                     onClick={() => {
-                      handleRejectRequest(selectedRequest.id)
-                      setSelectedRequest(null)
+                      setActionDialog({ open: true, type: 'reject', request: selectedRequest });
                     }}
                     variant="destructive"
                   >
@@ -944,6 +944,50 @@ export function AbsenceLeaveManagement() {
                   </Button>
                 </>
               )}
+              {/* Approve/Reject Dialog (always rendered, controlled by state) */}
+              <Dialog open={actionDialog.open} onOpenChange={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{actionDialog.type === 'approve' ? 'Approve Leave Request' : 'Reject Leave Request'}</DialogTitle>
+                    <DialogDescription>
+                      {actionDialog.type === 'approve'
+                        ? 'Please provide comments before approving this leave request.'
+                        : 'Please provide comments before rejecting this leave request.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Label htmlFor="approverComments">Comments</Label>
+                    <Textarea
+                      id="approverComments"
+                      value={approverComments}
+                      onChange={e => setApproverComments(e.target.value)}
+                      placeholder="Enter your comments..."
+                      rows={3}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (actionDialog.request) {
+                          if (actionDialog.type === 'approve') {
+                            handleApproveRequest(actionDialog.request.id);
+                          } else if (actionDialog.type === 'reject') {
+                            handleRejectRequest(actionDialog.request.id);
+                          }
+                        }
+                      }}
+                      disabled={!approverComments.trim()}
+                      className={actionDialog.type === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+                    >
+                      {actionDialog.type === 'approve' ? <CheckCircle className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                      {actionDialog.type === 'approve' ? 'Approve' : 'Reject'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </DialogFooter>
           </DialogContent>
         </Dialog>

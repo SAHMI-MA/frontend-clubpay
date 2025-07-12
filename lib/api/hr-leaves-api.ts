@@ -23,29 +23,29 @@ export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface LeaveRequest {
   id: number;
-  employeeId: number;
-  leaveType: LeaveType;
+  employeeId: string;
+  leaveType: string;
   startDate: string;
   endDate: string;
-  daysRequested: number;
+  daysRequested: string;
   reason: string;
   status: LeaveStatus;
-  approvedByUserId?: number | null;
-  approvedAt?: string | null;
-  approverComments?: string | null;
-  isHalfDay?: boolean;
-  halfDayPeriod?: string | null;
-  documentPath?: string | null;
-  emergencyContact?: string | null;
-  coveringEmployeeId?: number | null;
-  isPaidLeave?: boolean;
+  approvedByUserId: number | null;
+  approvedAt: string | null;
+  approverComments: string | null;
+  isHalfDay: boolean;
+  halfDayPeriod: string | null;
+  documentPath: string | null;
+  emergencyContact: string | null;
+  coveringEmployeeId: string | null;
+  isPaidLeave: boolean;
   createdAt: string;
   updatedAt: string;
   employee: Employee;
 }
 
 export interface CreateLeaveRequestDto {
-  id: number;
+  employeeId: string; // Employee ID
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
@@ -55,10 +55,9 @@ export interface CreateLeaveRequestDto {
 }
 
 export interface UpdateLeaveRequestDto {
-  status?: LeaveStatus;
   approverComments?: string;
-  approvedBy?: string;
-  approvalDate?: string;
+  approvedBy?: number;
+  approvalDate?: string; // ISO string
 }
 
 export const hrLeavesApi = {
