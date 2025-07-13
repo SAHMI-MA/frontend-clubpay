@@ -1,3 +1,14 @@
+/**
+ * Approve or reject a salary payment
+ * PATCH /hr/salary-payments/approve-reject/{id}
+ * @param id Salary payment ID
+ * @param status 'processed' or 'cancelled'
+ */
+export async function approveOrRejectSalaryPayment(id: number, status: "processed" | "cancelled"): Promise<SalaryPayment> {
+  const body = { status };
+  const res = await axiosInstance.patch<SalaryPayment>(`/hr/salary-payments/approve-reject/${id}`, body);
+  return res.data;
+}
 export interface EditSalaryPaymentBody {
   employeeId: string;
   payPeriod: string;
@@ -75,6 +86,33 @@ export interface CreateSalaryPaymentBody {
   paymentDate: string;
   periodStart?: string;
   periodEnd?: string;
+}
+
+export interface CreateBulkSalaryPaymentBody {
+  payPeriod: string;
+  paymentMethod: string;
+  overtime: number;
+  bonuses: number;
+  status: "pending" | "processed" | "failed" | "cancelled";
+  paymentDate: string;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export async function createBulkSalaryPaymentForDepartement(
+  body: CreateBulkSalaryPaymentBody, 
+  departmentId: number
+): Promise<SalaryPayment[]> {
+  const res = await axiosInstance.post<SalaryPayment[]>(`/hr/salary-payments/bulk/department/${departmentId}`, body);
+  return res.data;
+}
+
+export async function createBulkSalaryPaymentForPosition(
+  body: CreateBulkSalaryPaymentBody, 
+  positionId: number
+): Promise<SalaryPayment[]> {
+  const res = await axiosInstance.post<SalaryPayment[]>(`/hr/salary-payments/bulk/position/${positionId}`, body);
+  return res.data;
 }
 
 export interface UpdateSalaryPaymentBody {

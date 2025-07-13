@@ -1,6 +1,7 @@
 // lib/api/hr-api.ts
 import { apiConfig } from "../api-config";
 import { getAuthHeaders as getAuthHeadersUtil } from "../../utils/auth";
+import { Pos } from "jspdf-autotable";
 
 const BASE_URL = apiConfig.baseUrl || "http://localhost:8080";
 
@@ -22,14 +23,24 @@ function buildQuery(params?: Record<string, any>): string {
 export interface Employee {
   employeeId: string;
   user: {
+    id: number;
     email: string;
     firstName: string;
-    lastName: string; 
-    id: number; 
+    lastName: string;
   };
   currentSalary: string;
-  department: { id: number; name: string; code?: string };
-  position: { id: number; title: string; level?: string };
+  departmentId: number,
+  department: {
+    id: number;
+    name: string;
+    code?: string;
+  };
+  positionId: number;
+  position: {
+    id: number;
+    title: string;
+    level?: string;
+  };
   status: EmployeeStatus;
   hireDate: string;
   phoneNumber: string;
@@ -43,6 +54,11 @@ export interface Employee {
   nationalId: string;
   createdAt: string;
   updatedAt: string;
+  // Add missing fields from API response
+  bankAccountNumber?: string | null;
+  bankName?: string | null;
+  notes?: string | null;
+  contracts?: any[];
 }
 export type EmployeeStatus = "Active" | "Inactive" | "Terminated" | "On Leave" | "Suspended";
 export type MaritalStatus = "Single" | "Married" | "Divorced" | "Widowed";
@@ -82,10 +98,9 @@ export interface Department {
   description: string;
   location: string;
   budget: number;
-  manager: { id: number; employeeId?: string; user: { fullName: string } };
   employeeCount?: number;
-  employees?: Array<{ id: number; employeeId: string; user: { fullName: string }; position: { title: string } }>;
-  positions?: Array<{ id: number; title: string; level: string }>;
+  employees?: Employee[];
+  positions?: Position[];
   createdAt: string;
   updatedAt: string;
 }

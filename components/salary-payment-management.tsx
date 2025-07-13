@@ -28,12 +28,20 @@ import {
   deleteSalaryPayment,
   SalaryPayment as ApiSalaryPayment,
   CreateSalaryPaymentBody,
+  createBulkSalaryPaymentForDepartement,
+  CreateBulkSalaryPaymentBody,
+  approveOrRejectSalaryPayment,
 } from "@/lib/api/hr-salary-api"
+import { Department, Position } from "@/lib/api/hr-api";
 
 interface Employee {
-  id: string
+  employeeId: string
   name: string
-  position: string
+  position: {
+    id: number;
+    title: string;
+    level?: string;
+  } | null;
   baseSalary: number
   taxRate: number
   benefits: number
@@ -48,6 +56,7 @@ export function SalaryPaymentManagement() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedPayment, setSelectedPayment] = useState<ApiSalaryPayment | null>(null)
   const [showNewPaymentDialog, setShowNewPaymentDialog] = useState(false)
+  const [showBulkPaymentDialog, setShowBulkPaymentDialog] = useState<boolean>(false)
   const [newPayment, setNewPayment] = useState({
     employeeId: "",
     payPeriod: "",
@@ -60,6 +69,8 @@ export function SalaryPaymentManagement() {
     periodStart: null as Date | null,
     periodEnd: null as Date | null,
   })
+  const [departmentsList, setDepartmentsList] = useState<Department[]>([])
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; payment: ApiSalaryPayment | null }>({
     open: false,
     payment: null,
@@ -67,14 +78,18 @@ export function SalaryPaymentManagement() {
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   useEffect(() => {
+
     import("@/lib/api/hr-api").then(({ hrApi }) => {
       hrApi.getEmployees()
         .then((empList) => {
-          // Map backend employees to local Employee type
           setEmployees(empList.map((e: any) => ({
-            id: e.employeeId || e.id?.toString() || "",
+            employeeId: e.employeeId || e.id?.toString() || "",
             name: (e.user?.firstName ? e.user.firstName : "") + (e.user?.lastName ? " " + e.user.lastName : ""),
-            position: e.position?.title || "",
+            position: e.position ? {
+              id: e.position.id,
+              title: e.position.title,
+              level: e.position.level,
+            } : null,
             baseSalary: Number(e.currentSalary) || 0,
             taxRate: e.taxRate || 0,
             benefits: e.benefits || 0,
@@ -82,7 +97,10 @@ export function SalaryPaymentManagement() {
           })));
         })
         .catch(() => setEmployees([]));
-    });
+      hrApi.getDepartments()
+        .then((deptList) => setDepartmentsList(deptList))
+        .catch(() => setDepartmentsList([]));
+      })
   }, []);
 
   // Fetch payments from backend
@@ -142,7 +160,7 @@ export function SalaryPaymentManagement() {
 
   const calculatePayment = () => {
     const grossPay = newPayment.baseSalary + newPayment.overtime + newPayment.bonuses
-    const employee = employees.find((emp) => emp.id === newPayment.employeeId)
+    const employee = employees.find((emp) => emp.employeeId === newPayment.employeeId)
     const taxDeduction = employee ? grossPay * employee.taxRate : 0
     const benefitDeduction = employee ? employee.benefits : 0
     const totalDeductions = taxDeduction + benefitDeduction
@@ -151,9 +169,21 @@ export function SalaryPaymentManagement() {
     return { grossPay, totalDeductions, netPay }
   }
 
+  const calculateBulkPayment = () => {
+    let SalaryPayment = 0;
+    const employeesList = selectedDepartment?.employees || [];
+    console.log("Selected Department Employees:", employeesList);
+    let filteredEmployees = employeesList;
+    SalaryPayment = filteredEmployees.reduce((sum, emp) => sum + Number(emp.currentSalary), 0);
+    const grossPay = SalaryPayment + newPayment.overtime + newPayment.bonuses;
+    return {
+      grossPay
+    }
+  }
+
   // Replace handleCreatePayment with API call
   const handleCreatePayment = async () => {
-    const employee = employees.find((emp) => emp.id === newPayment.employeeId)
+    const employee = employees.find((emp) => emp.employeeId === newPayment.employeeId)
     if (!employee) return
     const body: CreateSalaryPaymentBody = {
       employeeId: newPayment.employeeId,
@@ -191,12 +221,56 @@ export function SalaryPaymentManagement() {
     }
   }
 
-  // Replace handleProcessPayment and handleFailPayment with API calls
-  // Add handleCancelPayment to refresh page after canceling
-  const handleCancelPayment = async (paymentId: string) => {
+  const handleCreateBulkPayment = async () => {
+    if (!selectedDepartment) {
+      setError("Please select a department")
+      return
+    }
+    // Get filtered employees for bulk payment
+    const employeesList = selectedDepartment.employees || [];
+    let filteredEmployees = employeesList;
+    const employeeIds = filteredEmployees.map(emp => emp.employeeId);
+    if (employeeIds.length === 0) {
+      setError("No employees found for the selected department/position")
+      return;
+    }
+    const body: CreateBulkSalaryPaymentBody = {
+      payPeriod: newPayment.payPeriod,
+      paymentMethod: newPayment.paymentMethod,
+      overtime: newPayment.overtime,
+      bonuses: newPayment.bonuses,
+      status: "pending",
+      paymentDate: newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : "",
+      periodStart: newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : undefined,
+      periodEnd: newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : undefined,
+    }
+    try {
+      const created = await createBulkSalaryPaymentForDepartement(body, selectedDepartment.id)
+      setPayments((prev) => [...prev, ...created])
+      setShowBulkPaymentDialog(false)
+      setNewPayment({
+        employeeId: "",
+        payPeriod: "",
+        baseSalary: 0,
+        overtime: 0,
+        bonuses: 0,
+        paymentMethod: "Bank Transfer",
+        amount: 0,
+        paymentDate: null,
+        periodStart: null,
+        periodEnd: null,
+      })
+    } catch (e) {
+      setError("Failed to create bulk payment")
+    } finally {
+      setSelectedDepartment(null)
+    }
+  }
+
+  const handleCancelPayment = async (paymentId: number) => {
     try {
       setLoading(true);
-      await updateSalaryPayment(paymentId, { status: "cancelled" });
+      await approveOrRejectSalaryPayment(paymentId, "cancelled");
       // Refetch payments to update UI
       const refreshedPayments = await listSalaryPayments();
       setPayments(refreshedPayments);
@@ -206,10 +280,10 @@ export function SalaryPaymentManagement() {
       setLoading(false);
     }
   }
-  const handleProcessPayment = async (paymentId: string) => {
+  const handleProcessPayment = async (paymentId: number) => {
     try {
       setLoading(true);
-      await updateSalaryPayment(paymentId, { status: "processed" });
+      await approveOrRejectSalaryPayment(paymentId, "processed");
       // Refetch payments to update UI
       const refreshedPayments = await listSalaryPayments();
       setPayments(refreshedPayments);
@@ -265,6 +339,7 @@ export function SalaryPaymentManagement() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Salary Payment Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Process and manage employee salary payments</p>
         </div>
+        <div className="flex items-center space-x-2">
         <Dialog open={showNewPaymentDialog} onOpenChange={setShowNewPaymentDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
@@ -283,7 +358,7 @@ export function SalaryPaymentManagement() {
                 <Select
                   value={newPayment.employeeId}
                   onValueChange={(value) => {
-                    const employee = employees.find((emp) => emp.id === value)
+                    const employee = employees.find((emp) => emp.employeeId === value)
                     setNewPayment({
                       ...newPayment,
                       employeeId: value,
@@ -296,8 +371,8 @@ export function SalaryPaymentManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.name} - {employee.position}
+                      <SelectItem key={employee.employeeId} value={employee.employeeId}>
+                        {employee.name} - {employee.position ? employee.position.title : "No Position"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -413,6 +488,145 @@ export function SalaryPaymentManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog open={showBulkPaymentDialog} onOpenChange={setShowBulkPaymentDialog}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              New Bulk Payment
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create Bulk Salary Payment</DialogTitle>
+                <DialogDescription>Process bulk salary payments for multiple employees</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="departement">Departement</Label>
+                <Select
+                  value={selectedDepartment?.id?.toString() || "0"}
+                  onValueChange={(value) => {
+                    const department = departmentsList.find((dep) => dep.id === Number(value))
+                    setSelectedDepartment(department || null)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Departement" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem key={0} value={"0"} disabled>
+                      Select department
+                    </SelectItem>
+                    {departmentsList.map((department) => (
+                      <SelectItem key={department.id} value={department.id.toString()}>
+                        {department.name} - ({department.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payPeriod">Pay Period</Label>
+                <Input
+                  id="payPeriod"
+                  value={newPayment.payPeriod}
+                  onChange={(e) => setNewPayment({ ...newPayment, payPeriod: e.target.value })}
+                  placeholder="e.g., December 2024"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="periodStart">Period Start</Label>
+                <Input
+                  id="periodStart"
+                  type="date"
+                  value={newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, periodStart: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="periodEnd">Period End</Label>
+                <Input
+                  id="periodEnd"
+                  type="date"
+                  value={newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, periodEnd: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="overtime">Overtime</Label>
+                <Input
+                  id="overtime"
+                  type="number"
+                  value={newPayment.overtime}
+                  onChange={(e) => setNewPayment({ ...newPayment, overtime: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bonuses">Bonuses</Label>
+                <Input
+                  id="bonuses"
+                  type="number"
+                  value={newPayment.bonuses}
+                  onChange={(e) => setNewPayment({ ...newPayment, bonuses: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentDate">Payment Date</Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : ""}
+                  onChange={(e) => setNewPayment({ ...newPayment, paymentDate: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Select
+                  value={newPayment.paymentMethod}
+                  onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="Direct Deposit">Direct Deposit</SelectItem>
+                    <SelectItem value="Check">Check</SelectItem>
+                    <SelectItem value="Cash">Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {selectedDepartment?.employees && (
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-semibold mb-2">Payment Calculation</h4>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Gross Pay:</span>
+                    <p className="font-semibold">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Deductions:</span>
+                    <p className="font-semibold">{"0"} MAD</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Net Pay:</span>
+                    <p className="font-semibold text-green-600">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowBulkPaymentDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateBulkPayment} disabled={!selectedDepartment || !selectedDepartment || !newPayment.payPeriod}>
+                Create Bulk Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -540,16 +754,18 @@ export function SalaryPaymentManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleProcessPayment(String(payment.id))}
+                                onClick={() => handleProcessPayment(Number(payment.id))}
                                 className="text-green-600 hover:text-green-700"
+                                title="Approve"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleFailPayment(String(payment.id))}
-                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleCancelPayment(Number(payment.id))}
+                                className="text-gray-600 hover:text-gray-700"
+                                title="Reject"
                               >
                                 <XCircle className="w-4 h-4" />
                               </Button>
