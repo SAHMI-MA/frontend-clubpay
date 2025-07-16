@@ -45,6 +45,8 @@ import {
   FileAudio,
 } from "lucide-react"
 import { hrFilesApi, EmployeeFile } from "@/lib/api/hr-files-api"
+import { Employee } from "@/lib/api/hr-api"
+import { Alert } from "@/components/ui/alert"
 
 // Define FileUpload type (was missing after refactor)
 type FileUpload = {
@@ -56,15 +58,17 @@ type FileUpload = {
 
 // Restrict allowed file types and size
 const allowedTypes = [
-  "application/pdf",
-  "text/csv",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-]
-const allowedExtensions = [".pdf", ".csv", ".xls", ".xlsx"]
-const maxFileSize = 10 * 1024 * 1024 // 10MB
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/jpg',
+  'image/png'
+];
+const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.csv'];
 
 export function EmployeeFilesManagement() {
+  const [error, setError] = useState<string | null>(null);
   // Start with an empty array for files, removing the fake data
   const [files, setFiles] = useState<EmployeeFile[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -73,6 +77,7 @@ export function EmployeeFilesManagement() {
   const [selectedFile, setSelectedFile] = useState<EmployeeFile | null>(null)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState<FileUpload[]>([])
+  const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [newFile, setNewFile] = useState({
     employeeId: "",
@@ -80,24 +85,25 @@ export function EmployeeFilesManagement() {
     category: "contract" as const,
     expiryDate: "",
     description: "",
+    status: "active" as const,
   })
 
-  const employees = [
-    { id: "EMP001", name: "John Smith", role: "Head Coach" },
-    { id: "EMP002", name: "Sarah Johnson", role: "Assistant Coach" },
-    { id: "EMP003", name: "Mike Wilson", role: "Fitness Coach" },
-    { id: "EMP004", name: "Emma Davis", role: "Physiotherapist" },
-  ]
+  // Store selected files before upload
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const filteredFiles = files.filter((file) => {
+    // Use nested employee data for name search
+    const employeeName = file.employee ? `${file.employee.user.firstName || ''} ${file.employee.user.lastName || ''}`.trim() : '';
     const matchesSearch =
-      file.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      file.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      file.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || file.category === categoryFilter
-    const matchesStatus = statusFilter === "all" || file.status === statusFilter
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+      employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (file.fileName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(file.id).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || file.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || file.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -115,59 +121,9 @@ export function EmployeeFilesManagement() {
     setDragActive(false)
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files)
+      setSelectedFiles(Array.from(e.dataTransfer.files));
     }
   }, [])
-
-  const handleFiles = (fileList: FileList) => {
-    const newUploads: FileUpload[] = []
-    Array.from(fileList).forEach((file) => {
-      // Validate file size
-      if (file.size > maxFileSize) {
-        alert(`File ${file.name} is too large. Maximum size is 10MB.`)
-        return
-      }
-      // Validate file type and extension
-      const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
-      if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
-        alert(`File type or extension not supported: ${file.name}`)
-        return
-      }
-      // Prepare FormData for upload
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("employeeId", newFile.employeeId)
-      formData.append("category", newFile.category)
-      if (newFile.expiryDate) formData.append("expiryDate", newFile.expiryDate)
-      // status is optional
-      formData.append("status", "active")
-      // Upload to backend
-      hrFilesApi.uploadFile(formData)
-        .then((uploaded) => {
-          setFiles((prev) => [...prev, uploaded])
-        })
-        .catch((err) => alert(err.message))
-    })
-    setUploadingFiles((prev) => [...prev, ...newUploads])
-  }
-
-  const simulateUpload = (uploadId: string) => {
-    const interval = setInterval(() => {
-      setUploadingFiles((prev) =>
-        prev.map((upload) => {
-          if (upload.id === uploadId) {
-            const newProgress = Math.min(upload.progress + Math.random() * 30, 100)
-            if (newProgress >= 100) {
-              clearInterval(interval)
-              return { ...upload, progress: 100, status: "completed" }
-            }
-            return { ...upload, progress: newProgress }
-          }
-          return upload
-        }),
-      )
-    }, 500)
-  }
 
   const removeUpload = (uploadId: string) => {
     setUploadingFiles((prev) => prev.filter((upload) => upload.id !== uploadId))
@@ -232,45 +188,21 @@ export function EmployeeFilesManagement() {
     }
   }
 
-  const handleUploadFile = () => {
-    const employee = employees.find((emp) => emp.id === newFile.employeeId)
-    if (!employee) return
+  // Remove handleUploadFile, as file creation is handled by uploadFile
 
-    const file: EmployeeFile = {
-      id: `FILE${String(files.length + 1).padStart(3, "0")}`,
-      employeeId: newFile.employeeId,
-      employeeName: employee.name,
-      fileName: newFile.fileName,
-      fileType: "PDF",
-      category: newFile.category,
-      uploadDate: new Date().toISOString().split("T")[0],
-      expiryDate: newFile.expiryDate || undefined,
-      status: "active",
-      fileSize: "1.5 MB",
-      uploadedBy: "Current User",
-      description: newFile.description,
-    }
-
-    setFiles([...files, file])
-    setShowUploadDialog(false)
-    setNewFile({
-      employeeId: "",
-      fileName: "",
-      category: "contract",
-      expiryDate: "",
-      description: "",
-    })
-  }
-
-  // Fetch files from backend
+  // Fetch files and employees from backend
   useEffect(() => {
-    hrFilesApi.getFiles().then(setFiles)
-  }, [])
+    hrFilesApi.getFiles().then(setFiles);
+    // Fetch employees for dropdown
+    import("@/lib/api/hr-api").then(({ hrApi }) => {
+      hrApi.getEmployees().then(setEmployees);
+    });
+  }, []);
 
-  const handleDeleteFile = (fileId: string) => {
+  const handleDeleteFile = (fileId: number) => {
     hrFilesApi.deleteFile(fileId)
       .then(() => setFiles(files.filter((file) => file.id !== fileId)))
-      .catch((err) => alert(err.message))
+      .catch((err) => setError(err.message));
   }
 
   const totalFiles = files.length
@@ -286,6 +218,11 @@ export function EmployeeFilesManagement() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          {error}
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -302,14 +239,13 @@ export function EmployeeFilesManagement() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Upload Employee File</DialogTitle>
-              <DialogDescription>Add a new document to an employee's file</DialogDescription>
+              <DialogDescription>Add a new document to an employee&lsquo;s file</DialogDescription>
             </DialogHeader>
 
             {/* File Drop Zone */}
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-300 dark:border-gray-600"
-              }`}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-300 dark:border-gray-600"
+                }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -320,19 +256,48 @@ export function EmployeeFilesManagement() {
                 Drop files here or click to browse
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Supports PDF, DOC, DOCX, JPG, PNG (max 10MB each)
+                Supports PDF, DOC, DOCX, JPG, PNG, TXT (max 10MB each)
               </p>
               <input
                 type="file"
                 multiple
                 className="hidden"
                 id="file-upload"
-                onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt"
+                onChange={(e) => {
+                  if (!e.target.files) return;
+                  const files = Array.from(e.target.files);
+                  const invalid = files.filter(f => !allowedTypes.includes(f.type) || !allowedExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
+                  if (invalid.length > 0) {
+                    setError("Invalid file type selected. Only PDF, DOC, DOCX, JPG, JPEG, PNG, TXT are allowed.");
+                    return;
+                  }
+                  setError(null);
+                  setSelectedFiles(files);
+                }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               />
               <Button type="button" variant="outline" onClick={() => document.getElementById("file-upload")?.click()}>
                 Browse Files
               </Button>
+
+              {/* Show selected files before upload */}
+              {selectedFiles.length > 0 && (
+                <div className="mt-6 space-y-2 text-left">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Selected file{selectedFiles.length > 1 ? 's' : ''}:</p>
+                  {selectedFiles.map((file, idx) => (
+                    <div key={file.name + file.size + idx} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded px-3 py-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(file.type)}
+                        <span className="font-medium text-gray-900 dark:text-white">{file.name}</span>
+                        <span className="text-xs text-gray-500 ml-2">{(file.size / 1024).toFixed(1)} KB</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== idx))}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Upload Progress */}
@@ -377,8 +342,8 @@ export function EmployeeFilesManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {employees.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.id}>
-                          {employee.name} - {employee.role}
+                        <SelectItem key={employee.employeeId} value={employee.employeeId}>
+                          {employee.user.firstName} - {employee.user.lastName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -442,8 +407,49 @@ export function EmployeeFilesManagement() {
               <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleUploadFile} disabled={!newFile.employeeId || !newFile.fileName}>
-                Save File Details
+              <Button
+                onClick={async () => {
+                  if (!selectedFiles.length) {
+                    setError("Please select a file");
+                    return;
+                  }
+
+                  try {
+                    setUploading(true);
+
+                    // Process files sequentially
+                    const results: EmployeeFile[] = [];
+                    for (const file of selectedFiles) {
+                      try {
+                        const uploaded = await hrFilesApi.uploadFile({
+                          file,
+                          employeeId: newFile.employeeId,
+                          category: newFile.category,
+                          ...(newFile.expiryDate && { expiryDate: newFile.expiryDate }),
+                          status: newFile.status || "active",
+                          description: newFile.description,
+                        });
+                        results.push(uploaded);
+                      } catch (err: any) {
+                        console.error(`Failed to upload ${file.name}:`, err);
+                        setError(prev =>
+                          prev ? `${prev}\n${file.name}: ${err.message}` : `${file.name}: ${err.message}`
+                        );
+                      }
+                    }
+
+                    if (results.length > 0) {
+                      setFiles(prev => [...prev, ...results]);
+                      setSelectedFiles([]);
+                      setShowUploadDialog(false);
+                    }
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+                disabled={!selectedFiles.length || uploading}
+              >
+                {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} File(s)`}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -562,7 +568,6 @@ export function EmployeeFilesManagement() {
                     <TableCell className="font-medium">{file.id}</TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{file.employeeName}</div>
                         <div className="text-sm text-gray-500">{file.employeeId}</div>
                       </div>
                     </TableCell>
@@ -575,7 +580,7 @@ export function EmployeeFilesManagement() {
                       </div>
                     </TableCell>
                     <TableCell>{getCategoryBadge(file.category)}</TableCell>
-                    <TableCell>{file.uploadDate}</TableCell>
+                    <TableCell>{file.createdAt}</TableCell>
                     <TableCell>{file.expiryDate || "No expiry"}</TableCell>
                     <TableCell>{getStatusBadge(file.status)}</TableCell>
                     <TableCell>
@@ -586,7 +591,7 @@ export function EmployeeFilesManagement() {
                         <Button variant="ghost" size="sm" onClick={() => hrFilesApi.downloadFile(file.fileName)}>
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => {}}>
+                        <Button variant="ghost" size="sm" onClick={() => { }}>
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
@@ -620,7 +625,6 @@ export function EmployeeFilesManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Employee</Label>
-                    <p className="text-lg font-semibold">{selectedFile.employeeName}</p>
                     <p className="text-sm text-gray-600">{selectedFile.employeeId}</p>
                   </div>
                   <div>
@@ -637,7 +641,7 @@ export function EmployeeFilesManagement() {
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Upload Date</Label>
-                    <p className="text-lg">{selectedFile.uploadDate}</p>
+                    <p className="text-lg">{selectedFile.createdAt}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Expiry Date</Label>
@@ -647,17 +651,7 @@ export function EmployeeFilesManagement() {
                     <Label className="text-sm font-medium text-gray-500">Status</Label>
                     <div className="mt-1">{getStatusBadge(selectedFile.status)}</div>
                   </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">Uploaded By</Label>
-                    <p className="text-lg">{selectedFile.uploadedBy}</p>
-                  </div>
                 </div>
-                {selectedFile.description && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">Description</Label>
-                    <p className="text-lg">{selectedFile.description}</p>
-                  </div>
-                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedFile(null)}>

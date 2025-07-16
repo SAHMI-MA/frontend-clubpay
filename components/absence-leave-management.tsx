@@ -29,11 +29,6 @@ import {
   XCircle,
   Clock,
   Eye,
-  User,
-  Plane,
-  Heart,
-  Baby,
-  GraduationCap,
   Trash2,
 } from "lucide-react"
 import { Employee, hrApi } from "@/lib/api/hr-api"
@@ -119,26 +114,6 @@ function normalizeLeaveType(type: string): string {
   return leaveTypeMap[type] || (leaveTypeOptions.includes(type) ? type : "Personal")
 }
 
-// Update all status values and allowedStatusValues to use lowercase: ["pending", "approved", "declined", "rejected", "cancelled"]
-const allowedStatusValues = ["pending", "approved", "rejected", "cancelled"] as const
-function normalizeStatus(status: string): LeaveStatus {
-  const match = allowedStatusValues.find(
-    (s) => s.toLowerCase() === status.toLowerCase()
-  )
-  return match || "pending"
-}
-
-// When displaying status, you can map to PascalCase for UI only:
-function displayStatus(status: string) {
-  switch (status) {
-    case "pending": return "Pending";
-    case "approved": return "Approved";
-    case "declined": return "Declined";
-    case "rejected": return "Rejected";
-    case "cancelled": return "Cancelled";
-    default: return status;
-  }
-}
 
 export function AbsenceLeaveManagement() {
   // Format ISO date string to readable format
@@ -238,25 +213,6 @@ export function AbsenceLeaveManagement() {
     return matchesSearch && matchesStatus && matchesType;
   })
 
-  const getLeaveTypeIcon = (type: string) => {
-    switch (type) {
-      case "annual":
-        return <Plane className="w-4 h-4" />
-      case "sick":
-        return <Heart className="w-4 h-4" />
-      case "maternity":
-        return <Baby className="w-4 h-4" />
-      case "paternity":
-        return <Baby className="w-4 h-4" />
-      case "personal":
-        return <User className="w-4 h-4" />
-      case "training":
-        return <GraduationCap className="w-4 h-4" />
-      default:
-        return <Calendar className="w-4 h-4" />
-    }
-  }
-
   const getLeaveTypeBadge = (type: string) => {
     const normalized = normalizeLeaveType(type)
     const colors = {
@@ -333,9 +289,6 @@ export function AbsenceLeaveManagement() {
 
   const handleCreateRequest = async () => {
     const daysRequested = calculateDays(newRequest.startDate, newRequest.endDate)
-    // Always use 'Pending' for new requests
-    const status: LeaveStatus = allowedStatusValues[0]
-    // Map display value to backend value
     const backendLeaveType = displayToBackendLeaveType[newRequest.leaveType] || "personal"
     const payload: CreateLeaveRequestDto = {
       employeeId: newRequest.employeeId,

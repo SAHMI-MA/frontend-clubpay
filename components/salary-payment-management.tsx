@@ -20,11 +20,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DollarSign, Plus, Search, Filter, Download, Eye, CheckCircle, XCircle, Clock, FileText, Trash2 } from "lucide-react"
+import { DollarSign, Plus, Search, Filter, Download, Eye, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react"
 import {
   listSalaryPayments,
   createSalaryPayment,
-  updateSalaryPayment,
   deleteSalaryPayment,
   SalaryPayment as ApiSalaryPayment,
   CreateSalaryPaymentBody,
@@ -32,7 +31,7 @@ import {
   CreateBulkSalaryPaymentBody,
   approveOrRejectSalaryPayment,
 } from "@/lib/api/hr-salary-api"
-import { Department, Position } from "@/lib/api/hr-api";
+import { Department } from "@/lib/api/hr-api";
 
 interface Employee {
   employeeId: string
@@ -108,7 +107,7 @@ export function SalaryPaymentManagement() {
     setLoading(true)
     listSalaryPayments()
       .then(setPayments)
-      .catch((e) => setError("Failed to load salary payments"))
+      .catch((e) => setError("Failed to load salary payments " + e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -173,8 +172,7 @@ export function SalaryPaymentManagement() {
     let SalaryPayment = 0;
     const employeesList = selectedDepartment?.employees || [];
     console.log("Selected Department Employees:", employeesList);
-    let filteredEmployees = employeesList;
-    SalaryPayment = filteredEmployees.reduce((sum, emp) => sum + Number(emp.currentSalary), 0);
+    SalaryPayment = employeesList.reduce((sum, emp) => sum + Number(emp.currentSalary), 0);
     const grossPay = SalaryPayment + newPayment.overtime + newPayment.bonuses;
     return {
       grossPay
@@ -216,8 +214,8 @@ export function SalaryPaymentManagement() {
         periodStart: null,
         periodEnd: null,
       })
-    } catch (e) {
-      setError("Failed to create payment")
+    } catch (e: any) {
+      setError("Failed to create payment " + e.message)
     }
   }
 
@@ -228,7 +226,7 @@ export function SalaryPaymentManagement() {
     }
     // Get filtered employees for bulk payment
     const employeesList = selectedDepartment.employees || [];
-    let filteredEmployees = employeesList;
+    const filteredEmployees = employeesList;
     const employeeIds = filteredEmployees.map(emp => emp.employeeId);
     if (employeeIds.length === 0) {
       setError("No employees found for the selected department/position")
@@ -260,8 +258,8 @@ export function SalaryPaymentManagement() {
         periodStart: null,
         periodEnd: null,
       })
-    } catch (e) {
-      setError("Failed to create bulk payment")
+    } catch (e: any) {
+      setError("Failed to create bulk payment " + e.message)
     } finally {
       setSelectedDepartment(null)
     }
@@ -275,8 +273,8 @@ export function SalaryPaymentManagement() {
       const refreshedPayments = await listSalaryPayments();
       setPayments(refreshedPayments);
       setLoading(false);
-    } catch (e) {
-      setError("Failed to cancel payment")
+    } catch (e: any) {
+      setError("Failed to cancel payment " + e.message)
       setLoading(false);
     }
   }
@@ -288,20 +286,11 @@ export function SalaryPaymentManagement() {
       const refreshedPayments = await listSalaryPayments();
       setPayments(refreshedPayments);
       setLoading(false);
-    } catch (e) {
-      setError("Failed to process payment")
+    } catch (e: any) {
+      setError("Failed to process payment " + e.message)
       setLoading(false);
     }
   }
-  const handleFailPayment = async (paymentId: string) => {
-    try {
-      const updated = await updateSalaryPayment(paymentId, { status: "failed" })
-      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)))
-    } catch (e) {
-      setError("Failed to mark payment as failed")
-    }
-  }
-
   // Add delete dialog state and handler
   const handleDeletePayment = async () => {
     if (!deleteDialog.payment) return
@@ -309,8 +298,8 @@ export function SalaryPaymentManagement() {
       await deleteSalaryPayment(String(deleteDialog.payment!.id))
       setPayments((prev) => prev.filter((p) => String(p.id) !== String(deleteDialog.payment!.id)))
       setDeleteDialog({ open: false, payment: null })
-    } catch (e) {
-      setError("Failed to delete payment")
+    } catch (e: any) {
+      setError("Failed to delete payment " + e.message)
     }
   }
 

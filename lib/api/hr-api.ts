@@ -1,7 +1,6 @@
 // lib/api/hr-api.ts
 import { apiConfig } from "../api-config";
 import { getAuthHeaders as getAuthHeadersUtil } from "../../utils/auth";
-import { Pos } from "jspdf-autotable";
 
 const BASE_URL = apiConfig.baseUrl || "http://localhost:8080";
 

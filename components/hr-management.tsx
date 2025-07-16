@@ -43,7 +43,7 @@ import {
   Clock,
   UserX,
 } from "lucide-react"
-import { hrApi, Employee, Department, Position, CreateEmployeeRequest,type EmployeeStatus } from "@/lib/api/hr-api"
+import { hrApi, Employee, Department, Position, CreateEmployeeRequest } from "@/lib/api/hr-api"
 import { Combobox } from "@/components/ui/combobox"
 import { userService, User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -135,8 +135,8 @@ export function HRManagement() {
 
   // Add state for users
   const [users, setUsers] = useState<User[]>([])
-  const [usersLoading, setUsersLoading] = useState(false)
-  const [usersError, setUsersError] = useState<string | null>(null)
+  const [, setUsersLoading] = useState(false)
+  const [, setUsersError] = useState<string | null>(null)
 
   // Add state for employee delete dialog
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
@@ -156,9 +156,9 @@ export function HRManagement() {
     setLoading(true)
     setError(null)
     Promise.all([
-      hrApi.getDepartments().catch((e) => { setError("Failed to load departments"); return [] }),
-      hrApi.getPositions ? hrApi.getPositions().catch((e) => { setError("Failed to load positions"); return [] }) : Promise.resolve([]),
-      hrApi.getEmployees().catch((e) => { setError("Failed to load employees"); return [] })
+      hrApi.getDepartments().catch((e: any) => { setError("Failed to load departments " + e.message); return [] }),
+      hrApi.getPositions ? hrApi.getPositions().catch((e: any) => { setError("Failed to load positions " + e.message); return [] }) : Promise.resolve([]),
+      hrApi.getEmployees().catch((e: any) => { setError("Failed to load employees " + e.message); return [] })
     ]).then(([dept, pos, empList]) => {
       setDepartments(dept)
       setPositions(pos)
@@ -173,7 +173,7 @@ export function HRManagement() {
     setUsersLoading(true)
     userService.getAllUsers()
       .then(setUsers)
-      .catch((e) => setUsersError("Failed to load users"))
+      .catch((e: any) => setUsersError("Failed to load users " + e.message))
       .finally(() => setUsersLoading(false))
   }, [])
 
@@ -268,17 +268,6 @@ export function HRManagement() {
     }
   }
 
-  // Handle department delete
-  async function handleDeleteDepartment(id: number) {
-    if (!window.confirm("Are you sure you want to delete this department?")) return
-    try {
-      await hrApi.deleteDepartment(id)
-      setDepartments((prev) => prev.filter((d) => d.id !== id))
-    } catch (err: any) {
-      alert(err?.message || "Failed to delete department")
-    }
-  }
-
   // Populate form when editing
   useEffect(() => {
     if (selectedEmployee) {
@@ -325,8 +314,6 @@ export function HRManagement() {
     if (!isEditEmployee && employeeForm.departmentId) {
       const dept = departments.find((d) => d.id === employeeForm.departmentId)
       if (dept && dept.code) {
-        const prefix = dept.code.substring(0, 2).toUpperCase()
-        const randomNum = Math.floor(10000 + Math.random() * 90000)
         // If employeeId is part of CreateEmployeeRequest, set it here
         // setEmployeeForm((prev) => ({ ...prev, employeeId: `${prefix}${randomNum}` }))
       }
@@ -336,7 +323,7 @@ export function HRManagement() {
   }, [employeeForm.departmentId, isEditEmployee])
 
   function handleEmployeeFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const { id, value, type } = e.target;
+    const { id, value } = e.target;
     if (id === "userId" || id === "departmentId" || id === "positionId") {
       setEmployeeForm({ ...employeeForm, [id]: value === "" ? 0 : parseInt(value, 10) })
     } else {
@@ -359,7 +346,7 @@ export function HRManagement() {
       if (isEditEmployee) {
         // PATCH: only allowed fields, use CreateEmployeeRequest for type safety
         // Remove userId, hireDate, dateOfBirth, nationalId from payload
-        const { userId, hireDate, dateOfBirth, nationalId, ...updatePayload } = employeeForm;
+        const { ...updatePayload } = employeeForm;
         // Use employee.employeeId for update, not selectedEmployee.id
         const employee = await hrApi.updateEmployee(selectedEmployee.employeeId, updatePayload);
         setEmployees((prev) => prev.map((e) => (e.employeeId === employee.employeeId ? employee : e)));
@@ -457,38 +444,6 @@ export function HRManagement() {
       setDeleteEmployeeError(err?.message || "Failed to delete employee");
     } finally {
       setIsDeletingEmployee(false);
-    }
-  }
-
-  // Confirm department deletion
-  async function handleDeleteDepartmentConfirmed() {
-    if (!departmentToDelete) return;
-    setIsDeletingDepartment(true);
-    setDeleteDepartmentError(null);
-    try {
-      await hrApi.deleteDepartment(departmentToDelete.id);
-      setDepartments((prev) => prev.filter((d) => d.id !== departmentToDelete.id));
-      setDepartmentToDelete(null);
-    } catch (err: any) {
-      setDeleteDepartmentError(err?.message || "Failed to delete department");
-    } finally {
-      setIsDeletingDepartment(false);
-    }
-  }
-
-  // Confirm position deletion
-  async function handleDeletePositionConfirmed() {
-    if (!positionToDelete) return;
-    setIsDeletingPosition(true);
-    setDeletePositionError(null);
-    try {
-      await hrApi.deletePosition(positionToDelete.id);
-      setPositions((prev) => prev.filter((p) => p.id !== positionToDelete.id));
-      setPositionToDelete(null);
-    } catch (err: any) {
-      setDeletePositionError(err?.message || "Failed to delete position");
-    } finally {
-      setIsDeletingPosition(false);
     }
   }
 
