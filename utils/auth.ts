@@ -37,7 +37,6 @@ export const isAuthenticated = (): boolean => {
 export const getAuthHeaders = (): Record<string, string> => {
   const token = getAuthToken();
   return {
-    'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` })
   };
 };

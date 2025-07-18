@@ -94,8 +94,11 @@ export function EmployeeFilesManagement() {
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const filteredFiles = files.filter((file) => {
-    // Use nested employee data for name search
-    const employeeName = file.employee ? `${file.employee.user.firstName || ''} ${file.employee.user.lastName || ''}`.trim() : '';
+    // Use nested employee data for name search, safely
+    const employeeName =
+      file.employee && file.employee.user
+        ? `${file.employee.user.firstName || ''} ${file.employee.user.lastName || ''}`.trim()
+        : '';
     const matchesSearch =
       employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (file.fileName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
