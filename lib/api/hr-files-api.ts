@@ -11,14 +11,14 @@ export interface EmployeeFile {
   employeeId: string;
   fileName: string;
   fileType: string;
-  fileSize: string;
+  fileSize: number;
   category: string;
-  expiryDate?: string;
+  expiryDate?: string | null;
   status: "active" | "archived" | "expired";
   createdAt: string;
   updatedAt: string;
   employee?: Employee;
-  description?: string;
+  description?: string | null;
 }
 
 export interface CreateEmployeeFileDto {
