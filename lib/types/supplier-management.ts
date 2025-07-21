@@ -117,6 +117,12 @@ export interface Acquisition {
   playerId?: number;
   staffId?: number;
   quantity?: number;
+  createdBy?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
 }
 
 export interface CreateAcquisitionDto {

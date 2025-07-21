@@ -262,17 +262,21 @@ export function RentalSupplierManagement() {
 
   // Event handlers
   const handleAddAcquisition = () => {
-    const acquisitionData: CreateAcquisitionDto = {
+    // Ensure itemName is present and non-empty for API
+    const itemName = newAcquisition.itemName && newAcquisition.itemName.trim() !== "" ? newAcquisition.itemName : "Acquisition Item";
+    const acquisitionData: CreateAcquisitionDto & { createdBy?: number; itemName?: string } = {
       acquisitionType: newAcquisition.acquisitionType,
       itemType: newAcquisition.itemType,
-      description: newAcquisition.description || newAcquisition.itemName || '', // Use description or itemName
+      description: newAcquisition.description || itemName,
       startDate: newAcquisition.startDate,
       endDate: newAcquisition.endDate,
       cost: newAcquisition.unitPrice ? (newAcquisition.unitPrice * (newAcquisition.quantity || 1)) : newAcquisition.cost,
       supplierId: newAcquisition.supplierId,
-      quantity: newAcquisition.quantity
+      quantity: newAcquisition.quantity,
+      createdBy: currentUser?.id ?? undefined,
+      itemName
     }
-    
+
     // Add the correct assignee ID based on assigneeType
     if (newAcquisition.assigneeType && newAcquisition.assigneeId) {
       const assigneeId = parseInt(newAcquisition.assigneeId, 10);
@@ -667,34 +671,31 @@ export function RentalSupplierManagement() {
                             </SelectTrigger>
                             <SelectContent>
                               {newAcquisition.assigneeType === AssigneeType.TEAM && (
-                                <>
-                                  {teams.map(team => (
-                                    <SelectItem key={team.id} value={team.id.toString()}>
-                                      {team.name}
-                                    </SelectItem>
-                                  ))}
-                                  {teams.length === 0 && <SelectItem value="" disabled>No teams found</SelectItem>}
-                                </>
+                                teams.length > 0
+                                  ? teams.map(team => (
+                                      <SelectItem key={team.id} value={team.id.toString()}>
+                                        {team.name}
+                                      </SelectItem>
+                                    ))
+                                  : <SelectItem value="no-team" disabled>No teams found</SelectItem>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.PLAYER && (
-                                <>
-                                  {players.map(player => (
-                                    <SelectItem key={player.id} value={player.id.toString()}>
-                                      {player.firstName} {player.lastName}
-                                    </SelectItem>
-                                  ))}
-                                  {players.length === 0 && <SelectItem value="" disabled>No players found</SelectItem>}
-                                </>
+                                players.length > 0
+                                  ? players.map(player => (
+                                      <SelectItem key={player.id} value={player.id.toString()}>
+                                        {player.firstName} {player.lastName}
+                                      </SelectItem>
+                                    ))
+                                  : <SelectItem value="no-player" disabled>No players found</SelectItem>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.STAFF && (
-                                <>
-                                  {staff.map(staffMember => (
-                                    <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
-                                      {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
-                                    </SelectItem>
-                                  ))}
-                                  {staff.length === 0 && <SelectItem value="" disabled>No staff found</SelectItem>}
-                                </>
+                                staff.length > 0
+                                  ? staff.map(staffMember => (
+                                      <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                                        {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
+                                      </SelectItem>
+                                    ))
+                                  : <SelectItem value="no-staff" disabled>No staff found</SelectItem>
                               )}
                             </SelectContent>
                           </Select>
@@ -800,6 +801,11 @@ export function RentalSupplierManagement() {
                           </div>
                         </TableCell>
                         <TableCell>{getSupplierName(acquisition)}</TableCell>
+                        <TableCell>
+                          {acquisition.createdBy && acquisition.createdBy.firstName && acquisition.createdBy.lastName
+                            ? `${acquisition.createdBy.firstName} ${acquisition.createdBy.lastName}`
+                            : "Unknown"}
+                        </TableCell>
                         <TableCell>{acquisition.quantity || 1}</TableCell>
                         <TableCell className="font-medium">${getAcquisitionTotal(acquisition).toLocaleString()}</TableCell>
                         <TableCell>
