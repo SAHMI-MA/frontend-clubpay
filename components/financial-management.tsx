@@ -1167,9 +1167,7 @@ export function FinancialManagement() {
     setSalaryPaymentError(null)
 
     try {
-      // Ensure itemName is present and non-empty for API
-      const itemName = "Salary Payment";
-      const salaryPaymentData: CreateSalaryPaymentDto & { createdBy?: number; itemName?: string } = {
+      const salaryPaymentData: CreateSalaryPaymentDto = {
         amount: parseFloat(salaryPaymentForm.amount),
         paymentDate: salaryPaymentForm.paymentDate,
         periodStart: salaryPaymentForm.periodStart,
@@ -1179,8 +1177,6 @@ export function FinancialManagement() {
         netAmount: parseFloat(salaryPaymentForm.netAmount),
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
-        createdBy: authUser?.id ?? undefined,
-        itemName
       }
 
       console.log("Creating salary payment with data:", salaryPaymentData)
