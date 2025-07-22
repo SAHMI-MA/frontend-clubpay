@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PlayerList } from "./team-management/player-list";
-import { PlayerForm } from "./team-management/player-form";
 import { PlayerDetails } from "@/components/team-management/player-details";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { fetchAllPlayers } from "@/lib/redux/playerSlice";
@@ -21,6 +19,8 @@ import { loginWithDemoCredentials, testApiConnection } from "@/lib/api-utils";
 import { debugAuth } from "@/lib/auth-debug";
 import { debugPlayersTeamStructure } from "@/lib/team-data-debug";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { PlayerForm } from "../team-management/player-form";
+import { PlayerList } from "../team-management/player-list";
 
 export function PlayerManagement() {
   const dispatch = useAppDispatch();

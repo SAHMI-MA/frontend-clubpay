@@ -199,7 +199,7 @@ export const hrApi = {
   async createEmployee(data: CreateEmployeeRequest): Promise<Employee> {
     const res = await fetch(`${BASE_URL}/hr/employees`, {
       method: "POST",
-      headers: getAuthHeadersUtil(),
+      headers: { ...getAuthHeadersUtil() , "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
@@ -253,7 +253,7 @@ export const hrApi = {
   async createDepartment(data: CreateDepartmentRequest): Promise<Department> {
     const res = await fetch(`${BASE_URL}/hr/departments`, {
       method: "POST",
-      headers: getAuthHeadersUtil(),
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
@@ -277,7 +277,7 @@ export const hrApi = {
   async updateDepartment(id: number, data: UpdateDepartmentRequest): Promise<Department> {
     const res = await fetch(`${BASE_URL}/hr/departments/${id}`, {
       method: "PATCH",
-      headers: getAuthHeadersUtil(),
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
@@ -296,7 +296,7 @@ export const hrApi = {
   async createPosition(data: CreatePositionRequest): Promise<Position> {
     const res = await fetch(`${BASE_URL}/hr/positions`, {
       method: "POST",
-      headers: getAuthHeadersUtil(),
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
@@ -320,7 +320,7 @@ export const hrApi = {
   async updatePosition(id: number, data: UpdatePositionRequest): Promise<Position> {
     const res = await fetch(`${BASE_URL}/hr/positions/${id}`, {
       method: "PATCH",
-      headers: getAuthHeadersUtil(),
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw await res.json();
@@ -328,82 +328,6 @@ export const hrApi = {
   },
   async deletePosition(id: number): Promise<{ message: string }> {
     const res = await fetch(`${BASE_URL}/hr/positions/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeadersUtil(),
-    });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-
-  // Contracts
-  async createContract(data: CreateContractRequest): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts`, {
-      method: "POST",
-      headers: getAuthHeadersUtil(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getContracts(params?: Record<string, any>): Promise<{ data: Contract[]; pagination: any }> {
-    const res = await fetch(`${BASE_URL}/hr/contracts${buildQuery(params)}`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getContractStats(): Promise<any> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/statistics`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getExpiringContracts(days?: number): Promise<Contract[]> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/expiring${buildQuery(days ? { days } : undefined)}`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getContractsForEmployee(employeeId: string): Promise<Contract[]> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/employee/${employeeId}`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getActiveContractForEmployee(employeeId: string): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/employee/${employeeId}/active`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async getContractById(id: number): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/${id}`, { headers: getAuthHeadersUtil() });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async updateContract(id: number, data: UpdateContractRequest): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/${id}`, {
-      method: "PATCH",
-      headers: getAuthHeadersUtil(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async renewContract(id: number, data: RenewContractRequest): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/${id}/renew`, {
-      method: "POST",
-      headers: getAuthHeadersUtil(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async terminateContract(id: number, data: TerminateContractRequest): Promise<Contract> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/${id}/terminate`, {
-      method: "POST",
-      headers: getAuthHeadersUtil(),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw await res.json();
-    return res.json();
-  },
-  async deleteContract(id: number): Promise<{ message: string }> {
-    const res = await fetch(`${BASE_URL}/hr/contracts/${id}`, {
       method: "DELETE",
       headers: getAuthHeadersUtil(),
     });

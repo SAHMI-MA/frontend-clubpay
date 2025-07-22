@@ -386,7 +386,7 @@ export function SupplierManagement() {
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">${totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSpent.toLocaleString()} MAD</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">All time</p>
           </CardContent>
         </Card>
@@ -514,7 +514,7 @@ export function SupplierManagement() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{supplier.totalOrders}</TableCell>
-                    <TableCell className="font-medium">${supplier.totalSpent?.toLocaleString() || '0'}</TableCell>
+                    <TableCell className="font-medium">{supplier.totalSpent?.toLocaleString() || '0'} MAD</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(supplier.isActive)}>
                         {supplier.isActive ? "Active" : "Inactive"}
@@ -555,33 +555,6 @@ export function SupplierManagement() {
                 ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Category Analytics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Category Analytics</CardTitle>
-          <CardDescription>Supplier distribution and spending by category</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categoryStats
-              .filter((stat) => stat.count > 0)
-              .map((stat) => (
-                <div
-                  key={stat.category}
-                  className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className={getCategoryColor(stat.category)}>{stat.category}</Badge>
-                    <span className="text-sm font-medium">{stat.count} suppliers</span>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">${stat.spent.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Total spent</p>
-                </div>
-              ))}
           </div>
         </CardContent>
       </Card>
@@ -657,7 +630,7 @@ export function SupplierManagement() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</Label>
-                  <p className="text-lg font-bold">${selectedSupplier.totalSpent?.toLocaleString() || '0'}</p>
+                  <p className="text-lg font-bold">{selectedSupplier.totalSpent?.toLocaleString() || '0'} MAD</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Order</Label>

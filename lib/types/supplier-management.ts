@@ -1,6 +1,5 @@
-// Supplier and Acquisition Types
 
-// Supplier
+import { User } from "../auth-service";
 export interface Supplier {
   id: number;
   name: string;
@@ -9,15 +8,15 @@ export interface Supplier {
   email: string;
   website?: string;
   contactPerson: string;
-  rib?: string; // NEW: Bank account information
+  rib?: string;
   isActive?: boolean;
   rating?: number;
   category?: string;
   totalOrders?: number;
   totalSpent?: number;
-  lastOrderDate?: string; // Changed from Date to string for API consistency
-  acquisitions?: any[]; // NEW: Array of acquisitions
-  supplies?: Supply[]; // NEW: Array of supplies
+  lastOrderDate?: string;
+  acquisitions?: any[];
+  supplies?: Supply[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -29,8 +28,8 @@ export interface CreateSupplierDto {
   email: string;
   website?: string;
   contactPerson: string;
-  rib?: string; // NEW: Bank account information
-  category?: string; // Optional for UI categorization
+  rib?: string;
+  category?: string;
 }
 
 export interface UpdateSupplierDto {
@@ -76,52 +75,50 @@ export enum AssigneeType {
   STAFF = "STAFF",
 }
 
+export interface AcquisitionFile {
+  id: number;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+  description: string;
+}
+
 export interface Acquisition {
   id: number;
   acquisitionType: AcquisitionType;
   itemType: ItemType;
+  itemName: string;
   description: string;
   startDate?: string;
   endDate?: string;
   cost: number;
+  supplier?: { id: number; name: string };
+  team?: { id: number; name: string } | null;
+  player?: { id: number; firstName: string; lastName: string } | null;
+  staff?: { id: number; firstName: string; lastName: string } | null;
+  supplies?: { id: number; name: string } | null;
   approvalStatus: ApprovalStatus;
   approvalDate?: string | null;
   approvalComments?: string;
   createdAt?: string;
   updatedAt?: string;
-  supplier?: {
-    id: number;
-    name: string;
-  };
-  team?: {
-    id: number;
-    name: string;
-  } | null;
-  player?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  } | null;
-  staff?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  } | null;
-  supplies?: {
-    id: number;
-    name: string;
-  } | null;
-  // Additional fields
   supplierId: number;
   teamId?: number;
   playerId?: number;
   staffId?: number;
   quantity?: number;
+  createdBy: User;
+  approver?: User | null;
+  quotationFile?: AcquisitionFile | null;
 }
 
 export interface CreateAcquisitionDto {
   acquisitionType: AcquisitionType;
   itemType: ItemType;
+  itemName: string;
   description: string;
   startDate?: string;
   endDate?: string;
@@ -131,11 +128,14 @@ export interface CreateAcquisitionDto {
   playerId?: number;
   staffId?: number;
   quantity?: number;
+  createdBy: number;
+  quotationFileId?: number;
 }
 
 export interface UpdateAcquisitionDto {
   acquisitionType?: AcquisitionType;
   itemType?: ItemType;
+  itemName?: string;
   description?: string;
   startDate?: string;
   endDate?: string;
@@ -145,6 +145,7 @@ export interface UpdateAcquisitionDto {
   playerId?: number;
   staffId?: number;
   quantity?: number;
+  quotationFileId?: number;
 }
 
 export interface ApprovalDto {

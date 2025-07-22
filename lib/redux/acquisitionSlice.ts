@@ -46,8 +46,12 @@ export const fetchAcquisitionById = createAsyncThunk(
 
 export const createAcquisition = createAsyncThunk(
   'acquisitions/create',
-  async (acquisitionData: CreateAcquisitionDto, { rejectWithValue }) => {
+  async (acquisitionData: CreateAcquisitionDto & { createdBy?: number }, { rejectWithValue }) => {
     try {
+      // Ensure createdBy is a number and present
+      if (!acquisitionData.createdBy || typeof acquisitionData.createdBy !== 'number') {
+        return rejectWithValue('Missing or invalid createdBy. Please log in again.');
+      }
       const data = await api.post<Acquisition>('acquisitions', acquisitionData);
       return data;
     } catch (error: any) {

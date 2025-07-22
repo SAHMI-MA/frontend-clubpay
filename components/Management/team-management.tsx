@@ -16,9 +16,6 @@ import {
   Briefcase,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TeamDetails } from "./team-management/team-details"
-import { TeamForm } from "./team-management/team-form"
-import { TeamList } from "./team-management/team-list"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +23,9 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
+import { TeamDetails } from "../team-management/team-details"
+import { TeamForm } from "../team-management/team-form"
+import { TeamList } from "../team-management/team-list"
 
 export function TeamManagement() {
   const dispatch = useAppDispatch()
