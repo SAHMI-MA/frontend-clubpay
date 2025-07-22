@@ -75,6 +75,72 @@ const statusLabels = {
 }
 
 export function RentalSupplierManagement() {
+
+  // Allowed file types for upload
+  const allowedMimeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+    'text/plain',
+  ];
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.txt'];
+
+  // File upload handler for quotation file
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type by MIME and extension
+    const fileType = file.type;
+    const fileName = file.name.toLowerCase();
+    const hasAllowedMime = allowedMimeTypes.includes(fileType);
+    const hasAllowedExt = allowedExtensions.some(ext => fileName.endsWith(ext));
+    if (!hasAllowedMime && !hasAllowedExt) {
+      setUploadError('File type not allowed. Allowed: PDF, DOC, DOCX, JPG, JPEG, PNG, TXT.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadedFileName(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      // Dynamically import getApiUrl and token utils
+      const { getApiUrl } = await import('@/lib/api-config');
+      const { tokenUtils } = await import('@/lib/api');
+      const url = getApiUrl('/acquisitions/upload-file');
+      const authToken = tokenUtils.getAuthToken();
+      const headers: HeadersInit = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'File upload failed.');
+      }
+      const data = await res.json();
+      if (data && data.id) {
+        setNewAcquisition((prev) => ({ ...prev, quotationFileId: data.id }));
+        setUploadedFileName(file.name);
+      } else {
+        setUploadError('Upload failed: No file ID returned.');
+      }
+    } catch (error: any) {
+      setUploadError(error?.message || 'File upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSupplierId, setSelectedSupplierId] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
@@ -111,12 +177,13 @@ export function RentalSupplierManagement() {
 
   // Form states
   const [newAcquisition, setNewAcquisition] = useState<CreateAcquisitionDto & {
-    // UI-only fields that aren't part of the API DTO
     itemName?: string;
     unitPrice?: number;
     notes?: string;
     assigneeType?: AssigneeType;
     assigneeId?: string;
+    createdBy?: number;
+    quotationFileId?: number;
   }>({
     acquisitionType: AcquisitionType.RENTAL,
     itemType: ItemType.EQUIPMENT,
@@ -129,8 +196,13 @@ export function RentalSupplierManagement() {
     // UI fields
     itemName: "",
     unitPrice: 0,
-    notes: ""
+    notes: "",
+    createdBy: currentUser?.id || 0,
+    quotationFileId: undefined,
   })
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   // Approving state - track which acquisition is being approved
   const [approvingId, setApprovingId] = useState<number | null>(null);
@@ -262,18 +334,19 @@ export function RentalSupplierManagement() {
 
   // Event handlers
   const handleAddAcquisition = () => {
-    const acquisitionData: CreateAcquisitionDto = {
+    const acquisitionData: CreateAcquisitionDto & { createdBy: number; quotationFileId?: number } = {
       acquisitionType: newAcquisition.acquisitionType,
       itemType: newAcquisition.itemType,
+      itemName: newAcquisition.itemName,
       description: newAcquisition.description || newAcquisition.itemName || '', // Use description or itemName
       startDate: newAcquisition.startDate,
       endDate: newAcquisition.endDate,
       cost: newAcquisition.unitPrice ? (newAcquisition.unitPrice * (newAcquisition.quantity || 1)) : newAcquisition.cost,
       supplierId: newAcquisition.supplierId,
-      quantity: newAcquisition.quantity
+      quantity: newAcquisition.quantity,
+      createdBy: currentUser?.id || 0,
+      quotationFileId: newAcquisition.quotationFileId,
     }
-    
-    // Add the correct assignee ID based on assigneeType
     if (newAcquisition.assigneeType && newAcquisition.assigneeId) {
       const assigneeId = parseInt(newAcquisition.assigneeId, 10);
       const assigneeField = getAssigneeIdField(newAcquisition.assigneeType);
@@ -281,7 +354,6 @@ export function RentalSupplierManagement() {
         acquisitionData[assigneeField] = assigneeId;
       }
     }
-
     dispatch(createAcquisition(acquisitionData))
       .unwrap()
       .then(() => {
@@ -302,12 +374,12 @@ export function RentalSupplierManagement() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: undefined,
       cost: 0,
-      supplierId: 0, // Keep default as 0, will need user selection
+      supplierId: 0,
       quantity: 1,
-      // UI fields
       itemName: "",
-      unitPrice: 0,  // Keep default as 0, but clear in UI
-      notes: ""
+      unitPrice: 0,  
+      notes: "",
+      createdBy: currentUser?.id || 0,
     })
   }
 
@@ -496,7 +568,7 @@ export function RentalSupplierManagement() {
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">${totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSpent.toLocaleString()} MAD</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">This year</p>
           </CardContent>
         </Card>
@@ -668,32 +740,41 @@ export function RentalSupplierManagement() {
                             <SelectContent>
                               {newAcquisition.assigneeType === AssigneeType.TEAM && (
                                 <>
-                                  {teams.map(team => (
-                                    <SelectItem key={team.id} value={team.id.toString()}>
-                                      {team.name}
-                                    </SelectItem>
-                                  ))}
-                                  {teams.length === 0 && <SelectItem value="" disabled>No teams found</SelectItem>}
+                                  {teams.length > 0 ? (
+                                    teams.map(team => (
+                                      <SelectItem key={team.id} value={team.id.toString()}>
+                                        {team.name}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <div className="px-3 py-2 text-sm text-gray-500">No teams found</div>
+                                  )}
                                 </>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.PLAYER && (
                                 <>
-                                  {players.map(player => (
-                                    <SelectItem key={player.id} value={player.id.toString()}>
-                                      {player.firstName} {player.lastName}
-                                    </SelectItem>
-                                  ))}
-                                  {players.length === 0 && <SelectItem value="" disabled>No players found</SelectItem>}
+                                  {players.length > 0 ? (
+                                    players.map(player => (
+                                      <SelectItem key={player.id} value={player.id.toString()}>
+                                        {player.firstName} {player.lastName}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <div className="px-3 py-2 text-sm text-gray-500">No players found</div>
+                                  )}
                                 </>
                               )}
                               {newAcquisition.assigneeType === AssigneeType.STAFF && (
                                 <>
-                                  {staff.map(staffMember => (
-                                    <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
-                                      {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
-                                    </SelectItem>
-                                  ))}
-                                  {staff.length === 0 && <SelectItem value="" disabled>No staff found</SelectItem>}
+                                  {staff.length > 0 ? (
+                                    staff.map(staffMember => (
+                                      <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                                        {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <div className="px-3 py-2 text-sm text-gray-500">No staff found</div>
+                                  )}
                                 </>
                               )}
                             </SelectContent>
@@ -710,6 +791,21 @@ export function RentalSupplierManagement() {
                           placeholder="Additional notes"
                           rows={2}
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="quotationFile">Quotation File</Label>
+                        <input
+                          id="quotationFile"
+                          type="file"
+                          accept="application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,image/*"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
+                        {uploadedFileName && <p className="text-xs text-green-600">Uploaded: {uploadedFileName}</p>}
+                        {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
                       </div>
                     </div>
                     <DialogFooter>
@@ -774,6 +870,8 @@ export function RentalSupplierManagement() {
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Approval Date</TableHead>
+                      <TableHead>Created By</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -782,7 +880,7 @@ export function RentalSupplierManagement() {
                       <TableRow key={acquisition.id}>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{getAcquisitionDisplayName(acquisition)}</p>
+                            <p className="font-medium">{acquisition.itemName || "Unnamed item"}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
                               {acquisition.description}
                             </p>
@@ -801,11 +899,19 @@ export function RentalSupplierManagement() {
                         </TableCell>
                         <TableCell>{getSupplierName(acquisition)}</TableCell>
                         <TableCell>{acquisition.quantity || 1}</TableCell>
-                        <TableCell className="font-medium">${getAcquisitionTotal(acquisition).toLocaleString()}</TableCell>
+                        <TableCell className="font-medium">{getAcquisitionTotal(acquisition).toLocaleString()} MAD</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(getAcquisitionStatus(acquisition))}>{statusLabels[getAcquisitionStatus(acquisition)]}</Badge>
                         </TableCell>
                         <TableCell>{getAcquisitionDate(acquisition).toLocaleDateString()}</TableCell>
+                        <TableCell>{acquisition.approvalDate ? new Date(acquisition.approvalDate).toLocaleString() : '-'}</TableCell>
+                        <TableCell>
+                          {typeof acquisition.createdBy === 'object' && acquisition.createdBy !== null && 'firstName' in acquisition.createdBy && 'lastName' in acquisition.createdBy
+                            ? `${acquisition.createdBy.firstName} ${acquisition.createdBy.lastName}`
+                            : typeof acquisition.createdBy === 'number'
+                              ? acquisition.createdBy
+                              : "-"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             {acquisition.approvalStatus === ApprovalStatus.PENDING && (
@@ -860,96 +966,155 @@ export function RentalSupplierManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* View Acquisition Dialog */}
+      {/*
+        =============================
+        View Acquisition Dialog
+        =============================
+        This section renders the dialog for viewing acquisition details.
+      */}
+      {/* View Acquisition Dialog with Tabs */}
       <Dialog open={isViewDialogOpen && selectedAcquisition !== null} onOpenChange={(open) => {
         if (!open) setIsViewDialogOpen(false);
       }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Acquisition Details</DialogTitle>
           </DialogHeader>
           {selectedAcquisition && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Item</Label>
-                  <p className="font-medium">{getAcquisitionDisplayName(selectedAcquisition)}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Type</Label>
-                  <Badge className={getTypeColor(selectedAcquisition.acquisitionType)}>
-                    {acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
-                  </Badge>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</Label>
-                <p>{selectedAcquisition.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity</Label>
-                  <p>{selectedAcquisition.quantity || 1}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Cost</Label>
-                  <p>${selectedAcquisition.cost}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Amount</Label>
-                  <p className="font-medium text-lg">${getAcquisitionTotal(selectedAcquisition).toLocaleString()}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</Label>
-                  <Badge className={getStatusColor(selectedAcquisition.approvalStatus)}>
-                    {statusLabels[selectedAcquisition.approvalStatus]}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
-                  <p>{getSupplierName(selectedAcquisition)}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned To</Label>
-                  <p>{getAssigneeName(selectedAcquisition)}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created Date</Label>
-                  <p>{selectedAcquisition.createdAt ? new Date(selectedAcquisition.createdAt).toLocaleDateString() : "N/A"}</p>
-                </div>
-                {selectedAcquisition.startDate && (
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Start Date</Label>
-                    <p>{selectedAcquisition.startDate ? new Date(selectedAcquisition.startDate).toLocaleDateString() : "N/A"}</p>
+            <Tabs defaultValue="attributes" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="attributes">Attributes</TabsTrigger>
+                <TabsTrigger value="quotation">Quotation File</TabsTrigger>
+              </TabsList>
+              <TabsContent value="attributes">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Item</Label>
+                      <p className="font-medium">{selectedAcquisition.itemName || "Unnamed item"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Type</Label>
+                      <Badge className={getTypeColor(selectedAcquisition.acquisitionType)}>
+                        {acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {selectedAcquisition.endDate && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">End Date</Label>
-                  <p>{selectedAcquisition.endDate ? new Date(selectedAcquisition.endDate).toLocaleDateString() : "N/A"}</p>
-                </div>
-              )}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</Label>
+                    <p>{selectedAcquisition.description}</p>
+                  </div>
 
-              {selectedAcquisition.approvalComments && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approval Comments</Label>
-                  <p>{selectedAcquisition.approvalComments}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity</Label>
+                      <p>{selectedAcquisition.quantity || 1}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Cost</Label>
+                      <p>{selectedAcquisition.cost} MAD</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Amount</Label>
+                      <p className="font-medium text-lg">{getAcquisitionTotal(selectedAcquisition).toLocaleString()} MAD</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</Label>
+                      <Badge className={getStatusColor(selectedAcquisition.approvalStatus)}>
+                        {statusLabels[selectedAcquisition.approvalStatus]}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
+                      <p>{getSupplierName(selectedAcquisition)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned To</Label>
+                      <p>{getAssigneeName(selectedAcquisition)}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created Date</Label>
+                      <p>{selectedAcquisition.createdAt ? new Date(selectedAcquisition.createdAt).toLocaleDateString() : "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approval Date</Label>
+                      <p>{selectedAcquisition.approvalDate ? new Date(selectedAcquisition.approvalDate).toLocaleString() : "N/A"}</p>
+                    </div>
+                    {selectedAcquisition.startDate && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Start Date</Label>
+                        <p>{selectedAcquisition.startDate ? new Date(selectedAcquisition.startDate).toLocaleDateString() : "N/A"}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedAcquisition.endDate && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">End Date</Label>
+                      <p>{selectedAcquisition.endDate ? new Date(selectedAcquisition.endDate).toLocaleDateString() : "N/A"}</p>
+                    </div>
+                  )}
+
+                  {selectedAcquisition.approvalComments && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approval Comments</Label>
+                      <p>{selectedAcquisition.approvalComments}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+              <TabsContent value="quotation">
+                <div className="space-y-4">
+                  {selectedAcquisition.quotationFile && selectedAcquisition.quotationFile.url ? (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quotation File</Label>
+                      <div className="flex flex-col gap-2">
+                        {(() => {
+                          const apiUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+                          const fileUrl = `${process.env.NEXT_PUBLIC_API_URL || apiUrl}${selectedAcquisition.quotationFile.url}`;
+                          const fileType = selectedAcquisition.quotationFile.fileType;
+                          if (fileType.startsWith('image/')) {
+                            // Image preview
+                            return <img src={fileUrl} alt="Quotation File" className="max-h-64 rounded border" style={{maxWidth: '100%'}} />;
+                          } else if (fileType === 'application/pdf') {
+                            // PDF preview
+                            return <iframe src={fileUrl} title="Quotation PDF" className="w-full" style={{height: '400px', border: '1px solid #ccc', borderRadius: '4px'}} />;
+                          } else if (fileType === 'text/plain') {
+                            // TXT preview
+                            return <iframe src={fileUrl} title="Quotation TXT" className="w-full" style={{height: '200px', border: '1px solid #ccc', borderRadius: '4px', background: '#fafafa'}} />;
+                          } else {
+                            // Fallback: download/view link
+                            return (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-700 underline hover:text-blue-900"
+                              >
+                                {selectedAcquisition.quotationFile.fileName || 'View File'}
+                              </a>
+                            );
+                          }
+                        })()}
+                        <span className="text-xs text-gray-500">({selectedAcquisition.quotationFile.fileType}, {selectedAcquisition.quotationFile.fileSize} bytes)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-sm">No quotation file available.</div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

@@ -108,14 +108,122 @@ import {
   ApprovalDto
 } from "@/lib/types/supplier-management"
 import { api } from "@/lib/api"
+import { apiConfig } from "@/lib/api-config"
 
 // No sample data needed
 
 export function FinancialManagement() {
-  const dispatch = useAppDispatch()
-  
+  const [customPOFile, setCustomPOFile] = useState<File | null>(null);
+  const [customPOId, setCustomPOId] = useState<number | null>(null);
+  const [customPOType, setCustomPOType] = useState<"INTERNAL" | "EXTERNAL" | "">("");
+  const [isUploadingCustomPO, setIsUploadingCustomPO] = useState(false);
+  const [uploadCustomPOError, setUploadCustomPOError] = useState<string | null>(null);
+
+
+
+  // State for purchase order file and type (for acquisition transaction)
+  const [purchaseOrderFile, setPurchaseOrderFile] = useState<File | null>(null);
+  const [purchaseOrderId, setPurchaseOrderId] = useState<number | null>(null);
+  const [purchaseOrderType, setPurchaseOrderType] = useState<"INTERNAL" | "EXTERNAL" | "">("");
+  const [isUploadingPO, setIsUploadingPO] = useState(false);
+  const [uploadPOError, setUploadPOError] = useState<string | null>(null);
+
+  // Handle purchase order file upload
+  const handlePurchaseOrderFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPurchaseOrderFile(e.target.files[0]);
+      setUploadPOError(null);
+    }
+  };
+    // Handle custom transaction purchase order file upload
+  const handleCustomPOFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCustomPOFile(e.target.files[0]);
+      setUploadCustomPOError(null);
+    }
+  };
+
+  // ...existing code...
+
   // Toast notification state
   const { toastState, showToast, hideToast } = useToast();
+
+  // ...existing code...
+
+  // Place after showToast is defined
+  const handleUploadCustomPO = async () => {
+    if (!customPOFile) {
+      setUploadCustomPOError("Please select a file to upload.");
+      return;
+    }
+    setIsUploadingCustomPO(true);
+    setUploadCustomPOError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", customPOFile);
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token') || '';
+      }
+      const { getApiUrl } = await import('@/lib/api-config');
+      const uploadUrl = getApiUrl('acquisitions/upload-file');
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        },
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+      const data = await response.json();
+      setCustomPOId(data.id);
+      showToast('Purchase order file uploaded successfully', 'success');
+    } catch (err: any) {
+      setUploadCustomPOError(err.message || 'Failed to upload file');
+    } finally {
+      setIsUploadingCustomPO(false);
+    }
+  };
+
+  const handleUploadPurchaseOrder = async () => {
+    if (!purchaseOrderFile) {
+      setUploadPOError("Please select a file to upload.");
+      return;
+    }
+    setIsUploadingPO(true);
+    setUploadPOError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", purchaseOrderFile);
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token') || '';
+      }
+      // Dynamically import getApiUrl to avoid SSR issues
+      const { getApiUrl } = await import('@/lib/api-config');
+      const uploadUrl = getApiUrl('acquisitions/upload-file');
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        },
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+      const data = await response.json();
+      setPurchaseOrderId(data.id);
+      showToast('Purchase order file uploaded successfully', 'success');
+    } catch (err: any) {
+      setUploadPOError(err.message || 'Failed to upload file');
+    } finally {
+      setIsUploadingPO(false);
+    }
+  };
+  const dispatch = useAppDispatch()
   
   // State for managing the UI
   const [searchTerm, setSearchTerm] = useState("")
@@ -958,7 +1066,9 @@ export function FinancialManagement() {
         amount: parseFloat(customTransactionForm.amount),
         date: customTransactionForm.date,
         description: customTransactionForm.description,
-        createdById: userId as number // We've already checked that userId is not null above
+        createdById: userId as number, // We've already checked that userId is not null above
+        purchaseOrderId: customPOId || undefined,
+        purchaseOrderType: customPOType || undefined
       }
       
       console.log("Creating custom transaction with data:", transactionData)
@@ -983,6 +1093,9 @@ export function FinancialManagement() {
         type: TransactionType.INCOME,
         category: TransactionCategory.SPONSORSHIP
       })
+      setCustomPOFile(null);
+      setCustomPOId(null);
+      setCustomPOType("");
       setIsCustomTransactionDialogOpen(false)
       
       // Refresh transactions
@@ -1084,27 +1197,30 @@ export function FinancialManagement() {
         acquisitionId: selectedAcquisitionId,
         createdById: userId, // Using authenticated user's ID
         customDescription: transactionDescription || undefined,
-        transactionType: selectedTransactionType || TransactionType.EXPENSE,
-        transactionCategory: selectedTransactionCategory as TransactionCategory || TransactionCategory.EQUIPMENT
-      }
-      
+        purchaseOrderId: purchaseOrderId || undefined,
+        purchaseOrderType: purchaseOrderType || undefined
+      };
+
       console.log("Creating transaction with data:", transactionData)
-      
+
       const result = await dispatch(createTransactionFromAcquisition(transactionData)).unwrap()
       console.log("Transaction created successfully:", result)
       setIsCreateTransactionDialogOpen(false)
-      
+
       // Show success toast notification
       showToast(
         "Transaction created successfully from acquisition.",
         "success",
         "Transaction Created"
       )
-      
+
       // Reset form and refetch data
       setSelectedAcquisitionId(null)
       setTransactionDescription("")
-      
+      setPurchaseOrderFile(null)
+      setPurchaseOrderId(null)
+      setPurchaseOrderType("")
+
       // Refresh transactions and acquisitions
       dispatch(fetchTransactions())
       fetchApprovedAcquisitionsData()
@@ -1408,9 +1524,11 @@ export function FinancialManagement() {
     transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0) || 0
   , [transactions]);
   
-  const totalExpenses = useMemo(() => 
-    Math.abs(transactions.filter((t) => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0)) || 0
-  , [transactions]);
+  const totalExpenses = useMemo(() => {
+    return transactions
+      .filter((t) => t.type === TransactionType.EXPENSE)
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+  }, [transactions]);
   
   const netProfit = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
 
@@ -1572,7 +1690,6 @@ export function FinancialManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalIncome)}</div>
-            <p className="text-xs text-green-600 mt-1">+12.5% from last month</p>
           </CardContent>
         </Card>
 
@@ -1583,7 +1700,6 @@ export function FinancialManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalExpenses)}</div>
-            <p className="text-xs text-red-600 mt-1">+5.2% from last month</p>
           </CardContent>
         </Card>
 
@@ -1594,7 +1710,6 @@ export function FinancialManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(netProfit)}</div>
-            <p className="text-xs text-green-600 mt-1">+18.2% from last month</p>
           </CardContent>
         </Card>
 
@@ -1676,6 +1791,7 @@ export function FinancialManagement() {
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Purchase Order</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1708,6 +1824,22 @@ export function FinancialManagement() {
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(transaction.status)}>{transaction.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {transaction.purchaseOrder && transaction.purchaseOrder.url ? (
+                              <a
+                                href={`${apiConfig.baseUrl}${transaction.purchaseOrder.url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-blue-600 hover:underline"
+                                title={transaction.purchaseOrder.fileName || 'View Purchase Order'}
+                              >
+                                <FileText className="h-4 w-4 mr-1" />
+                                View PDF
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
@@ -2091,6 +2223,50 @@ export function FinancialManagement() {
               </div>
             ) : (
               <div className="grid gap-4">
+                {/* Purchase Order File Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="purchaseOrderFile">Purchase Order File (optional)</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      id="purchaseOrderFile"
+                      type="file"
+                      accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.txt"
+                      onChange={handlePurchaseOrderFileChange}
+                      disabled={isUploadingPO}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleUploadPurchaseOrder}
+                      disabled={isUploadingPO || !purchaseOrderFile}
+                    >
+                      {isUploadingPO ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Upload
+                    </Button>
+                  </div>
+                  {purchaseOrderId && (
+                    <div className="text-green-600 text-xs mt-1">File uploaded (ID: {purchaseOrderId})</div>
+                  )}
+                  {uploadPOError && (
+                    <div className="text-red-600 text-xs mt-1">{uploadPOError}</div>
+                  )}
+                </div>
+                {/* Purchase Order Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="purchaseOrderType">Purchase Order Type (optional)</Label>
+                  <Select
+                    value={purchaseOrderType}
+                    onValueChange={v => setPurchaseOrderType(v as "INTERNAL" | "EXTERNAL")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INTERNAL">Internal</SelectItem>
+                      <SelectItem value="EXTERNAL">External</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="acquisition">Approved Acquisition</Label>
                   <Select 
@@ -2111,53 +2287,6 @@ export function FinancialManagement() {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Transaction Type */}
-                  <div className="space-y-2">
-                    <Label htmlFor="transactionType">Transaction Type*</Label>
-                    <Select 
-                      value={selectedTransactionType} 
-                      onValueChange={(value) => setSelectedTransactionType(value as TransactionType)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select transaction type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
-                        <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500">Most acquisitions are expenses</p>
-                  </div>
-                  
-                  {/* Transaction Category */}
-                  <div className="space-y-2">
-                    <Label htmlFor="transactionCategory">Category*</Label>
-                    <Select 
-                      value={selectedTransactionCategory} 
-                      onValueChange={(value) => setSelectedTransactionCategory(value as TransactionCategory)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedTransactionType === TransactionType.EXPENSE ? (
-                          <>
-                            <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
-                            <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
-                            <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
-                            <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
-                          </>
-                        ) : (
-                          <>
-                            <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
-                            <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
-                            <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
-                            <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -2557,7 +2686,6 @@ export function FinancialManagement() {
               Create a custom income or expense transaction.
             </DialogDescription>
           </DialogHeader>
-          
           <div className="grid gap-4 py-4">
             {/* Transaction type */}
             <div className="grid grid-cols-4 items-center gap-4">
@@ -2570,7 +2698,6 @@ export function FinancialManagement() {
                   onValueChange={(value) => setCustomTransactionForm({
                     ...customTransactionForm,
                     type: value as TransactionType,
-                    // Reset category when type changes to ensure it's appropriate for the type
                     category: value === TransactionType.INCOME ? TransactionCategory.SPONSORSHIP : TransactionCategory.UTILITY
                   })}
                 >
@@ -2584,7 +2711,6 @@ export function FinancialManagement() {
                 </Select>
               </div>
             </div>
-            
             {/* Category */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="customCategory" className="text-right">
@@ -2622,21 +2748,20 @@ export function FinancialManagement() {
                 </Select>
               </div>
             </div>
-            
             {/* Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="customAmount" className="text-right">
                 Amount*
               </Label>
               <div className="col-span-3 relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2">MAD</span>
                 <Input
                   id="customAmount"
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  className="pl-8"
+                  className="pl-12"
                   value={customTransactionForm.amount}
                   onChange={(e) => setCustomTransactionForm({
                     ...customTransactionForm,
@@ -2645,7 +2770,6 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
             {/* Date */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="customDate" className="text-right">
@@ -2663,7 +2787,6 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
             {/* Description */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="customDescription" className="text-right">
@@ -2681,8 +2804,35 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
+            {/* Purchase Order File Upload */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Purchase Order File</Label>
+              <div className="col-span-3">
+                <Input type="file" accept=".pdf,image/*,.doc,.docx,.txt" onChange={handleCustomPOFileChange} disabled={isUploadingCustomPO || customTransactionForm.type === TransactionType.INCOME} />
+                <Button type="button" onClick={handleUploadCustomPO} disabled={isUploadingCustomPO || !customPOFile || customTransactionForm.type === TransactionType.INCOME} className="mt-2">
+                  {isUploadingCustomPO ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
+                  Upload File
+                </Button>
+                {uploadCustomPOError && <div className="text-red-500 text-sm mt-1">{uploadCustomPOError}</div>}
+                {customPOId && <div className="text-green-600 text-sm mt-1">File uploaded (ID: {customPOId})</div>}
+              </div>
+            </div>
+            {/* Purchase Order Type */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Purchase Order Type</Label>
+              <div className="col-span-3">
+                <Select value={customPOType} onValueChange={v => setCustomPOType(v as "INTERNAL" | "EXTERNAL" | "")} disabled={isUploadingCustomPO || customTransactionForm.type === TransactionType.INCOME}> 
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INTERNAL">Internal</SelectItem>
+                    <SelectItem value="EXTERNAL">External</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCustomTransactionDialogOpen(false)}>
               Cancel

@@ -27,6 +27,7 @@ export enum PaymentStatus {
 }
 
 export interface Transaction {
+  purchaseOrder: any;
   id: number;
   type: TransactionType;
   category: TransactionCategory;
@@ -107,14 +108,28 @@ export interface CreateTransactionDto {
   supplierId?: number;
   rentalId?: number;
   salaryPaymentId?: number;
+  /**
+   * ID of the uploaded file to link as purchase order (optional)
+   */
+  purchaseOrderId?: number;
+  /**
+   * Type of purchase order: "INTERNAL" or "EXTERNAL" (optional)
+   */
+  purchaseOrderType?: "INTERNAL" | "EXTERNAL";
 }
 
 export interface CreateTransactionFromAcquisitionDto {
   acquisitionId: number;
   createdById: number;
   customDescription?: string;
-  transactionType: TransactionType; // Allow specifying whether this is an income or expense transaction
-  transactionCategory?: TransactionCategory; // Optional category override
+  /**
+   * ID of the uploaded file to link as purchase order (optional)
+   */
+  purchaseOrderId?: number;
+  /**
+   * Type of purchase order: "INTERNAL" or "EXTERNAL" (optional)
+   */
+  purchaseOrderType?: "INTERNAL" | "EXTERNAL";
 }
 
 export interface CreateTransactionFromSalaryPaymentDto {

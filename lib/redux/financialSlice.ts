@@ -93,6 +93,9 @@ export const fetchTransactionById = createAsyncThunk(
 
 export const createTransactionFromAcquisition = createAsyncThunk(
   'financial/createTransactionFromAcquisition',
+  /**
+   * Supports purchaseOrderId and purchaseOrderType for purchase order file linking (see DTO)
+   */
   async (data: CreateTransactionFromAcquisitionDto, { rejectWithValue }) => {
     try {
       // Check for authentication token
@@ -105,6 +108,10 @@ export const createTransactionFromAcquisition = createAsyncThunk(
         return rejectWithValue('Authentication required: No token found. Please log in again.');
       }
 
+      // Log purchase order fields if present
+      if (data.purchaseOrderId || data.purchaseOrderType) {
+        console.log('[createTransactionFromAcquisition] purchaseOrderId:', data.purchaseOrderId, 'purchaseOrderType:', data.purchaseOrderType);
+      }
       console.log("Making transaction creation request with authorization token");
       console.log("Request endpoint: /accounting/transactions/from-acquisition");
       console.log("Request payload:", JSON.stringify(data));
@@ -119,6 +126,9 @@ export const createTransactionFromAcquisition = createAsyncThunk(
 
 export const createTransaction = createAsyncThunk(
   'financial/createTransaction',
+  /**
+   * Supports purchaseOrderId and purchaseOrderType for purchase order file linking (see DTO)
+   */
   async (data: CreateTransactionDto, { rejectWithValue }) => {
     try {
       // Check for authentication token
@@ -131,6 +141,10 @@ export const createTransaction = createAsyncThunk(
         return rejectWithValue('Authentication required: No token found. Please log in again.');
       }
 
+      // Log purchase order fields if present
+      if (data.purchaseOrderId || data.purchaseOrderType) {
+        console.log('[createTransaction] purchaseOrderId:', data.purchaseOrderId, 'purchaseOrderType:', data.purchaseOrderType);
+      }
       console.log("Making transaction creation request with authorization token");
       console.log("Request endpoint: /accounting/transactions");
       console.log("Request payload:", JSON.stringify(data));
