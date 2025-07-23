@@ -76,7 +76,7 @@ export const formatCurrency = (amount: number): string => {
   if (isNaN(amount) || amount === null || amount === undefined) {
     amount = 0;
   }
-  return `$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return amount.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export const getFileNameWithDate = (baseName: string): string => {

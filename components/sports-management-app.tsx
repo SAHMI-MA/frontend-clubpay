@@ -19,7 +19,6 @@ import { RentalSupplierManagement } from "./Operations/rental-supplies-managemen
 import { SupplierManagement } from "./Operations/supplier-management"
 import { ContractManagement } from "./Management/contract-management"
 import { ObjectivesManagement } from "./Management/objective-management"
-import { I18nProvider } from "@/lib/i18n/provider"
 import { HRManagement } from "./HR/hr-management"
 import { AbsenceLeaveManagement } from "./HR/absence-leave-management"
 import { EmployeeFilesManagement } from "./HR/employee-files-management"
@@ -29,7 +28,6 @@ export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [darkMode, setDarkMode] = useState(false)
   
-  // Use Redux for authentication state
   const dispatch = useAppDispatch();
   const { isAuthenticated, user: reduxUser } = useAppSelector(state => state.auth);
   
@@ -91,16 +89,13 @@ export function SportsManagementApp() {
   // Show authentication page if not logged in
   if (!isAuthenticated) {
     return (
-      <I18nProvider>
         <div className={darkMode ? "dark" : ""}>
           <AuthPage onLogin={handleLogin} darkMode={darkMode} setDarkMode={setDarkMode} />
         </div>
-      </I18nProvider>
     )
   }
 
   return (
-    <I18nProvider>
       <div className={darkMode ? "dark" : ""}>
         <SidebarProvider>
           <div className="flex min-h-screen w-full bg-gray-50 dark:bg-gray-900">
@@ -112,6 +107,5 @@ export function SportsManagementApp() {
           </div>
         </SidebarProvider>
       </div>
-    </I18nProvider>
   )
 }

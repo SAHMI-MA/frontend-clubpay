@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building, Camera, History, Save, Search, Settings, Upload, User, Activity, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { getApiUrl, apiConfig } from "@/lib/api-config"
-import { useTranslation } from "react-i18next"
 
 // Types
 interface AssociationSettings {
@@ -250,9 +249,6 @@ export function AssociationSettings() {
   // API instance
   const api = new AssociationAPI()
   
-  // Get translation function
-  const { t, i18n } = useTranslation()
-  
   // Use a simple re-render trigger that doesn't create new objects
   const [, setLanguageKey] = useState(0);
   
@@ -274,7 +270,6 @@ export function AssociationSettings() {
     
     window.addEventListener('languageChanged', debouncedHandler);
     
-    console.log('AssociationSettings mounted with language:', i18n?.language);
     
     return () => {
       clearTimeout(timeoutId);
@@ -494,7 +489,7 @@ export function AssociationSettings() {
       setTotalRecords(logsData?.total || 0);
     } catch (error) {
       console.error('Failed to load activity logs:', error);
-      toast.error(t('Failed to load activity logs'));
+      toast.error('Échec du chargement des journaux d\'activité');
       // Set fallback values on error
       setActivityLogs([]);
       setTotalPages(1);
@@ -514,16 +509,16 @@ export function AssociationSettings() {
       // Validate required fields
       const validationErrors = [];
       
-      if (!associationName.trim()) validationErrors.push("Association Name is required");
-      if (!associationDescription.trim()) validationErrors.push("Description is required");
-      if (!contactEmail.trim()) validationErrors.push("Contact Email is required");
-      if (!contactEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) validationErrors.push("Contact Email must be valid");
-      if (!contactPhone.trim()) validationErrors.push("Contact Phone is required");
-      if (!address.trim()) validationErrors.push("Address is required");
+      if (!associationName.trim()) validationErrors.push("Nom de l'association requis");
+      if (!associationDescription.trim()) validationErrors.push("Description requise");
+      if (!contactEmail.trim()) validationErrors.push("Email de contact requis");
+      if (!contactEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) validationErrors.push("Email de contact invalide");
+      if (!contactPhone.trim()) validationErrors.push("Téléphone de contact requis");
+      if (!address.trim()) validationErrors.push("Adresse requise");
       
       // If any validation errors, show them and don't submit
       if (validationErrors.length > 0) {
-        toast.error(`Please correct the following errors: ${validationErrors.join(", ")}`);
+        toast.error(`Veuillez corriger les erreurs suivantes : ${validationErrors.join(", ")}`);
         return;
       }
       
@@ -545,9 +540,9 @@ export function AssociationSettings() {
       const updatedSettings = await api.updateSettings(settingsToUpdate)
       
       setSettings(updatedSettings)
-      toast.success(t('common.success'), {
+      toast.success('Succès', {
         duration: 4000,
-        description: t('associationSettings.settingsSaved')
+        description: 'Paramètres de l\'association sauvegardés'
       })
       
       // Dispatch custom event to notify other components of the update
@@ -558,7 +553,7 @@ export function AssociationSettings() {
       // Provide more specific error messages
       if (error instanceof Error) {
         if (error.message.includes('401') || error.message.includes('403')) {
-          toast.error('Authentication failed. Please log in again.')
+          toast.error('Échec de l\'authentification. Veuillez vous reconnecter.')
         } else if (error.message.includes('400')) {
           try {
             // Try to parse the error message to get detailed validation errors
@@ -569,29 +564,29 @@ export function AssociationSettings() {
               if (Array.isArray(errorJson.message)) {
                 // Show first few validation errors
                 const errorMessages = errorJson.message.slice(0, 3);
-                toast.error(`Validation errors: ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
+                toast.error(`Erreurs de validation : ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
                   duration: 8000
                 });
               } else {
-                toast.error(`Invalid data provided: ${errorJson.message || 'Please check your inputs'}`)
+                toast.error(`Données invalides fournies : ${errorJson.message || 'Veuillez vérifier vos entrées'}`)
               }
             } else {
-              toast.error('Invalid data provided. Please check your inputs.')
+              toast.error('Données invalides. Veuillez vérifier vos entrées.')
             }
           } catch (parseError) {
             // Fallback if we can't parse the JSON
-            toast.error('Invalid data provided. Please check your inputs.')
+            toast.error('Données invalides. Veuillez vérifier vos entrées.')
             console.error('Failed to parse error message:', parseError)
           }
         } else if (error.message.includes('404')) {
-          toast.error('Settings endpoint not found. Please contact support.')
+          toast.error('Point de terminaison des paramètres non trouvé. Veuillez contacter le support.')
         } else if (error.message.includes('500')) {
-          toast.error('Server error. Please try again later.')
+          toast.error('Erreur de serveur. Veuillez réessayer plus tard.')
         } else {
-          toast.error(`Failed to save settings: ${error.message}`)
+          toast.error(`Échec de la sauvegarde des paramètres : ${error.message}`)
         }
       } else {
-        toast.error('Failed to save settings. Please try again.')
+        toast.error('Échec de la sauvegarde des paramètres. Veuillez réessayer.')
       }
     } finally {
       setSaving(false)
@@ -603,7 +598,7 @@ export function AssociationSettings() {
       // For branding updates, we need to ensure the primary settings are included to satisfy validation
       // First, get the current settings from state
       if (!settings) {
-        toast.error("Unable to save branding: Settings data is missing");
+        toast.error("Impossible de sauvegarder l'identité visuelle : les données des paramètres sont manquantes");
         return;
       }
       
@@ -639,9 +634,9 @@ export function AssociationSettings() {
       })
       console.log('Settings state updated with new values')
       
-      toast.success(t('common.success'), {
+      toast.success('Succès', {
         duration: 4000,
-        description: t('associationSettings.settingsSaved')
+        description: 'Paramètres de l\'association sauvegardés'
       })
       
       // Dispatch custom event to notify other components of the update
@@ -652,7 +647,7 @@ export function AssociationSettings() {
       // Provide more specific error messages
       if (error instanceof Error) {
         if (error.message.includes('401') || error.message.includes('403')) {
-          toast.error('Authentication failed. Please log in again.')
+          toast.error('Échec de l\'authentification. Veuillez vous reconnecter.')
         } else if (error.message.includes('400')) {
           try {
             // Try to parse the error message to get detailed validation errors
@@ -663,29 +658,29 @@ export function AssociationSettings() {
               if (Array.isArray(errorJson.message)) {
                 // Show first few validation errors
                 const errorMessages = errorJson.message.slice(0, 3);
-                toast.error(`Validation errors: ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
+                toast.error(`Erreurs de validation : ${errorMessages.join(", ")}${errorJson.message.length > 3 ? '...' : ''}`, {
                   duration: 8000
                 });
               } else {
-                toast.error(`Invalid data provided: ${errorJson.message || 'Please check your inputs'}`)
+                toast.error(`Données invalides fournies : ${errorJson.message || 'Veuillez vérifier vos entrées'}`)
               }
             } else {
-              toast.error('Invalid data provided. Please check your inputs.')
+              toast.error('Données invalides. Veuillez vérifier vos entrées.')
             }
           } catch (parseError) {
             // Fallback if we can't parse the JSON
-            toast.error('Invalid data provided. Please check your inputs.')
+            toast.error('Données invalides. Veuillez vérifier vos entrées.')
             console.error('Failed to parse error message:', parseError)
           }
         } else if (error.message.includes('404')) {
-          toast.error('Settings endpoint not found. Please contact support.')
+          toast.error('Point de terminaison des paramètres non trouvé. Veuillez contacter le support.')
         } else if (error.message.includes('500')) {
-          toast.error('Server error. Please try again later.')
+          toast.error('Erreur de serveur. Veuillez réessayer plus tard.')
         } else {
-          toast.error(`Failed to save branding: ${error.message}`)
+          toast.error(`Échec de la sauvegarde de l\'identité visuelle : ${error.message}`)
         }
       } else {
-        toast.error('Failed to save branding. Please try again.')
+        toast.error('Échec de la sauvegarde de l\'identité visuelle. Veuillez réessayer.')
       }
     } finally {
       setSaving(false)
@@ -698,12 +693,12 @@ export function AssociationSettings() {
 
     // Validate file
     if (file.size > 10 * 1024 * 1024) { // 10MB
-      toast.error('File size must be less than 10MB')
+      toast.error('La taille du fichier doit être inférieure à 10Mo')
       return
     }
 
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      toast.error('Please upload a valid image file (JPG, PNG, GIF, WebP)')
+      toast.error('Veuillez télécharger un fichier d\'image valide (JPG, PNG, GIF, WebP)')
       return
     }
 
@@ -717,9 +712,9 @@ export function AssociationSettings() {
       setSettings(updatedSettings)
       // Convert relative logo URL to full URL for display
       setLogoUrl(updatedSettings.logoUrl ? `${apiConfig.baseUrl}${updatedSettings.logoUrl}` : null)
-      toast.success(t('common.success'), {
+      toast.success('Succès', {
         duration: 4000,
-        description: t('associationSettings.logoUploaded')
+        description: 'Logo de l\'association téléchargé'
       })
       
       // Dispatch custom event to notify other components of the update
@@ -730,18 +725,18 @@ export function AssociationSettings() {
       // Provide more specific error messages
       if (error instanceof Error) {
         if (error.message.includes('413')) {
-          toast.error('File is too large. Please choose a smaller image.')
+          toast.error('Fichier trop volumineux. Veuillez choisir une image plus petite.')
         } else if (error.message.includes('415')) {
-          toast.error('Unsupported file type. Please use JPG, PNG, GIF, or WebP.')
+          toast.error('Type de fichier non supporté. Veuillez utiliser JPG, PNG, GIF ou WebP.')
         } else if (error.message.includes('401') || error.message.includes('403')) {
-          toast.error('Authentication failed. Please log in again.')
+          toast.error('Échec de l\'authentification. Veuillez vous reconnecter.')
         } else if (error.message.includes('500')) {
-          toast.error('Server error. Please try again later.')
+          toast.error('Erreur de serveur. Veuillez réessayer plus tard.')
         } else {
-          toast.error(`Upload failed: ${error.message}`)
+          toast.error(`Échec du téléchargement : ${error.message}`)
         }
       } else {
-        toast.error('Failed to upload logo. Please try again.')
+        toast.error('Échec du téléchargement du logo. Veuillez réessayer.')
       }
     } finally {
       setUploadingLogo(false)
@@ -758,16 +753,16 @@ export function AssociationSettings() {
       const updatedSettings = await api.deleteLogo()
       setSettings(updatedSettings)
       setLogoUrl(null)
-      toast.success(t('common.success'), {
+      toast.success('Succès', {
         duration: 4000,
-        description: t('associationSettings.logoRemove')
+        description: 'Logo de l\'association supprimé'
       })
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
     } catch (error) {
       console.error('Failed to remove logo:', error)
-      toast.error('Failed to remove logo')
+      toast.error('Échec de la suppression du logo')
     } finally {
       setUploadingLogo(false)
     }
@@ -789,16 +784,16 @@ export function AssociationSettings() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `activity-logs-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `journaux-activite-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
       
-      toast.success('Activity logs exported successfully!')
+      toast.success('Journaux d\'activité exportés avec succès !')
     } catch (error) {
       console.error('Failed to export logs:', error)
-      toast.error('Failed to export activity logs')
+      toast.error('Échec de l\'exportation des journaux')
     } finally {
       setExportingLogs(false)
     }
@@ -907,24 +902,24 @@ export function AssociationSettings() {
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-800" />
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Loading association settings...</p>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Chargement des paramètres de l'association...</p>
           </div>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('associationSettings.title')}</h1>
-              <p className="text-gray-600 dark:text-gray-400">Manage association details, branding, and system logs</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Paramètres de l'association</h1>
+              <p className="text-gray-600 dark:text-gray-400">Gérez les informations, l'identité visuelle et les journaux système de l'association</p>
             </div>
           </div>
 
           <Tabs defaultValue="general" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">{t('associationSettings.generalSettings')}</TabsTrigger>
-          <TabsTrigger value="branding">{t('associationSettings.branding')}</TabsTrigger>
-          <TabsTrigger value="users">{t('common.settings')}</TabsTrigger>
-          <TabsTrigger value="logs">{t('associationSettings.activityLogs')}</TabsTrigger>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
+          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="logs">Journaux d'activité</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -932,61 +927,61 @@ export function AssociationSettings() {
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Association Information
+                Informations de l'association
               </CardTitle>
-              <CardDescription>Update your association&apos;s basic information and contact details</CardDescription>
+              <CardDescription>Mettez à jour les informations de base et les coordonnées de votre association</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="associationName">{t('associationSettings.name')}</Label>
+                  <Label htmlFor="associationName">Nom de l'association</Label>
                   <Input
                     id="associationName"
                     value={associationName}
                     onChange={(e) => setAssociationName(e.target.value)}
-                    placeholder={`${t('associationSettings.name')}...`}
+                    placeholder="Nom de l'association..."
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contactEmail">{t('associationSettings.contactEmail')}</Label>
+                  <Label htmlFor="contactEmail">Email de contact</Label>
                   <Input
                     id="contactEmail"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder={`${t('associationSettings.contactEmail')}...`}
+                    placeholder="Email de contact..."
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="contactPhone">{t('associationSettings.contactPhone')}</Label>
+                  <Label htmlFor="contactPhone">Téléphone</Label>
                   <Input
                     id="contactPhone"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder={`${t('associationSettings.contactPhone')}...`}
+                    placeholder="Téléphone..."
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">{t('associationSettings.address')}</Label>
+                  <Label htmlFor="address">Adresse</Label>
                   <Input
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder={`${t('associationSettings.address')}...`}
+                    placeholder="Adresse..."
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">{t('associationSettings.description')}</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={associationDescription}
                   onChange={(e) => setAssociationDescription(e.target.value)}
-                  placeholder={`${t('associationSettings.description')}...`}
+                  placeholder="Description..."
                   rows={4}
                 />
               </div>
@@ -1000,12 +995,12 @@ export function AssociationSettings() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {t('common.loading')}
+                      Enregistrement...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {t('associationSettings.saveSettings')}
+                      Enregistrer
                     </>
                   )}
                 </Button>
@@ -1019,21 +1014,21 @@ export function AssociationSettings() {
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                 <Camera className="h-5 w-5" />
-                {t('associationSettings.branding')}
+                Identité visuelle
               </CardTitle>
-              <CardDescription>Customize your association&apos;s visual identity</CardDescription>
+              <CardDescription>Personnalisez l'identité visuelle de votre association</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label>{t('associationSettings.logoUpload')}</Label>
+                  <Label>Logo de l'association</Label>
                   <div className="mt-2 flex items-center gap-4">
                     <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 relative">
                       {logoUrl ? (
                         <>
                           <img 
                             src={logoUrl} 
-                            alt={t('associationSettings.logoUpload')} 
+                            alt="Logo de l'association" 
                             className="w-full h-full object-cover rounded-lg"
                           />
                           <Button
@@ -1072,25 +1067,25 @@ export function AssociationSettings() {
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            Upload Logo
+                            Télécharger le logo
                           </>
                         )}
                       </Button>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Recommended: 200x200px, PNG or JPG (Max 10MB)</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Recommandé : 200x200px, PNG ou JPG (Max 10Mo)</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="primaryColor">{t('associationSettings.primaryColor')}</Label>
+                    <Label htmlFor="primaryColor">Couleur principale</Label>
                     <div className="flex items-center gap-2">
                       <Input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-10 p-1 border rounded" />
-                      <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="Hex color code" className="flex-1" />
+                      <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="Code hexadécimal" className="flex-1" />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="secondaryColor">{t('associationSettings.secondaryColor')}</Label>
+                    <Label htmlFor="secondaryColor">Couleur secondaire</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id="secondaryColor"
@@ -1099,16 +1094,16 @@ export function AssociationSettings() {
                         onChange={(e) => setSecondaryColor(e.target.value)}
                         className="w-16 h-10 p-1 border rounded"
                       />
-                      <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} placeholder="Hex color code" className="flex-1" />
+                      <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} placeholder="Code hexadécimal" className="flex-1" />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tagline">{t('associationSettings.tagline')}</Label>
+                  <Label htmlFor="tagline">Slogan</Label>
                   <Input
                     id="tagline"
-                    placeholder={`${t('associationSettings.tagline')}...`}
+                    placeholder="Slogan..."
                     value={tagline}
                     onChange={(e) => updateTagline(e.target.value)}
                   />
@@ -1124,12 +1119,12 @@ export function AssociationSettings() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {t('common.loading')}
+                      Enregistrement...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {t('associationSettings.saveSettings')}
+                      Enregistrer
                     </>
                   )}
                 </Button>
@@ -1143,19 +1138,19 @@ export function AssociationSettings() {
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                 <User className="h-5 w-5" />
-                User Management Settings
+                Paramètres des utilisateurs
               </CardTitle>
-              <CardDescription>Configure user roles, permissions, and access controls</CardDescription>
+              <CardDescription>Configurez les rôles, permissions et accès des utilisateurs</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Advanced user management settings and role configurations.
+                  Paramètres avancés de gestion des utilisateurs et des rôles.
                 </p>
                 <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                   <Settings className="h-4 w-4 mr-2" />
-                  Configure Permissions
+                  Configurer les permissions
                 </Button>
               </div>
             </CardContent>
@@ -1167,16 +1162,16 @@ export function AssociationSettings() {
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
                 <History className="h-5 w-5" />
-                Activity Logs
+                Journaux d'activité
               </CardTitle>
-              <CardDescription>Monitor system activities and user actions</CardDescription>
+              <CardDescription>Surveillez les activités du système et les actions des utilisateurs</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center gap-4 mb-6">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search activity logs..."
+                    placeholder="Rechercher dans les journaux..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -1193,7 +1188,7 @@ export function AssociationSettings() {
                     onClick={() => setShowFilters(!showFilters)}
                   >
                     <Filter className={`h-4 w-4 mr-2 ${showFilters ? 'text-blue-600' : ''}`} />
-                    {showFilters ? 'Hide Filters' : 'Show Filters'}
+                    {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -1209,7 +1204,7 @@ export function AssociationSettings() {
                     ) : (
                       <>
                         <Activity className="h-4 w-4 mr-2" />
-                        Export Logs
+                        Exporter les journaux
                       </>
                     )}
                   </Button>
@@ -1220,50 +1215,50 @@ export function AssociationSettings() {
                 <div className="mb-6 p-4 border rounded-md bg-gray-50 dark:bg-gray-800/50 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="activityType">Activity Type</Label>
+                      <Label htmlFor="activityType">Type d'activité</Label>
                       <Select value={activityType} onValueChange={setActivityType}>
                         <SelectTrigger>
-                          <SelectValue placeholder="All Types" />
+                          <SelectValue placeholder="Tous les types" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="Create">Create</SelectItem>
-                          <SelectItem value="Update">Update</SelectItem>
-                          <SelectItem value="Delete">Delete</SelectItem>
-                          <SelectItem value="Payment">Payment</SelectItem>
-                          <SelectItem value="Schedule">Schedule</SelectItem>
-                          <SelectItem value="System">System</SelectItem>
-                          <SelectItem value="Login">Login</SelectItem>
-                          <SelectItem value="Logout">Logout</SelectItem>
-                          <SelectItem value="Approve">Approve</SelectItem>
-                          <SelectItem value="Reject">Reject</SelectItem>
+                          <SelectItem value="all">Tous les types</SelectItem>
+                          <SelectItem value="Create">Création</SelectItem>
+                          <SelectItem value="Update">Mise à jour</SelectItem>
+                          <SelectItem value="Delete">Suppression</SelectItem>
+                          <SelectItem value="Payment">Paiement</SelectItem>
+                          <SelectItem value="Schedule">Planification</SelectItem>
+                          <SelectItem value="System">Système</SelectItem>
+                          <SelectItem value="Login">Connexion</SelectItem>
+                          <SelectItem value="Logout">Déconnexion</SelectItem>
+                          <SelectItem value="Approve">Approbation</SelectItem>
+                          <SelectItem value="Reject">Rejet</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="userId">User ID</Label>
+                      <Label htmlFor="userId">ID utilisateur</Label>
                       <Input 
                         id="userId"
                         type="number"
-                        placeholder="Filter by user ID"
+                        placeholder="Filtrer par ID utilisateur"
                         value={userId}
                         onChange={(e) => setUserId(e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="entityType">Entity Type</Label>
+                      <Label htmlFor="entityType">Type d'entité</Label>
                       <Input 
                         id="entityType"
-                        placeholder="e.g., player, team, contract"
+                        placeholder="ex : joueur, équipe, contrat"
                         value={entityType}
                         onChange={(e) => setEntityType(e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="startDate">Start Date</Label>
+                      <Label htmlFor="startDate">Date de début</Label>
                       <Input 
                         id="startDate"
                         type="date"
@@ -1273,7 +1268,7 @@ export function AssociationSettings() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="endDate">End Date</Label>
+                      <Label htmlFor="endDate">Date de fin</Label>
                       <Input 
                         id="endDate"
                         type="date"
@@ -1296,7 +1291,7 @@ export function AssociationSettings() {
                       disabled={logsLoading}
                       className="bg-blue-800 hover:bg-blue-900 text-white"
                     >
-                      Apply Filters
+                      Appliquer les filtres
                     </Button>
                   </div>
                 </div>
@@ -1379,20 +1374,20 @@ export function AssociationSettings() {
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                          <p className="mt-2 text-gray-500">Loading activity logs...</p>
+                          <p className="mt-2 text-gray-500">Chargement des journaux d'activité...</p>
                         </TableCell>
                       </TableRow>
                     ) : activityLogs.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8">
-                          <p className="text-gray-500">No activity logs found</p>
+                          <p className="text-gray-500">Aucun journal d'activité trouvé</p>
                         </TableCell>
                       </TableRow>
                     ) : (
                       activityLogs.map((log) => (
                         <TableRow key={log.id}>
                           <TableCell className="font-mono text-sm">
-                            {new Date(log.timestamp).toLocaleString()}
+                            {new Date(log.timestamp).toLocaleString('fr-FR')}
                           </TableCell>
                           <TableCell className="font-mono text-sm text-center">
                             {log.userId ? log.userId : "—"}
@@ -1416,7 +1411,7 @@ export function AssociationSettings() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-2">
-                    <span>Show</span>
+                    <span>Afficher</span>
                     <Select value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
                       <SelectTrigger className="w-20">
                         <SelectValue />
@@ -1429,7 +1424,7 @@ export function AssociationSettings() {
                         <SelectItem value="100">100</SelectItem>
                       </SelectContent>
                     </Select>
-                    <span>entries</span>
+                    <span>entrées</span>
                   </div>
                   {totalRecords > 0 && (
                     <div className="hidden sm:block">
@@ -1459,7 +1454,7 @@ export function AssociationSettings() {
                       disabled={currentPage === 1 || logsLoading}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline ml-1">Previous</span>
+                      <span className="hidden sm:inline ml-1">Précédent</span>
                     </Button>
 
                     {/* Page Numbers */}
@@ -1490,7 +1485,7 @@ export function AssociationSettings() {
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages || logsLoading}
                     >
-                      <span className="hidden sm:inline mr-1">Next</span>
+                      <span className="hidden sm:inline mr-1">Suivant</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
 

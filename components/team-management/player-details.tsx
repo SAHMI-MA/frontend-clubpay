@@ -76,9 +76,9 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("fr-FR", {
       style: "currency",
-      currency: "EUR",
+      currency: "MAD",
       maximumFractionDigits: 0
     }).format(amount);
   };

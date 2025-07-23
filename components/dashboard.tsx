@@ -29,8 +29,8 @@ export function Dashboard() {
     error,
     lastUpdated 
   } = useSelector((state: RootState) => state.dashboard)
+  
 
-  // Load dashboard data on component mount (only if authenticated)
   useEffect(() => {
     if (authState.isAuthenticated && authState.token) {
       dispatch(fetchAllDashboardData({}))
@@ -51,10 +51,10 @@ export function Dashboard() {
           <CardContent className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Authentication Required
+              Connexion requise
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Please log in to view the dashboard.
+              Veuillez vous connecter pour accéder au tableau de bord.
             </p>
           </CardContent>
         </Card>
@@ -93,14 +93,15 @@ export function Dashboard() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'MAD',
+      minimumFractionDigits: 2
     }).format(amount)
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -108,7 +109,7 @@ export function Dashboard() {
   }
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
+    return new Date(dateString).toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit'
     })
@@ -118,13 +119,13 @@ export function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tableau de bord</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Welcome back! Here&apos;s what&apos;s happening with your association.
+            Bienvenue ! Voici l'activité de votre association.
           </p>
           {lastUpdated && (
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-              Last updated: {new Date(lastUpdated).toLocaleString()}
+              Dernière mise à jour : {new Date(lastUpdated).toLocaleString('fr-FR')}
             </p>
           )}
         </div>
@@ -135,7 +136,7 @@ export function Dashboard() {
           className="text-blue-800 border-blue-800 hover:bg-blue-50"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${Object.values(loading).some(Boolean) ? 'animate-spin' : ''}`} />
-          Refresh
+          Actualiser
         </Button>
       </div>
 
@@ -143,7 +144,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Revenus totaux</CardTitle>
             <DollarSign className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
@@ -156,7 +157,7 @@ export function Dashboard() {
                 </div>
                 <p className={`text-xs flex items-center mt-1 ${metrics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   <TrendingUp className={`h-3 w-3 mr-1 ${metrics.revenueGrowth < 0 ? 'rotate-180' : ''}`} />
-                  {metrics.revenueGrowth >= 0 ? '+' : ''}{metrics.revenueGrowth}% from last month
+                  {metrics.revenueGrowth >= 0 ? '+' : ''}{metrics.revenueGrowth}% par rapport au mois dernier
                 </p>
               </>
             ) : (
@@ -167,7 +168,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Players</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Joueurs actifs</CardTitle>
             <Users className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -180,7 +181,7 @@ export function Dashboard() {
                 </div>
                 <p className="text-xs text-green-600 flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  +{metrics.newPlayersThisWeek} new this week
+                  +{metrics.newPlayersThisWeek} nouveaux cette semaine
                 </p>
               </>
             ) : (
@@ -191,7 +192,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-cyan-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Teams</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Équipes totales</CardTitle>
             <Building2 className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
@@ -202,7 +203,7 @@ export function Dashboard() {
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
                   {metrics.totalTeamsCount}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all divisions</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Toutes divisions confondues</p>
               </>
             ) : (
               <div className="text-2xl font-bold text-gray-400">--</div>
@@ -212,7 +213,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Dépenses mensuelles</CardTitle>
             <CreditCard className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -225,7 +226,7 @@ export function Dashboard() {
                 </div>
                 <p className={`text-xs flex items-center mt-1 ${metrics.expensesGrowth <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   <TrendingUp className={`h-3 w-3 mr-1 ${metrics.expensesGrowth > 0 ? 'rotate-180' : ''}`} />
-                  {metrics.expensesGrowth >= 0 ? '+' : ''}{metrics.expensesGrowth}% from last month
+                  {metrics.expensesGrowth >= 0 ? '+' : ''}{metrics.expensesGrowth}% par rapport au mois dernier
                 </p>
               </>
             ) : (
@@ -239,8 +240,8 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Revenue vs Expenses</CardTitle>
-            <CardDescription>Monthly financial overview for the current year</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Revenus vs Dépenses</CardTitle>
+            <CardDescription>Vue financière mensuelle pour l'année en cours</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.financialData ? (
@@ -252,13 +253,13 @@ export function Dashboard() {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="revenue" fill="#1E3A8A" name="Revenue" />
-                  <Bar dataKey="expenses" fill="#F97316" name="Expenses" />
+                  <Bar dataKey="revenue" fill="#1E3A8A" name="Revenus" />
+                  <Bar dataKey="expenses" fill="#F97316" name="Dépenses" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                {error.financialData ? `Error: ${error.financialData}` : 'No financial data available'}
+                {error.financialData ? `Erreur : ${error.financialData}` : 'Aucune donnée financière disponible'}
               </div>
             )}
           </CardContent>
@@ -266,8 +267,8 @@ export function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Team Distribution</CardTitle>
-            <CardDescription>Breakdown of teams by category</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Répartition des équipes</CardTitle>
+            <CardDescription>Répartition des équipes par catégorie</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.teamDistribution ? (
@@ -294,7 +295,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                {error.teamDistribution ? `Error: ${error.teamDistribution}` : 'No team distribution data available'}
+                {error.teamDistribution ? `Erreur : ${error.teamDistribution}` : 'Aucune donnée de répartition disponible'}
               </div>
             )}
           </CardContent>
@@ -307,9 +308,9 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Upcoming Matches
+              Prochains matchs
             </CardTitle>
-            <CardDescription>Next scheduled games this week</CardDescription>
+            <CardDescription>Prochains matchs prévus cette semaine</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.upcomingMatches ? (
@@ -322,7 +323,7 @@ export function Dashboard() {
               <div className="space-y-4">
                 {upcomingMatches.map((match) => (
                   <div
-                    key={match.id}
+                    key={`match-${match.id}-${match.dateTime}`}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
                     <div>
@@ -330,7 +331,7 @@ export function Dashboard() {
                         {match.homeTeam} vs {match.awayTeam}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(match.dateTime)} at {formatTime(match.dateTime)}
+                        {formatDate(match.dateTime)} à {formatTime(match.dateTime)}
                       </p>
                       {match.venue && (
                         <p className="text-xs text-gray-500 dark:text-gray-500">
@@ -346,14 +347,16 @@ export function Dashboard() {
                           : 'bg-green-50 text-green-800 border-green-200'
                       }
                     >
-                      {match.status}
+                      {match.status === 'scheduled' 
+                        ? 'Prévu' 
+                        : 'Terminé'}
                     </Badge>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                {error.upcomingMatches ? `Error: ${error.upcomingMatches}` : 'No upcoming matches scheduled'}
+                {error.upcomingMatches ? `Erreur : ${error.upcomingMatches}` : 'Aucun match à venir programmé'}
               </div>
             )}
           </CardContent>
@@ -363,9 +366,9 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
-              Recent Alerts
+              Alertes récentes
             </CardTitle>
-            <CardDescription>Important notifications and updates</CardDescription>
+            <CardDescription>Notifications et mises à jour importantes</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.alerts ? (
@@ -378,7 +381,7 @@ export function Dashboard() {
               <div className="space-y-4">
                 {alerts.map((alert) => (
                   <div 
-                    key={alert.id}
+                    key={`alert-${alert.id}-${alert.createdAt}`}
                     className={`flex items-start gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-opacity ${
                       alert.isRead ? 'opacity-60' : ''
                     } ${getAlertColorClass(alert.priority)}`}
@@ -406,7 +409,7 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                {error.alerts ? `Error: ${error.alerts}` : 'No recent alerts'}
+                {error.alerts ? `Erreur : ${error.alerts}` : 'Aucune alerte récente'}
               </div>
             )}
           </CardContent>
@@ -417,8 +420,8 @@ export function Dashboard() {
       {quickStats && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Quick Statistics</CardTitle>
-            <CardDescription>Overview of key operational metrics</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Statistiques rapides</CardTitle>
+            <CardDescription>Vue d'ensemble des indicateurs clés</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.quickStats ? (
@@ -434,7 +437,7 @@ export function Dashboard() {
                     {quickStats.totalMatches}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Total Matches
+                    Matchs totaux
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -442,7 +445,7 @@ export function Dashboard() {
                     {quickStats.matchesThisMonth}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    This Month
+                    Ce mois-ci
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -450,7 +453,7 @@ export function Dashboard() {
                     {quickStats.totalStaff}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Total Staff
+                    Staff total
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -458,7 +461,7 @@ export function Dashboard() {
                     {quickStats.totalSuppliers}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Suppliers
+                    Fournisseurs
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -466,7 +469,7 @@ export function Dashboard() {
                     {quickStats.pendingPayments}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Pending Payments
+                    Paiements en attente
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -474,7 +477,7 @@ export function Dashboard() {
                     {quickStats.activeContracts}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Active Contracts
+                    Contrats actifs
                   </div>
                 </div>
               </div>
@@ -487,8 +490,8 @@ export function Dashboard() {
       {recentActivity.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Recent Activity</CardTitle>
-            <CardDescription>Latest actions and updates in the system</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Activité récente</CardTitle>
+            <CardDescription>Dernières actions et mises à jour du système</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.recentActivity ? (

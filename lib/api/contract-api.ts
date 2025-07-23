@@ -1,7 +1,20 @@
 import { api, tokenUtils } from "@/lib/api";
+import { getApiUrl } from "@/lib/api-config";
 
 // Helper functions to transform API responses
 const transformPlayerContract = (contract: any): PlayerContract => {
+  let contractFile = contract.contractFile;
+  if (
+    contractFile &&
+    contractFile.url &&
+    typeof contractFile.url === 'string' &&
+    contractFile.url !== '' &&
+    contractFile.url !== 'undefined'
+  ) {
+    contractFile = { ...contractFile, url: getApiUrl(contractFile.url) };
+  } else {
+    contractFile = undefined;
+  }
   return {
     ...contract,
     id: contract.id?.toString(),
@@ -11,10 +24,23 @@ const transformPlayerContract = (contract: any): PlayerContract => {
     playerName: contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : undefined,
     position: contract.player?.position || contract.position,
     playerId: contract.player?.id?.toString(),
+    contractFile,
   };
 };
 
 const transformStaffContract = (contract: any): StaffContract => {
+  let contractFile = contract.contractFile;
+  if (
+    contractFile &&
+    contractFile.url &&
+    typeof contractFile.url === 'string' &&
+    contractFile.url !== '' &&
+    contractFile.url !== 'undefined'
+  ) {
+    contractFile = { ...contractFile, url: getApiUrl(contractFile.url) };
+  } else {
+    contractFile = undefined;
+  }
   return {
     ...contract,
     id: contract.id?.toString(),
@@ -25,6 +51,7 @@ const transformStaffContract = (contract: any): StaffContract => {
     role: contract.staff?.role || contract.role,
     department: contract.staff?.department || contract.department,
     staffId: contract.staff?.id?.toString(),
+    contractFile,
   };
 };
 
@@ -58,6 +85,16 @@ export interface PlayerContract extends BaseContractFields {
       name: string;
     };
   };
+  contractFile?: {
+    id: number;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    url: string;
+    createdAt: string;
+    updatedAt: string;
+    description: string | null;
+  };
 }
 
 export interface StaffContract extends BaseContractFields {
@@ -86,6 +123,16 @@ export interface StaffContract extends BaseContractFields {
       id: number;
       name: string;
     };
+  };
+  contractFile?: {
+    id: number;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    url: string;
+    createdAt: string;
+    updatedAt: string;
+    description: string | null;
   };
 }
 

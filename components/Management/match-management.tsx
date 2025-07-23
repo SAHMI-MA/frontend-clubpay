@@ -199,7 +199,7 @@ export function MatchManagement() {
     const matchDate = new Date(match.dateTime)
     const now = new Date()
     
-    return matchDate > now ? "Scheduled" : "Completed"
+    return matchDate > now ? "Programmé" : "Terminé"
   }
 
   const getParticipationColor = (role: string) => {
@@ -216,14 +216,14 @@ export function MatchManagement() {
   }
 
   const getTeamName = (match: Match) => {
-    return match.team?.name || "Unknown Team"
+    return match.team?.name || "Équipe inconnue"
   }
 
   // Event handlers
   const handleCreateMatch = async () => {
     try {
       if (!matchForm.nomMatch || !matchForm.city || !matchForm.opposition || !matchForm.dateTime || !matchForm.teamId) {
-        toast.error("Please fill in all required fields")
+        toast.error("Veuillez remplir tous les champs requis")
         return
       }
 
@@ -243,14 +243,14 @@ export function MatchManagement() {
       const resultAction = await dispatch(createMatch(matchData))
       
       if (createMatch.fulfilled.match(resultAction)) {
-        toast.success("Match created successfully!")
+        toast.success("Match créé avec succès!")
         setIsCreateMatchDialogOpen(false)
         resetForms()
       } else {
-        toast.error("Failed to create match")
+        toast.error("Échec de la création du match")
       }
     } catch (error) {
-      toast.error("Error creating match")
+      toast.error("Erreur lors de la création du match")
       console.error(error)
     }
   }
@@ -260,14 +260,14 @@ export function MatchManagement() {
       const resultAction = await dispatch(deleteMatch(matchId))
       
       if (deleteMatch.fulfilled.match(resultAction)) {
-        toast.success("Match deleted successfully!")
+        toast.success("Match supprimé avec succès!")
         setIsDeleteDialogOpen(false)
         setMatchToDelete(null)
       } else {
-        toast.error("Failed to delete match")
+        toast.error("Échec de la suppression du match")
       }
     } catch (error) {
-      toast.error("Error deleting match")
+      toast.error("Erreur lors de la suppression du match")
       console.error(error)
     }
   }
@@ -314,15 +314,15 @@ export function MatchManagement() {
       }))
       
       if (updateMatch.fulfilled.match(resultAction)) {
-        toast.success("Match updated successfully!")
+        toast.success("Match mis à jour avec succès!")
         setIsEditMatchDialogOpen(false)
         setSelectedMatchForView(null)
         resetForms()
       } else {
-        toast.error("Failed to update match")
+        toast.error("Échec de la mise à jour du match")
       }
     } catch (error) {
-      toast.error("Error updating match")
+      toast.error("Erreur lors de la mise à jour du match")
       console.error(error)
     }
   }
@@ -348,12 +348,12 @@ export function MatchManagement() {
       }))
       
       if (removePlayerFromMatch.fulfilled.match(resultAction)) {
-        toast.success("Player removed from match successfully!")
+        toast.success("Joueur retiré du match avec succès!")
       } else {
-        toast.error("Failed to remove player from match")
+        toast.error("Échec de la suppression du joueur du match")
       }
     } catch (error) {
-      toast.error("Error removing player from match")
+      toast.error("Erreur lors de la suppression du joueur du match")
       console.error(error)
     }
   }
@@ -389,7 +389,7 @@ export function MatchManagement() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-        <p className="text-lg font-medium">Loading matches data...</p>
+        <p className="text-lg font-medium">Chargement des données des matchs...</p>
       </div>
     )
   }
@@ -399,7 +399,7 @@ export function MatchManagement() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
         <div className="bg-red-50 border border-red-200 rounded-md p-6 max-w-md">
-          <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Data</h3>
+          <h3 className="text-lg font-medium text-red-800 mb-2">Erreur de chargement des données</h3>
           <p className="text-sm text-red-700">
             {error.matches || error.teams}
           </p>
@@ -410,7 +410,7 @@ export function MatchManagement() {
               dispatch(fetchAllTeams())
             }}
           >
-            Try Again
+            Réessayer
           </Button>
         </div>
       </div>
@@ -421,32 +421,32 @@ export function MatchManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Match Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Schedule matches, manage participation, and track bonuses</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des matchs</h1>
+          <p className="text-gray-600 dark:text-gray-400">Planifiez les matchs, gérez la participation et suivez les primes</p>
         </div>
 
         <Dialog open={isCreateMatchDialogOpen} onOpenChange={setIsCreateMatchDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-800 hover:bg-blue-900 text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Schedule Match
+              Programmer un match
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Schedule New Match</DialogTitle>
+              <DialogTitle>Programmer un nouveau match</DialogTitle>
               <DialogDescription>
-                Create a new match with opponent details, date, time, and venue.
+                Créez un nouveau match avec les détails de l'adversaire, la date, l'heure et le lieu.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="matchName" className="text-right">
-                  Match Name
+                  Nom du match
                 </Label>
                 <Input 
                   id="matchName" 
-                  placeholder="Enter match name"
+                  placeholder="Nom du match"
                   value={matchForm.nomMatch}
                   onChange={(e) => setMatchForm({...matchForm, nomMatch: e.target.value})}
                   className="col-span-3" 
@@ -454,11 +454,11 @@ export function MatchManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="opposition" className="text-right">
-                  Opposition
+                  Adversaire
                 </Label>
                 <Input 
                   id="opposition" 
-                  placeholder="Opposition team"
+                  placeholder="Équipe adverse"
                   value={matchForm.opposition}
                   onChange={(e) => setMatchForm({...matchForm, opposition: e.target.value})}
                   className="col-span-3" 
@@ -466,11 +466,11 @@ export function MatchManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="city" className="text-right">
-                  City
+                  Ville
                 </Label>
                 <Input 
                   id="city" 
-                  placeholder="Match city"
+                  placeholder="Ville du match"
                   value={matchForm.city}
                   onChange={(e) => setMatchForm({...matchForm, city: e.target.value})}
                   className="col-span-3" 
@@ -478,7 +478,7 @@ export function MatchManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="dateTime" className="text-right">
-                  Date & Time
+                  Date & Heure
                 </Label>
                 <Input 
                   id="dateTime" 
@@ -490,11 +490,11 @@ export function MatchManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="team" className="text-right">
-                  Team
+                  Équipe
                 </Label>
                 <Select value={matchForm.teamId} onValueChange={(value) => setMatchForm({...matchForm, teamId: value})}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select team" />
+                    <SelectValue placeholder="Sélectionner une équipe" />
                   </SelectTrigger>
                   <SelectContent>
                     {teams.map((team) => (
@@ -511,7 +511,7 @@ export function MatchManagement() {
                 </Label>
                 <Input 
                   id="formation" 
-                  placeholder="e.g., 4-4-2, 4-3-3"
+                  placeholder="ex : 4-4-2, 4-3-3"
                   value={matchForm.formation}
                   onChange={(e) => setMatchForm({...matchForm, formation: e.target.value})}
                   className="col-span-3" 
@@ -519,13 +519,13 @@ export function MatchManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="bonus" className="text-right">
-                  Participation Bonus
+                  Prime de participation
                 </Label>
                 <Input 
                   id="bonus" 
                   type="number"
                   step="0.01"
-                  placeholder="e.g., 500"
+                  placeholder="ex : 500"
                   value={matchForm.bonus}
                   onChange={(e) => setMatchForm({...matchForm, bonus: e.target.value})}
                   className="col-span-3" 
@@ -542,10 +542,10 @@ export function MatchManagement() {
                 {loading.matches ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    Création...
                   </>
                 ) : (
-                  "Schedule Match"
+                  "Programmer le match"
                 )}
               </Button>
             </DialogFooter>
@@ -557,68 +557,68 @@ export function MatchManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Upcoming Matches</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Matchs à venir</CardTitle>
             <Calendar className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{upcomingMatches}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">This month</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Ce mois-ci</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed Matches</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Matchs terminés</CardTitle>
             <Trophy className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{completedMatches}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">This season</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Cette saison</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Players</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Joueurs actifs</CardTitle>
             <Users className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalParticipations}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">In matches</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">En matchs</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-cyan-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Match Bonuses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Primes de match</CardTitle>
             <Target className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">${totalBonuses.toLocaleString()}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total allocated</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalBonuses.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total attribué</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="matches" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="matches">Matches</TabsTrigger>
-          <TabsTrigger value="squads">Squad Assignments</TabsTrigger>
-          <TabsTrigger value="bonuses">Match Bonuses</TabsTrigger>
+          <TabsTrigger value="matches">Matchs</TabsTrigger>
+          <TabsTrigger value="squads">Affectations d'équipe</TabsTrigger>
+          <TabsTrigger value="bonuses">Primes de match</TabsTrigger>
         </TabsList>
 
         <TabsContent value="matches" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">All Matches</CardTitle>
-              <CardDescription>View and manage scheduled and completed matches</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Tous les matchs</CardTitle>
+              <CardDescription>Consultez et gérez les matchs programmés et terminés</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4 mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search matches..."
+                    placeholder="Rechercher un match..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -631,10 +631,10 @@ export function MatchManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Match</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>City</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Date & Heure</TableHead>
+                      <TableHead>Ville</TableHead>
+                      <TableHead>Équipe</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -679,7 +679,7 @@ export function MatchManagement() {
                                 onClick={() => handleViewMatch(match)}
                               >
                                 <Eye className="h-4 w-4 mr-1" />
-                                View
+                                Voir
                               </Button>
                               <Button
                                 size="sm"
@@ -688,7 +688,7 @@ export function MatchManagement() {
                                 className="text-blue-600 hover:text-blue-700"
                               >
                                 <Target className="h-4 w-4 mr-1" />
-                                Tactics
+                                Tactique
                               </Button>
                               <Button
                                 size="sm"
@@ -696,7 +696,7 @@ export function MatchManagement() {
                                 onClick={() => handleEditMatch(match)}
                               >
                                 <Edit className="h-4 w-4 mr-1" />
-                                Edit
+                                Modifier
                               </Button>
                               <Button
                                 size="sm"
@@ -714,7 +714,7 @@ export function MatchManagement() {
                     {filteredMatches.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                          No matches found. Create a new match to get started.
+                          Aucun match trouvé. Créez un nouveau match pour commencer.
                         </TableCell>
                       </TableRow>
                     )}
@@ -728,8 +728,8 @@ export function MatchManagement() {
         <TabsContent value="squads" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Squad Assignments</CardTitle>
-              <CardDescription>View and manage player assignments for matches using the tactical planner</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Affectations d'équipe</CardTitle>
+              <CardDescription>Consultez et gérez les affectations des joueurs aux matchs via le planificateur tactique</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -737,10 +737,10 @@ export function MatchManagement() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-blue-900">Use Tactical Planner</h3>
+                      <h3 className="font-semibold text-blue-900">Utiliser le planificateur tactique</h3>
                       <p className="text-sm text-blue-700">
-                        Click &rdquo;Tactics&rdquo; on any match to use our drag-and-drop tactical planner. 
-                        Assign 11 starters (100% bonus) and up to 5 substitutes (50% bonus) with formation support.
+                        Cliquez sur « Tactique » sur un match pour utiliser notre planificateur tactique glisser-déposer. 
+                        Assignez 11 titulaires (100% de prime) et jusqu'à 5 remplaçants (50% de prime) avec gestion de la formation.
                       </p>
                     </div>
                     <Target className="h-8 w-8 text-blue-600" />
@@ -752,11 +752,11 @@ export function MatchManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Player</TableHead>
+                        <TableHead>Joueur</TableHead>
                         <TableHead>Match</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Bonus</TableHead>
-                        <TableHead>Percentage</TableHead>
+                        <TableHead>Rôle</TableHead>
+                        <TableHead>Prime</TableHead>
+                        <TableHead>Pourcentage</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -766,7 +766,7 @@ export function MatchManagement() {
                           <TableCell className="font-medium">
                             {participation.player 
                               ? `${participation.player.firstName} ${participation.player.lastName}`
-                              : "Unknown Player"
+                              : "Joueur inconnu"
                             }
                           </TableCell>
                           <TableCell>
@@ -775,16 +775,16 @@ export function MatchManagement() {
                               // For now, we'll show "Current Match" or we could pass it as prop
                               return selectedMatchForView ? 
                                 `${selectedMatchForView.nomMatch} vs ${selectedMatchForView.opposition}` : 
-                                "Match Details"
+                                "Détails du match"
                             })()}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getParticipationColor(participation.role)}>{participation.role}</Badge>
+                            <Badge className={getParticipationColor(participation.role)}>{participation.role === 'Starter' ? 'Titulaire' : participation.role === 'Substitute' ? 'Remplaçant' : 'Banc'}</Badge>
                           </TableCell>
                           <TableCell className="text-green-600 font-medium">
-                            ${(() => {
+                            {(() => {
                               const bonus = participation.bonus ? (typeof participation.bonus === 'string' ? parseFloat(participation.bonus) : participation.bonus) : 0;
-                              return isNaN(bonus) ? "0.00" : bonus.toFixed(2);
+                              return isNaN(bonus) ? "0,00" : bonus.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 });
                             })()}
                           </TableCell>
                           <TableCell>
@@ -815,8 +815,8 @@ export function MatchManagement() {
                           <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                             <div className="flex flex-col items-center space-y-2">
                               <Users className="h-12 w-12 text-gray-400" />
-                              <p>No squad assignments found</p>
-                              <p className="text-sm">Use the &rdquo;Tactics&rdquo; button on matches to assign players using our tactical planner</p>
+                              <p>Aucune affectation d'équipe trouvée</p>
+                              <p className="text-sm">Utilisez le bouton « Tactique » sur les matchs pour affecter les joueurs via notre planificateur tactique</p>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -832,18 +832,18 @@ export function MatchManagement() {
         <TabsContent value="bonuses" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Match Bonuses</CardTitle>
-              <CardDescription>Configure and track performance-based bonuses</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Primes de match</CardTitle>
+              <CardDescription>Configurer et suivre les primes basées sur la performance</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Set up bonus criteria based on match performance, goals, assists, and other metrics.
+                  Définissez des critères de prime selon la performance du match, les buts, passes décisives et autres métriques.
                 </p>
                 <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                   <Plus className="h-4 w-4 mr-2" />
-                  Configure Bonuses
+                  Configurer les primes
                 </Button>
               </div>
             </CardContent>
@@ -855,37 +855,37 @@ export function MatchManagement() {
       <Dialog open={isViewMatchDialogOpen} onOpenChange={setIsViewMatchDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Match Details</DialogTitle>
+            <DialogTitle>Détails du match</DialogTitle>
             <DialogDescription>
-              View match information and details
+              Voir les informations et détails du match
             </DialogDescription>
           </DialogHeader>
           {selectedMatchForView && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Match Name</Label>
+                  <Label className="text-sm font-medium text-gray-600">Nom du match</Label>
                   <p className="text-sm">{selectedMatchForView.nomMatch}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Opposition</Label>
+                  <Label className="text-sm font-medium text-gray-600">Adversaire</Label>
                   <p className="text-sm">{selectedMatchForView.opposition}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">City</Label>
+                  <Label className="text-sm font-medium text-gray-600">Ville</Label>
                   <p className="text-sm">{selectedMatchForView.city}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Date & Time</Label>
-                  <p className="text-sm">{new Date(selectedMatchForView.dateTime).toLocaleString()}</p>
+                  <Label className="text-sm font-medium text-gray-600">Date & Heure</Label>
+                  <p className="text-sm">{new Date(selectedMatchForView.dateTime).toLocaleString('fr-FR')}</p>
                 </div>
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-600">Team</Label>
+                <Label className="text-sm font-medium text-gray-600">Équipe</Label>
                 <p className="text-sm">
-                  {selectedMatchForView.team?.name || 'Unknown Team'}
+                  {selectedMatchForView.team?.name || 'Équipe inconnue'}
                 </p>
               </div>
               {selectedMatchForView.formation && (
@@ -896,15 +896,15 @@ export function MatchManagement() {
               )}
               {selectedMatchForView.bonus && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Participation Bonus</Label>
-                  <p className="text-sm">${selectedMatchForView.bonus.toLocaleString()}</p>
+                  <Label className="text-sm font-medium text-gray-600">Prime de participation</Label>
+                  <p className="text-sm">{selectedMatchForView.bonus.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
                 </div>
               )}
               <div>
-                <Label className="text-sm font-medium text-gray-600">Status</Label>
+                <Label className="text-sm font-medium text-gray-600">Statut</Label>
                 <Badge className={getStatusColor(selectedMatchForView)}>
-                  {new Date(selectedMatchForView.dateTime) > new Date() ? 'Upcoming' : 
-                   new Date(selectedMatchForView.dateTime).toDateString() === new Date().toDateString() ? 'Today' : 'Completed'}
+                  {new Date(selectedMatchForView.dateTime) > new Date() ? 'À venir' : 
+                   new Date(selectedMatchForView.dateTime).toDateString() === new Date().toDateString() ? 'Aujourd\'hui' : 'Terminé'}
                 </Badge>
               </div>
             </div>
@@ -916,15 +916,15 @@ export function MatchManagement() {
       <Dialog open={isEditMatchDialogOpen} onOpenChange={setIsEditMatchDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Match</DialogTitle>
+            <DialogTitle>Modifier le match</DialogTitle>
             <DialogDescription>
-              Update match information and details.
+              Mettre à jour les informations et détails du match.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-match-name" className="text-right">
-                Name
+                Nom
               </Label>
               <Input
                 id="edit-match-name"
@@ -935,7 +935,7 @@ export function MatchManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-opposition" className="text-right">
-                Opposition
+                Adversaire
               </Label>
               <Input
                 id="edit-opposition"
@@ -946,7 +946,7 @@ export function MatchManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-city" className="text-right">
-                City
+                Ville
               </Label>
               <Input
                 id="edit-city"
@@ -957,7 +957,7 @@ export function MatchManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-datetime" className="text-right">
-                Date & Time
+                Date & Heure
               </Label>
               <Input
                 id="edit-datetime"
@@ -969,11 +969,11 @@ export function MatchManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-team" className="text-right">
-                Team
+                Équipe
               </Label>
               <Select value={editMatchForm.teamId} onValueChange={(value) => setEditMatchForm({...editMatchForm, teamId: value})}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select team" />
+                  <SelectValue placeholder="Sélectionner une équipe" />
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((team) => (
@@ -990,7 +990,7 @@ export function MatchManagement() {
               </Label>
               <Input
                 id="edit-formation"
-                placeholder="e.g., 4-4-2, 4-3-3"
+                placeholder="ex : 4-4-2, 4-3-3"
                 value={editMatchForm.formation}
                 onChange={(e) => setEditMatchForm({...editMatchForm, formation: e.target.value})}
                 className="col-span-3"
@@ -998,13 +998,13 @@ export function MatchManagement() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-bonus" className="text-right">
-                Participation Bonus
+                Prime de participation
               </Label>
               <Input
                 id="edit-bonus"
                 type="number"
                 step="0.01"
-                placeholder="e.g., 500"
+                placeholder="ex : 500"
                 value={editMatchForm.bonus}
                 onChange={(e) => setEditMatchForm({...editMatchForm, bonus: e.target.value})}
                 className="col-span-3"
@@ -1021,10 +1021,10 @@ export function MatchManagement() {
               {loading.matches ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  Mise à jour...
                 </>
               ) : (
-                "Update Match"
+                "Mettre à jour le match"
               )}
             </Button>
           </DialogFooter>
@@ -1037,10 +1037,10 @@ export function MatchManagement() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              Confirm Delete
+              Confirmer la suppression
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this match? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer ce match ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {matchToDelete && (
@@ -1048,7 +1048,7 @@ export function MatchManagement() {
               <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                 <p className="font-medium">{matchToDelete.nomMatch}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  vs {matchToDelete.opposition} • {new Date(matchToDelete.dateTime).toLocaleDateString()}
+                  vs {matchToDelete.opposition} • {new Date(matchToDelete.dateTime).toLocaleDateString('fr-FR')}
                 </p>
               </div>
             </div>
@@ -1061,7 +1061,7 @@ export function MatchManagement() {
                 setMatchToDelete(null)
               }}
             >
-              Cancel
+              Annuler
             </Button>
             <Button 
               variant="destructive"
@@ -1071,10 +1071,10 @@ export function MatchManagement() {
               {loading.matches ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  Suppression...
                 </>
               ) : (
-                "Delete Match"
+                "Supprimer le match"
               )}
             </Button>
           </DialogFooter>

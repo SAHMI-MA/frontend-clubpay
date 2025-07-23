@@ -447,6 +447,15 @@ export function HRManagement() {
     }
   }
 
+  // Fonction utilitaire pour formater les montants en MAD
+  const formatMAD = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'MAD',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
+
   if (loading) {
     return <div>Loading...</div>
   }
@@ -460,8 +469,8 @@ export function HRManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">HR Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage employees, departments, and positions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion RH</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les employés, départements et postes</p>
         </div>
       </div>
 
@@ -469,52 +478,51 @@ export function HRManagement() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <CardTitle className="text-sm font-medium">Nombre total d'employés</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{employeeStats.total}</div>
             <p className="text-xs text-muted-foreground">
-              {employeeStats.active} active, {employeeStats.onLeave} on leave
+              {employeeStats.active} actifs, {employeeStats.onLeave} en congé
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Departments</CardTitle>
+            <CardTitle className="text-sm font-medium">Départements</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{departmentStats.totalDepartments}</div>
             <p className="text-xs text-muted-foreground">
-              ${(departmentStats.totalBudget / 1000000).toFixed(1)}M total budget
+              {formatMAD(departmentStats.totalBudget)} budget total
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Positions</CardTitle>
+            <CardTitle className="text-sm font-medium">Postes</CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{positionStats.totalPositions}</div>
-            <p className="text-xs text-muted-foreground">{positionStats.totalOpenings} open positions</p>
+            <p className="text-xs text-muted-foreground">{positionStats.totalOpenings} postes ouverts</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Salary Range</CardTitle>
+            <CardTitle className="text-sm font-medium">Fourchette salariale</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(positionStats.avgSalaryRange.min / 1000).toFixed(0)}K-$
-              {(positionStats.avgSalaryRange.max / 1000).toFixed(0)}K
+              {positionStats.avgSalaryRange.min ? `${formatMAD(positionStats.avgSalaryRange.min)} - ${formatMAD(positionStats.avgSalaryRange.max)}` : 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">Average salary range</p>
+            <p className="text-xs text-muted-foreground">Fourchette salariale moyenne</p>
           </CardContent>
         </Card>
       </div>
@@ -522,9 +530,9 @@ export function HRManagement() {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">    
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="employees">Employees</TabsTrigger>
-          <TabsTrigger value="departments">Departments</TabsTrigger>
-          <TabsTrigger value="positions">Positions</TabsTrigger>
+          <TabsTrigger value="employees">Employés</TabsTrigger>
+          <TabsTrigger value="departments">Départements</TabsTrigger>
+          <TabsTrigger value="positions">Postes</TabsTrigger>
         </TabsList>
 
         {/* Employees Tab */}
@@ -533,103 +541,103 @@ export function HRManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Employee Management</CardTitle>
-                  <CardDescription>Manage employee records and information</CardDescription>
+                  <CardTitle>Gestion des employés</CardTitle>
+                  <CardDescription>Gérez les dossiers et informations des employés</CardDescription>
                 </div>
                 <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
                   <DialogTrigger asChild>
                     <Button onClick={() => setSelectedEmployee(null)}>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Add Employee
+                      Ajouter un employé
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-3xl w-[800px] min-w-[500px]">
                     <DialogHeader>
-                      <DialogTitle>{isEditEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
+                      <DialogTitle>{isEditEmployee ? "Modifier l'employé" : "Ajouter un nouvel employé"}</DialogTitle>
                       <DialogDescription>
-                        {isEditEmployee ? "Update employee information" : "Enter employee details"}
+                        {isEditEmployee ? "Mettre à jour les informations de l'employé" : "Saisissez les informations de l'employé"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleEmployeeFormSubmit}>
                       <Tabs defaultValue="personal" className="space-y-4">
                         <TabsList className="grid w-full grid-cols-2 mb-4">
-                          <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                          <TabsTrigger value="job">Job Details</TabsTrigger>
+                          <TabsTrigger value="personal">Informations personnelles</TabsTrigger>
+                          <TabsTrigger value="job">Détails du poste</TabsTrigger>
                         </TabsList>
                         <TabsContent value="personal">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                             {!isEditEmployee && (
                               <>
                                 <div className="space-y-2">
-                                  <Label htmlFor="userId">User</Label>
+                                  <Label htmlFor="userId">Utilisateur</Label>
                                   <Combobox
                                     value={employeeForm.userId.toString()}
                                     onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
                                     options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
-                                    placeholder="Select user"
+                                    placeholder="Sélectionner un utilisateur"
                                   />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor="hireDate">Hire Date</Label>
+                                  <Label htmlFor="hireDate">Date d'embauche</Label>
                                   <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                                  <Label htmlFor="dateOfBirth">Date de naissance</Label>
                                   <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor="nationalId">National ID</Label>
+                                  <Label htmlFor="nationalId">CIN</Label>
                                   <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
                                 </div>
                               </>
                             )}
                             <div className="space-y-2">
-                              <Label htmlFor="phoneNumber">Phone Number</Label>
-                              <Input id="phoneNumber" placeholder="123-456-7890" value={employeeForm.phoneNumber} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="phoneNumber">Téléphone</Label>
+                              <Input id="phoneNumber" placeholder="06 12 34 56 78" value={employeeForm.phoneNumber} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="personalEmail">Personal Email</Label>
-                              <Input id="personalEmail" type="email" placeholder="you@example.com" value={employeeForm.personalEmail} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="personalEmail">Email personnel</Label>
+                              <Input id="personalEmail" type="email" placeholder="vous@exemple.com" value={employeeForm.personalEmail} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="address">Address</Label>
-                              <Textarea id="address" placeholder="123 Main St, Apt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="address">Adresse</Label>
+                              <Textarea id="address" placeholder="123 rue Principale, Appt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="maritalStatus">Marital Status</Label>
+                              <Label htmlFor="maritalStatus">Situation familiale</Label>
                               <Select value={employeeForm.maritalStatus} onValueChange={(v) => handleEmployeeSelectChange("maritalStatus", v)}>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
+                                  <SelectValue placeholder="Sélectionner la situation" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Single">Single</SelectItem>
-                                  <SelectItem value="Married">Married</SelectItem>
-                                  <SelectItem value="Divorced">Divorced</SelectItem>
-                                  <SelectItem value="Widowed">Widowed</SelectItem>
+                                  <SelectItem value="Single">Célibataire</SelectItem>
+                                  <SelectItem value="Married">Marié(e)</SelectItem>
+                                  <SelectItem value="Divorced">Divorcé(e)</SelectItem>
+                                  <SelectItem value="Widowed">Veuf(ve)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="emergencyContactName">Emergency Contact Name</Label>
-                              <Input id="emergencyContactName" placeholder="John Doe" value={employeeForm.emergencyContactName} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="emergencyContactName">Nom du contact d'urgence</Label>
+                              <Input id="emergencyContactName" placeholder="Jean Dupont" value={employeeForm.emergencyContactName} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="emergencyContactPhone">Emergency Contact Phone</Label>
-                              <Input id="emergencyContactPhone" placeholder="987-654-3210" value={employeeForm.emergencyContactPhone} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="emergencyContactPhone">Téléphone du contact d'urgence</Label>
+                              <Input id="emergencyContactPhone" placeholder="06 98 76 54 32" value={employeeForm.emergencyContactPhone} onChange={handleEmployeeFormChange} />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="emergencyContactRelationship">Emergency Contact Relationship</Label>
-                              <Input id="emergencyContactRelationship" placeholder="Brother" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="emergencyContactRelationship">Lien avec le contact d'urgence</Label>
+                              <Input id="emergencyContactRelationship" placeholder="Frère" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
                             </div>
                           </div>
                         </TabsContent>
                         <TabsContent value="job">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                             <div className="space-y-2">
-                              <Label htmlFor="departmentId">Department</Label>
+                              <Label htmlFor="departmentId">Département</Label>
                               <Select value={employeeForm.departmentId.toString()} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select department" />
+                                  <SelectValue placeholder="Sélectionner un département" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {departments.map((dept) => (
@@ -641,10 +649,10 @@ export function HRManagement() {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="positionId">Position</Label>
+                              <Label htmlFor="positionId">Poste</Label>
                               <Select value={employeeForm.positionId.toString()} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select position" />
+                                  <SelectValue placeholder="Sélectionner un poste" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {positions
@@ -658,23 +666,23 @@ export function HRManagement() {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="status">Status</Label>
+                              <Label htmlFor="status">Statut</Label>
                               <Select value={employeeForm.status} onValueChange={(v) => handleEmployeeSelectChange("status", v)}>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
+                                  <SelectValue placeholder="Sélectionner le statut" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Active">Active</SelectItem>
-                                  <SelectItem value="Inactive">Inactive</SelectItem>
-                                  <SelectItem value="On Leave">On Leave</SelectItem>
-                                  <SelectItem value="Terminated">Terminated</SelectItem>
-                                  <SelectItem value="Suspended">Suspended</SelectItem>
+                                  <SelectItem value="Active">Actif</SelectItem>
+                                  <SelectItem value="Inactive">Inactif</SelectItem>
+                                  <SelectItem value="On Leave">En congé</SelectItem>
+                                  <SelectItem value="Terminated">Terminé</SelectItem>
+                                  <SelectItem value="Suspended">Suspendu</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="currentSalary">Current Salary (MAD)</Label>
-                              <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Enter current salary" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
+                              <Label htmlFor="currentSalary">Salaire actuel (MAD)</Label>
+                              <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Entrez le salaire actuel" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
                             </div>
                           </div>
                         </TabsContent>
@@ -682,10 +690,10 @@ export function HRManagement() {
                       {employeeFormError && <div className="text-red-500 text-sm mb-2">{employeeFormError}</div>}
                       <DialogFooter>
                         <Button variant="outline" type="button" onClick={() => setShowEmployeeDialog(false)} disabled={isSubmittingEmployee}>
-                          Cancel
+                          Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingEmployee}>
-                          {isEditEmployee ? "Update" : "Create"} Employee
+                          {isEditEmployee ? "Mettre à jour" : "Créer"} l'employé
                         </Button>
                       </DialogFooter>
                     </form>
@@ -699,7 +707,7 @@ export function HRManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search employees..."
+                    placeholder="Rechercher un employé..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -707,23 +715,23 @@ export function HRManagement() {
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder="Filtrer par statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                    <SelectItem value="On Leave">On Leave</SelectItem>
-                    <SelectItem value="Terminated">Terminated</SelectItem>
-                    <SelectItem value="Suspended">Suspended</SelectItem>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="Active">Actif</SelectItem>
+                    <SelectItem value="Inactive">Inactif</SelectItem>
+                    <SelectItem value="On Leave">En congé</SelectItem>
+                    <SelectItem value="Terminated">Terminé</SelectItem>
+                    <SelectItem value="Suspended">Suspendu</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by department" />
+                    <SelectValue placeholder="Filtrer par département" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
+                    <SelectItem value="all">Tous les départements</SelectItem>
                     {departments.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id.toString()}>
                         {dept.name}
@@ -738,12 +746,12 @@ export function HRManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Hire Date</TableHead>
-                      <TableHead>Current Salary (MAD)</TableHead>
+                      <TableHead>Employé</TableHead>
+                      <TableHead>Département</TableHead>
+                      <TableHead>Poste</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Date d'embauche</TableHead>
+                      <TableHead>Salaire actuel (MAD)</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -753,7 +761,7 @@ export function HRManagement() {
                       const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons]
                       // Show user info if user object is present and has at least firstName, lastName, or email
                       const user = employee.user;
-                      let userDisplay = "No user linked";
+                      let userDisplay = "Aucun utilisateur lié";
                       if (user) {
                         if (user.firstName || user.lastName) {
                           userDisplay = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
@@ -798,7 +806,7 @@ export function HRManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{employee.currentSalary?.toLocaleString()} MAD</div>
+                            <div className="font-medium">{formatMAD(Number(employee.currentSalary) || 0)}</div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-1">
@@ -845,36 +853,36 @@ export function HRManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Department Management</CardTitle>
-                  <CardDescription>Manage organizational departments</CardDescription>
+                  <CardTitle>Gestion des départements</CardTitle>
+                  <CardDescription>Gérez les départements de l'organisation</CardDescription>
                 </div>
                 <Dialog open={showDepartmentDialog} onOpenChange={setShowDepartmentDialog}>
                   <DialogTrigger asChild>
                     <Button onClick={() => setSelectedDepartment(null)}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Department
+                      Ajouter un département
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>{isEditDepartment ? "Edit Department" : "Add New Department"}</DialogTitle>
+                      <DialogTitle>{isEditDepartment ? "Modifier le département" : "Ajouter un nouveau département"}</DialogTitle>
                       <DialogDescription>
-                        {isEditDepartment ? "Update department information" : "Enter department details"}
+                        {isEditDepartment ? "Mettre à jour les informations du département" : "Saisissez les informations du département"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleDepartmentFormSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="deptName">Department Name</Label>
-                          <Input id="name" placeholder="Human Resources" value={departmentForm.name} onChange={handleDepartmentFormChange} required />
+                          <Label htmlFor="deptName">Nom du département</Label>
+                          <Input id="name" placeholder="Ressources Humaines" value={departmentForm.name} onChange={handleDepartmentFormChange} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="deptCode">Department Code</Label>
-                          <Input id="code" placeholder="HR" value={departmentForm.code} onChange={handleDepartmentFormChange} required />
+                          <Label htmlFor="deptCode">Code du département</Label>
+                          <Input id="code" placeholder="RH" value={departmentForm.code} onChange={handleDepartmentFormChange} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="location">Location</Label>
-                          <Input id="location" placeholder="Building A, Floor 2" value={departmentForm.location} onChange={handleDepartmentFormChange} />
+                          <Label htmlFor="location">Emplacement</Label>
+                          <Input id="location" placeholder="Bâtiment A, 2ème étage" value={departmentForm.location} onChange={handleDepartmentFormChange} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="budget">Budget</Label>
@@ -882,16 +890,16 @@ export function HRManagement() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="deptDescription">Description</Label>
-                          <Textarea id="description" placeholder="Department description" value={departmentForm.description} onChange={handleDepartmentFormChange} />
+                          <Textarea id="description" placeholder="Description du département" value={departmentForm.description} onChange={handleDepartmentFormChange} />
                         </div>
                       </div>
                       {departmentFormError && <div className="text-red-500 text-sm mb-2">{departmentFormError}</div>}
                       <DialogFooter>
                         <Button variant="outline" type="button" onClick={() => setShowDepartmentDialog(false)} disabled={isSubmittingDepartment}>
-                          Cancel
+                          Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingDepartment}>
-                          {isEditDepartment ? "Update" : "Create"} Department
+                          {isEditDepartment ? "Mettre à jour" : "Créer"} le département
                         </Button>
                       </DialogFooter>
                     </form>
@@ -937,31 +945,31 @@ export function HRManagement() {
 
                         <div className="flex items-center text-sm">
                           <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
-                          Budget: ${department.budget.toLocaleString()}
+                          Budget: {formatMAD(Number(department.budget) || 0)}
                         </div>
 
                         <div className="flex items-center text-sm">
                           <Users className="h-4 w-4 mr-2 text-gray-400" />
-                          {(department.employees?.length ?? 0)} employees
+                          {(department.employees?.length ?? 0)} employés
                         </div>
 
                         <div className="pt-2 border-t">
-                          <div className="text-sm font-medium">Employees:</div>
+                          <div className="text-sm font-medium">Employés:</div>
                           <div className="mt-1 space-y-1">
                             {(department.employees?.slice(0, 3) ?? []).map((emp: any) => {
                               const user = emp.user;
                               const position = emp.position;
                               const userDisplay = user
-                                ? `${user.firstName || ""} ${user.lastName || ""} (${user.email || "No email"})`
-                                : "No user linked";
+                                ? `${user.firstName || ""} ${user.lastName || ""} (${user.email || "Aucun email"})`
+                                : "Aucun utilisateur lié";
                               return (
                                 <div key={emp.id} className="text-xs text-gray-700 dark:text-gray-300">
-                                  {userDisplay} - {position?.title ?? "No position"}
+                                  {userDisplay} - {position?.title ?? "Aucun poste"}
                                 </div>
                               );
                             })}
                             {(department.employees?.length ?? 0) > 3 && (
-                              <div className="text-xs text-gray-500">+{(department.employees?.length ?? 0) - 3} more</div>
+                              <div className="text-xs text-gray-500">+{(department.employees?.length ?? 0) - 3} plus</div>
                             )}
                           </div>
                         </div>
@@ -980,49 +988,49 @@ export function HRManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Position Management</CardTitle>
-                  <CardDescription>Manage job positions and requirements</CardDescription>
+                  <CardTitle>Gestion des postes</CardTitle>
+                  <CardDescription>Gérez les postes et exigences</CardDescription>
                 </div>
                 <Dialog open={showPositionDialog} onOpenChange={setShowPositionDialog}>
                   <DialogTrigger asChild>
                     <Button onClick={() => setSelectedPosition(null)}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Position
+                      Ajouter un poste
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>{isEditPosition ? "Edit Position" : "Add New Position"}</DialogTitle>
-                      <DialogDescription>{isEditPosition ? "Update position information" : "Enter position details"}</DialogDescription>
+                      <DialogTitle>{isEditPosition ? "Modifier le poste" : "Ajouter un nouveau poste"}</DialogTitle>
+                      <DialogDescription>{isEditPosition ? "Mettre à jour les informations du poste" : "Saisissez les informations du poste"}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handlePositionFormSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="title">Position Title</Label>
-                          <Input id="title" placeholder="Software Engineer" value={positionForm.title} onChange={handlePositionFormChange} required />
+                          <Label htmlFor="title">Intitulé du poste</Label>
+                          <Input id="title" placeholder="Ingénieur Logiciel" value={positionForm.title} onChange={handlePositionFormChange} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="level">Level</Label>
+                          <Label htmlFor="level">Niveau</Label>
                           <Select value={positionForm.level} onValueChange={(v) => handlePositionSelectChange("level", v)}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select level" />
+                              <SelectValue placeholder="Sélectionner le niveau" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Entry Level">Entry Level</SelectItem>
+                              <SelectItem value="Entry Level">Débutant</SelectItem>
                               <SelectItem value="Junior">Junior</SelectItem>
                               <SelectItem value="Senior">Senior</SelectItem>
                               <SelectItem value="Lead">Lead</SelectItem>
                               <SelectItem value="Manager">Manager</SelectItem>
-                              <SelectItem value="Director">Director</SelectItem>
-                              <SelectItem value="Executive">Executive</SelectItem>
+                              <SelectItem value="Director">Directeur</SelectItem>
+                              <SelectItem value="Executive">Cadre dirigeant</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="departmentId">Department</Label>
+                          <Label htmlFor="departmentId">Département</Label>
                           <Select value={positionForm.departmentId} onValueChange={(v) => handlePositionSelectChange("departmentId", v)}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
+                              <SelectValue placeholder="Sélectionner un département" />
                             </SelectTrigger>
                             <SelectContent>
                               {departments.map((dept) => (
@@ -1034,33 +1042,33 @@ export function HRManagement() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="openings">Openings</Label>
+                          <Label htmlFor="openings">Postes ouverts</Label>
                           <Input id="openings" type="number" placeholder="2" value={positionForm.openings} onChange={handlePositionFormChange} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="minSalary">Min Salary</Label>
+                          <Label htmlFor="minSalary">Salaire min</Label>
                           <Input id="minSalary" type="number" placeholder="80000" value={positionForm.minSalary} onChange={handlePositionFormChange} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="maxSalary">Max Salary</Label>
+                          <Label htmlFor="maxSalary">Salaire max</Label>
                           <Input id="maxSalary" type="number" placeholder="120000" value={positionForm.maxSalary} onChange={handlePositionFormChange} required />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="description">Description</Label>
-                          <Textarea id="description" placeholder="Position description" value={positionForm.description} onChange={handlePositionFormChange} />
+                          <Textarea id="description" placeholder="Description du poste" value={positionForm.description} onChange={handlePositionFormChange} />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="requirements">Requirements</Label>
-                          <Textarea id="requirements" placeholder="Required qualifications and experience" value={positionForm.requirements} onChange={handlePositionFormChange} />
+                          <Label htmlFor="requirements">Exigences</Label>
+                          <Textarea id="requirements" placeholder="Qualifications et expérience requises" value={positionForm.requirements} onChange={handlePositionFormChange} />
                         </div>
                       </div>
                       {positionFormError && <div className="text-red-500 text-sm mb-2">{positionFormError}</div>}
                       <DialogFooter>
                         <Button variant="outline" type="button" onClick={() => setShowPositionDialog(false)} disabled={isSubmittingPosition}>
-                          Cancel
+                          Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingPosition}>
-                          {isEditPosition ? "Update" : "Create"} Position
+                          {isEditPosition ? "Mettre à jour" : "Créer"} le poste
                         </Button>
                       </DialogFooter>
                     </form>
@@ -1073,12 +1081,12 @@ export function HRManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Level</TableHead>
-                      <TableHead>Salary Range</TableHead>
-                      <TableHead>Employees</TableHead>
-                      <TableHead>Openings</TableHead>
+                      <TableHead>Poste</TableHead>
+                      <TableHead>Département</TableHead>
+                      <TableHead>Niveau</TableHead>
+                      <TableHead>Fourchette salariale</TableHead>
+                      <TableHead>Employés</TableHead>
+                      <TableHead>Postes ouverts</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1097,8 +1105,7 @@ export function HRManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1 text-gray-400" />${position.minSalary.toLocaleString()}{" "}
-                            - ${position.maxSalary.toLocaleString()}
+                            <DollarSign className="h-4 w-4 mr-1 text-gray-400" />{formatMAD(Number(position.minSalary) || 0)} - {formatMAD(Number(position.maxSalary) || 0)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1109,9 +1116,9 @@ export function HRManagement() {
                         </TableCell>
                         <TableCell>
                           {position.openings > 0 ? (
-                            <Badge className="bg-green-100 text-green-800">{position.openings} open</Badge>
+                            <Badge className="bg-green-100 text-green-800">{position.openings} ouvert(s)</Badge>
                           ) : (
-                            <Badge variant="outline">Filled</Badge>
+                            <Badge variant="outline">Pourvu</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -1145,18 +1152,18 @@ export function HRManagement() {
       <Dialog open={!!employeeToDelete} onOpenChange={(open) => { if (!open) setEmployeeToDelete(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Employee</DialogTitle>
+            <DialogTitle>Supprimer l'employé</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this employee? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer cet employé ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {deleteEmployeeError && <div className="text-red-500 text-sm mb-2">{deleteEmployeeError}</div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmployeeToDelete(null)} disabled={isDeletingEmployee}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={handleDeleteEmployeeConfirmed} disabled={isDeletingEmployee}>
-              {isDeletingEmployee ? "Deleting..." : "Delete"}
+              {isDeletingEmployee ? "Suppression..." : "Supprimer"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1166,15 +1173,15 @@ export function HRManagement() {
       <Dialog open={!!departmentToDelete} onOpenChange={open => { if (!open) setDepartmentToDelete(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Department</DialogTitle>
+            <DialogTitle>Supprimer le département</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this department? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer ce département ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {deleteDepartmentError && <div className="text-red-500 text-sm mb-2">{deleteDepartmentError}</div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDepartmentToDelete(null)} disabled={isDeletingDepartment}>
-              Cancel
+              Annuler
             </Button>
             <Button
               variant="destructive"
@@ -1194,7 +1201,7 @@ export function HRManagement() {
               }}
               disabled={isDeletingDepartment}
             >
-              {isDeletingDepartment ? "Deleting..." : "Delete"}
+              {isDeletingDepartment ? "Suppression..." : "Supprimer"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1203,15 +1210,15 @@ export function HRManagement() {
       <Dialog open={!!positionToDelete} onOpenChange={open => { if (!open) setPositionToDelete(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Position</DialogTitle>
+            <DialogTitle>Supprimer le poste</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this position? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer ce poste ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {deletePositionError && <div className="text-red-500 text-sm mb-2">{deletePositionError}</div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPositionToDelete(null)} disabled={isDeletingPosition}>
-              Cancel
+              Annuler
             </Button>
             <Button
               variant="destructive"
@@ -1231,7 +1238,7 @@ export function HRManagement() {
               }}
               disabled={isDeletingPosition}
             >
-              {isDeletingPosition ? "Deleting..." : "Delete"}
+              {isDeletingPosition ? "Suppression..." : "Supprimer"}
             </Button>
           </DialogFooter>
         </DialogContent>

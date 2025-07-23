@@ -61,17 +61,17 @@ import {
 
 
 const acquisitionTypeLabels = {
-  [AcquisitionType.RENTAL]: "Rental",
-  [AcquisitionType.PURCHASE]: "Purchase"
+  [AcquisitionType.RENTAL]: "Location",
+  [AcquisitionType.PURCHASE]: "Achat"
 }
 
 const statusLabels = {
-  [ApprovalStatus.PENDING]: "Pending",
-  [ApprovalStatus.APPROVED]: "Approved",
-  [ApprovalStatus.REJECTED]: "Rejected",
-  [ApprovalStatus.DELIVERED]: "Delivered",
-  [ApprovalStatus.RETURNED]: "Returned",
-  [ApprovalStatus.CANCELLED]: "Cancelled"
+  [ApprovalStatus.PENDING]: "En attente",
+  [ApprovalStatus.APPROVED]: "Approuvée",
+  [ApprovalStatus.REJECTED]: "Rejetée",
+  [ApprovalStatus.DELIVERED]: "Livrée",
+  [ApprovalStatus.RETURNED]: "Retournée",
+  [ApprovalStatus.CANCELLED]: "Annulée"
 }
 
 export function RentalSupplierManagement() {
@@ -98,7 +98,7 @@ export function RentalSupplierManagement() {
     const hasAllowedMime = allowedMimeTypes.includes(fileType);
     const hasAllowedExt = allowedExtensions.some(ext => fileName.endsWith(ext));
     if (!hasAllowedMime && !hasAllowedExt) {
-      setUploadError('File type not allowed. Allowed: PDF, DOC, DOCX, JPG, JPEG, PNG, TXT.');
+      setUploadError('Type de fichier non autorisé. Autorisés : PDF, DOC, DOCX, JPG, JPEG, PNG, TXT.');
       return;
     }
 
@@ -125,17 +125,17 @@ export function RentalSupplierManagement() {
       });
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(errText || 'File upload failed.');
+        throw new Error(errText || 'Échec du téléversement du fichier.');
       }
       const data = await res.json();
       if (data && data.id) {
         setNewAcquisition((prev) => ({ ...prev, quotationFileId: data.id }));
         setUploadedFileName(file.name);
       } else {
-        setUploadError('Upload failed: No file ID returned.');
+        setUploadError('Échec de l\'upload : Aucun ID de fichier retourné.');
       }
     } catch (error: any) {
-      setUploadError(error?.message || 'File upload failed.');
+      setUploadError(error?.message || 'Échec du téléversement du fichier.');
     } finally {
       setUploading(false);
     }
@@ -227,7 +227,7 @@ export function RentalSupplierManagement() {
 
   // Helper functions
   const getSupplierName = (acquisition: Acquisition | null) => {
-    if (!acquisition) return "Unknown Supplier";
+    if (!acquisition) return "Fournisseur inconnu";
     
     // First, check if the acquisition has a supplier object
     if (acquisition.supplier && acquisition.supplier.name) {
@@ -243,11 +243,11 @@ export function RentalSupplierManagement() {
       }
     }
     
-    return "Unknown Supplier";
+    return "Fournisseur inconnu";
   }
 
   const getAssigneeName = (acquisition: Acquisition | null): string => {
-    if (!acquisition) return "Unassigned";
+    if (!acquisition) return "Non affecté";
     
     if (acquisition.team) {
       return acquisition.team.name;
@@ -256,7 +256,7 @@ export function RentalSupplierManagement() {
     } else if (acquisition.staff) {
       return `${acquisition.staff.firstName} ${acquisition.staff.lastName}`;
     } else {
-      return "Unassigned";
+      return "Non affecté";
     }
   }
 
@@ -286,7 +286,7 @@ export function RentalSupplierManagement() {
 
   // Extended helper functions to bridge API model and UI needs
   const getAcquisitionDisplayName = (acquisition: Acquisition | null): string => {
-    return acquisition?.description || "Unnamed item";
+    return acquisition?.description || "Article sans nom";
   }
   
   const getAcquisitionTotal = (acquisition: Acquisition | null): number => {
@@ -361,7 +361,7 @@ export function RentalSupplierManagement() {
         resetNewAcquisition()
       })
       .catch((error) => {
-        console.error("Failed to add acquisition:", error)
+        console.error("Échec de l'ajout de l'acquisition:", error)
       })
   }
 
@@ -406,7 +406,7 @@ export function RentalSupplierManagement() {
           setIsEditAcquisitionDialogOpen(false)
         })
         .catch((error) => {
-          console.error("Failed to update acquisition:", error)
+          console.error("Échec de la mise à jour de l'acquisition:", error)
         })
     }
   }
@@ -432,21 +432,21 @@ export function RentalSupplierManagement() {
         
         // Show success toast
         showToast(
-          "Acquisition successfully deleted", 
+          "Acquisition supprimée avec succès", 
           "success", 
-          "Success"
+          "Succès"
         );
         
         // Refresh acquisitions list
         dispatch(fetchAllAcquisitions());
       } catch (error: any) {
-        console.error("Failed to delete acquisition:", error);
+        console.error("Échec de la suppression de l'acquisition:", error);
         
         // Show error toast with more detailed message
         showToast(
-          `Failed to delete acquisition: ${error.message || "Unknown error"}`, 
+          `Échec de la suppression de l'acquisition : ${error.message || "Erreur inconnue"}`, 
           "error",
-          "Error"
+          "Erreur"
         );
       }
     }
@@ -477,17 +477,17 @@ export function RentalSupplierManagement() {
         } catch (error) {
           console.error('Failed to parse user from localStorage', error);
           showToast(
-            `Cannot approve acquisition: You need to be logged in.`,
+            `Impossible d'approuver l'acquisition : Vous devez être connecté.`,
             "error",
-            "Authentication Error"
+            "Erreur d'authentification"
           );
           return; // Exit early if we can't get a valid user ID
         }
       } else {
         showToast(
-          `Cannot approve acquisition: You need to be logged in.`,
+          `Impossible d'approuver l'acquisition : Vous devez être connecté.`,
           "error",
-          "Authentication Error"
+          "Erreur d'authentification"
         );
         return; // Exit early if we can't get a valid user ID
       }
@@ -497,7 +497,7 @@ export function RentalSupplierManagement() {
     const approvalData = {
       approvalStatus: ApprovalStatus.APPROVED,
       approverId, // Use the current user's ID
-      approvalComments: "Approved from rental & supplies management"
+      approvalComments: "Approuvé depuis la gestion des locations et fournitures"
     };
     
     // Show loading state for this specific acquisition
@@ -511,17 +511,17 @@ export function RentalSupplierManagement() {
         // Show success notification
         console.log(`Successfully approved acquisition ID ${acquisition.id}`);
         showToast(
-          `${getAcquisitionDisplayName(acquisition)} has been approved.`,
+          `${getAcquisitionDisplayName(acquisition)} a été approuvée.`,
           "success",
-          "Acquisition Approved"
+          "Acquisition approuvée"
         );
       })
       .catch((error) => {
         console.error(`Error approving acquisition ID ${acquisition.id}:`, error);
         showToast(
-          `Failed to approve ${getAcquisitionDisplayName(acquisition)}: ${error.message || 'Unknown error'}`,
+          `Échec de l'approuve de ${getAcquisitionDisplayName(acquisition)} : ${error.message || 'Erreur inconnue'}`,
           "error",
-          "Approval Failed"
+          "Échec de l'approbation"
         );
       })
       .finally(() => {
@@ -544,8 +544,8 @@ export function RentalSupplierManagement() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Rental & Acquisitions Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage rental and purchase requests</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des locations et acquisitions</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les demandes de location et d'achat</p>
         </div>
       </div>
 
@@ -553,45 +553,45 @@ export function RentalSupplierManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Acquisitions</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Nombre total d'acquisitions</CardTitle>
             <Package className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalAcquisitions}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">All time</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Historique</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total dépensé</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSpent.toLocaleString()} MAD</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">This year</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Cette année</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Rentals</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Locations actives</CardTitle>
             <Calendar className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{activeRentals}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Currently rented</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Actuellement loué</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-yellow-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Requests</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Demandes en attente</CardTitle>
             <ShoppingCart className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{pendingRequests}</div>
-            <p className="text-xs text-yellow-600 mt-1">Awaiting approval</p>
+            <p className="text-xs text-yellow-600 mt-1">En attente d'approbation</p>
           </CardContent>
         </Card>
       </div>
@@ -611,19 +611,19 @@ export function RentalSupplierManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-gray-900 dark:text-white">Acquisitions</CardTitle>
-                  <CardDescription>Manage rentals and purchases for teams, players, and staff</CardDescription>
+                  <CardDescription>Gérez les locations et achats pour les équipes, joueurs et staff</CardDescription>
                 </div>
                 <Dialog open={isAddAcquisitionDialogOpen} onOpenChange={setIsAddAcquisitionDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                       <Plus className="h-4 w-4 mr-2" />
-                      New Acquisition
+                      Nouvelle acquisition
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Create New Acquisition</DialogTitle>
-                      <DialogDescription>Add a new rental or purchase request</DialogDescription>
+                      <DialogTitle>Créer une nouvelle acquisition</DialogTitle>
+                      <DialogDescription>Ajouter une nouvelle demande de location ou d'achat</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-2 gap-4">
@@ -634,22 +634,22 @@ export function RentalSupplierManagement() {
                             onValueChange={(value) => setNewAcquisition({ ...newAcquisition, acquisitionType: value as AcquisitionType })}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
+                              <SelectValue placeholder="Sélectionner le type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={AcquisitionType.RENTAL}>Rental</SelectItem>
-                              <SelectItem value={AcquisitionType.PURCHASE}>Purchase</SelectItem>
+                              <SelectItem value={AcquisitionType.RENTAL}>Location</SelectItem>
+                              <SelectItem value={AcquisitionType.PURCHASE}>Achat</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="supplier">Supplier</Label>
+                          <Label htmlFor="supplier">Fournisseur</Label>
                           <Select
                             value={newAcquisition.supplierId.toString()}
                             onValueChange={(value) => setNewAcquisition({ ...newAcquisition, supplierId: parseInt(value, 10) })}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select supplier" />
+                              <SelectValue placeholder="Sélectionner un fournisseur" />
                             </SelectTrigger>
                             <SelectContent>
                               {suppliersList
@@ -665,12 +665,12 @@ export function RentalSupplierManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="itemName">Item Name</Label>
+                        <Label htmlFor="itemName">Nom de l'article</Label>
                         <Input
                           id="itemName"
                           value={newAcquisition.itemName}
                           onChange={(e) => setNewAcquisition({ ...newAcquisition, itemName: e.target.value })}
-                          placeholder="Enter item name"
+                          placeholder="Entrez le nom de l'article"
                         />
                       </div>
 
@@ -680,38 +680,38 @@ export function RentalSupplierManagement() {
                           id="description"
                           value={newAcquisition.description}
                           onChange={(e) => setNewAcquisition({ ...newAcquisition, description: e.target.value })}
-                          placeholder="Enter item description"
+                          placeholder="Entrez la description de l'article"
                           rows={3}
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="quantity">Quantity</Label>
+                          <Label htmlFor="quantity">Quantité</Label>
                           <Input
                             id="quantity"
                             type="number"
                             value={newAcquisition.quantity}
                             onChange={(e) => setNewAcquisition({ ...newAcquisition, quantity: parseInt(e.target.value, 10) })}
-                            placeholder="Enter quantity"
+                            placeholder="Entrez la quantité"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="unitPrice">Unit Price</Label>
+                          <Label htmlFor="unitPrice">Prix unitaire</Label>
                           <Input
                             id="unitPrice"
                             type="number"
                             step="0.01"
                             value={newAcquisition.unitPrice}
                             onChange={(e) => setNewAcquisition({ ...newAcquisition, unitPrice: parseFloat(e.target.value) })}
-                            placeholder="Enter unit price"
+                            placeholder="Entrez le prix unitaire"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="assigneeType">Assign To</Label>
+                          <Label htmlFor="assigneeType">Affecter à</Label>
                           <Select
                             value={newAcquisition.assigneeType}
                             onValueChange={(value) =>
@@ -719,23 +719,23 @@ export function RentalSupplierManagement() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select assignee type" />
+                              <SelectValue placeholder="Sélectionner le type d'affectation" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={AssigneeType.TEAM}>Team</SelectItem>
-                              <SelectItem value={AssigneeType.PLAYER}>Player</SelectItem>
+                              <SelectItem value={AssigneeType.TEAM}>Équipe</SelectItem>
+                              <SelectItem value={AssigneeType.PLAYER}>Joueur</SelectItem>
                               <SelectItem value={AssigneeType.STAFF}>Staff</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="assigneeId">Assignee</Label>
+                          <Label htmlFor="assigneeId">Affecté à</Label>
                           <Select
                             value={newAcquisition.assigneeId}
                             onValueChange={(value) => setNewAcquisition({ ...newAcquisition, assigneeId: value })}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select assignee" />
+                              <SelectValue placeholder="Sélectionner l'affecté" />
                             </SelectTrigger>
                             <SelectContent>
                               {newAcquisition.assigneeType === AssigneeType.TEAM && (
@@ -747,7 +747,7 @@ export function RentalSupplierManagement() {
                                       </SelectItem>
                                     ))
                                   ) : (
-                                    <div className="px-3 py-2 text-sm text-gray-500">No teams found</div>
+                                    <div className="px-3 py-2 text-sm text-gray-500">Aucune équipe trouvée</div>
                                   )}
                                 </>
                               )}
@@ -760,7 +760,7 @@ export function RentalSupplierManagement() {
                                       </SelectItem>
                                     ))
                                   ) : (
-                                    <div className="px-3 py-2 text-sm text-gray-500">No players found</div>
+                                    <div className="px-3 py-2 text-sm text-gray-500">Aucun joueur trouvé</div>
                                   )}
                                 </>
                               )}
@@ -773,7 +773,7 @@ export function RentalSupplierManagement() {
                                       </SelectItem>
                                     ))
                                   ) : (
-                                    <div className="px-3 py-2 text-sm text-gray-500">No staff found</div>
+                                    <div className="px-3 py-2 text-sm text-gray-500">Aucun staff trouvé</div>
                                   )}
                                 </>
                               )}
@@ -788,13 +788,13 @@ export function RentalSupplierManagement() {
                           id="notes"
                           value={newAcquisition.notes}
                           onChange={(e) => setNewAcquisition({ ...newAcquisition, notes: e.target.value })}
-                          placeholder="Additional notes"
+                          placeholder="Notes supplémentaires"
                           rows={2}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="quotationFile">Quotation File</Label>
+                        <Label htmlFor="quotationFile">Devis</Label>
                         <input
                           id="quotationFile"
                           type="file"
@@ -803,17 +803,17 @@ export function RentalSupplierManagement() {
                           disabled={uploading}
                           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                         />
-                        {uploading && <p className="text-xs text-blue-600">Uploading...</p>}
-                        {uploadedFileName && <p className="text-xs text-green-600">Uploaded: {uploadedFileName}</p>}
+                        {uploading && <p className="text-xs text-blue-600">Téléversement...</p>}
+                        {uploadedFileName && <p className="text-xs text-green-600">Téléversé : {uploadedFileName}</p>}
                         {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
                       </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsAddAcquisitionDialogOpen(false)}>
-                        Cancel
+                        Annuler
                       </Button>
                       <Button onClick={handleAddAcquisition} className="bg-blue-800 hover:bg-blue-900">
-                        Create Acquisition
+                        Créer l'acquisition
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -826,7 +826,7 @@ export function RentalSupplierManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search acquisitions..."
+                    placeholder="Rechercher des acquisitions..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -837,17 +837,17 @@ export function RentalSupplierManagement() {
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value={AcquisitionType.RENTAL}>Rental</SelectItem>
-                    <SelectItem value={AcquisitionType.PURCHASE}>Purchase</SelectItem>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value={AcquisitionType.RENTAL}>Location</SelectItem>
+                    <SelectItem value={AcquisitionType.PURCHASE}>Achat</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Supplier" />
+                    <SelectValue placeholder="Fournisseur" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Suppliers</SelectItem>
+                    <SelectItem value="all">Tous les fournisseurs</SelectItem>
                     {suppliersList.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id.toString()}>
                         {supplier.name}
@@ -862,16 +862,16 @@ export function RentalSupplierManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Item</TableHead>
+                      <TableHead>Article</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Assignee</TableHead>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Affecté à</TableHead>
+                      <TableHead>Fournisseur</TableHead>
+                      <TableHead>Quantité</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Approval Date</TableHead>
-                      <TableHead>Created By</TableHead>
+                      <TableHead>Date d'approbation</TableHead>
+                      <TableHead>Créé par</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -880,14 +880,14 @@ export function RentalSupplierManagement() {
                       <TableRow key={acquisition.id}>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{acquisition.itemName || "Unnamed item"}</p>
+                            <p className="font-medium">{acquisition.itemName || "Article sans nom"}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
                               {acquisition.description}
                             </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getTypeColor(acquisition.acquisitionType)}>{acquisitionTypeLabels[acquisition.acquisitionType]}</Badge>
+                          <Badge className={getTypeColor(acquisition.acquisitionType)}>{acquisitionTypeLabels[acquisition.acquisitionType] === 'Location' ? 'Location' : 'Achat'}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -901,7 +901,7 @@ export function RentalSupplierManagement() {
                         <TableCell>{acquisition.quantity || 1}</TableCell>
                         <TableCell className="font-medium">{getAcquisitionTotal(acquisition).toLocaleString()} MAD</TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(getAcquisitionStatus(acquisition))}>{statusLabels[getAcquisitionStatus(acquisition)]}</Badge>
+                          <Badge className={getStatusColor(getAcquisitionStatus(acquisition))}>{statusLabels[getAcquisitionStatus(acquisition)] === 'En attente' ? 'En attente' : statusLabels[getAcquisitionStatus(acquisition)] === 'Approuvée' ? 'Approuvée' : statusLabels[getAcquisitionStatus(acquisition)] === 'Rejetée' ? 'Rejetée' : statusLabels[getAcquisitionStatus(acquisition)] === 'Livrée' ? 'Livrée' : statusLabels[getAcquisitionStatus(acquisition)] === 'Retournée' ? 'Retournée' : statusLabels[getAcquisitionStatus(acquisition)] === 'Annulée' ? 'Annulée' : statusLabels[getAcquisitionStatus(acquisition)]}</Badge>
                         </TableCell>
                         <TableCell>{getAcquisitionDate(acquisition).toLocaleDateString()}</TableCell>
                         <TableCell>{acquisition.approvalDate ? new Date(acquisition.approvalDate).toLocaleString() : '-'}</TableCell>
@@ -920,7 +920,7 @@ export function RentalSupplierManagement() {
                                 size="icon"
                                 className="h-8 w-8 text-green-600 hover:text-green-700"
                                 onClick={() => handleApproveAcquisition(acquisition)}
-                                title="Approve Acquisition"
+                                title="Approuver l'acquisition"
                                 disabled={approvingId === acquisition.id}
                               >
                                 {approvingId === acquisition.id ? (
@@ -978,25 +978,25 @@ export function RentalSupplierManagement() {
       }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Acquisition Details</DialogTitle>
+            <DialogTitle>Détails de l'acquisition</DialogTitle>
           </DialogHeader>
           {selectedAcquisition && (
             <Tabs defaultValue="attributes" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="attributes">Attributes</TabsTrigger>
-                <TabsTrigger value="quotation">Quotation File</TabsTrigger>
+                <TabsTrigger value="attributes">Attributs</TabsTrigger>
+                <TabsTrigger value="quotation">Devis</TabsTrigger>
               </TabsList>
               <TabsContent value="attributes">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Item</Label>
-                      <p className="font-medium">{selectedAcquisition.itemName || "Unnamed item"}</p>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Article</Label>
+                      <p className="font-medium">{selectedAcquisition.itemName || "Article sans nom"}</p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Type</Label>
                       <Badge className={getTypeColor(selectedAcquisition.acquisitionType)}>
-                        {acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
+                        {acquisitionTypeLabels[selectedAcquisition.acquisitionType] === 'Location' ? 'Location' : 'Achat'}
                       </Badge>
                     </div>
                   </div>
@@ -1008,51 +1008,51 @@ export function RentalSupplierManagement() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantité</Label>
                       <p>{selectedAcquisition.quantity || 1}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Cost</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Coût</Label>
                       <p>{selectedAcquisition.cost} MAD</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Amount</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Montant total</Label>
                       <p className="font-medium text-lg">{getAcquisitionTotal(selectedAcquisition).toLocaleString()} MAD</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Statut</Label>
                       <Badge className={getStatusColor(selectedAcquisition.approvalStatus)}>
-                        {statusLabels[selectedAcquisition.approvalStatus]}
+                        {statusLabels[selectedAcquisition.approvalStatus] === 'En attente' ? 'En attente' : statusLabels[selectedAcquisition.approvalStatus] === 'Approuvée' ? 'Approuvée' : statusLabels[selectedAcquisition.approvalStatus] === 'Rejetée' ? 'Rejetée' : statusLabels[selectedAcquisition.approvalStatus] === 'Livrée' ? 'Livrée' : statusLabels[selectedAcquisition.approvalStatus] === 'Retournée' ? 'Retournée' : statusLabels[selectedAcquisition.approvalStatus] === 'Annulée' ? 'Annulée' : statusLabels[selectedAcquisition.approvalStatus]}
                       </Badge>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Supplier</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Fournisseur</Label>
                       <p>{getSupplierName(selectedAcquisition)}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned To</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Affecté à</Label>
                       <p>{getAssigneeName(selectedAcquisition)}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created Date</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date de création</Label>
                       <p>{selectedAcquisition.createdAt ? new Date(selectedAcquisition.createdAt).toLocaleDateString() : "N/A"}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approval Date</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date d'approbation</Label>
                       <p>{selectedAcquisition.approvalDate ? new Date(selectedAcquisition.approvalDate).toLocaleString() : "N/A"}</p>
                     </div>
                     {selectedAcquisition.startDate && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Start Date</Label>
+                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date de début</Label>
                         <p>{selectedAcquisition.startDate ? new Date(selectedAcquisition.startDate).toLocaleDateString() : "N/A"}</p>
                       </div>
                     )}
@@ -1060,14 +1060,14 @@ export function RentalSupplierManagement() {
 
                   {selectedAcquisition.endDate && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">End Date</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date de fin</Label>
                       <p>{selectedAcquisition.endDate ? new Date(selectedAcquisition.endDate).toLocaleDateString() : "N/A"}</p>
                     </div>
                   )}
 
                   {selectedAcquisition.approvalComments && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Approval Comments</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Commentaires d'approbation</Label>
                       <p>{selectedAcquisition.approvalComments}</p>
                     </div>
                   )}
@@ -1077,7 +1077,7 @@ export function RentalSupplierManagement() {
                 <div className="space-y-4">
                   {selectedAcquisition.quotationFile && selectedAcquisition.quotationFile.url ? (
                     <div>
-                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quotation File</Label>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Devis</Label>
                       <div className="flex flex-col gap-2">
                         {(() => {
                           const apiUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
@@ -1085,13 +1085,13 @@ export function RentalSupplierManagement() {
                           const fileType = selectedAcquisition.quotationFile.fileType;
                           if (fileType.startsWith('image/')) {
                             // Image preview
-                            return <img src={fileUrl} alt="Quotation File" className="max-h-64 rounded border" style={{maxWidth: '100%'}} />;
+                            return <img src={fileUrl} alt="Devis" className="max-h-64 rounded border" style={{maxWidth: '100%'}} />;
                           } else if (fileType === 'application/pdf') {
                             // PDF preview
-                            return <iframe src={fileUrl} title="Quotation PDF" className="w-full" style={{height: '400px', border: '1px solid #ccc', borderRadius: '4px'}} />;
+                            return <iframe src={fileUrl} title="Devis PDF" className="w-full" style={{height: '400px', border: '1px solid #ccc', borderRadius: '4px'}} />;
                           } else if (fileType === 'text/plain') {
                             // TXT preview
-                            return <iframe src={fileUrl} title="Quotation TXT" className="w-full" style={{height: '200px', border: '1px solid #ccc', borderRadius: '4px', background: '#fafafa'}} />;
+                            return <iframe src={fileUrl} title="Devis TXT" className="w-full" style={{height: '200px', border: '1px solid #ccc', borderRadius: '4px', background: '#fafafa'}} />;
                           } else {
                             // Fallback: download/view link
                             return (
@@ -1101,7 +1101,7 @@ export function RentalSupplierManagement() {
                                 rel="noopener noreferrer"
                                 className="text-blue-700 underline hover:text-blue-900"
                               >
-                                {selectedAcquisition.quotationFile.fileName || 'View File'}
+                                {selectedAcquisition.quotationFile.fileName || 'Voir le fichier'}
                               </a>
                             );
                           }
@@ -1110,7 +1110,7 @@ export function RentalSupplierManagement() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-sm">No quotation file available.</div>
+                    <div className="text-gray-500 text-sm">Aucun devis disponible.</div>
                   )}
                 </div>
               </TabsContent>
@@ -1125,13 +1125,13 @@ export function RentalSupplierManagement() {
       }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Acquisition</DialogTitle>
-            <DialogDescription>Update acquisition information</DialogDescription>
+            <DialogTitle>Modifier l'acquisition</DialogTitle>
+            <DialogDescription>Mettre à jour les informations de l'acquisition</DialogDescription>
           </DialogHeader>
           {selectedAcquisition && (
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-quantity">Quantity</Label>
+                <Label htmlFor="edit-quantity">Quantité</Label>
                 <Input
                   id="edit-quantity"
                   type="number"
@@ -1167,10 +1167,10 @@ export function RentalSupplierManagement() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditAcquisitionDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button onClick={handleUpdateAcquisition} className="bg-blue-800 hover:bg-blue-900">
-              Update Acquisition
+              Mettre à jour l'acquisition
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1180,9 +1180,9 @@ export function RentalSupplierManagement() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this {itemToDelete?.type}? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer cet élément ({itemToDelete?.type === 'acquisition' ? 'acquisition' : 'fournisseur'}) ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {itemToDelete && (
@@ -1190,16 +1190,16 @@ export function RentalSupplierManagement() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {itemToDelete.type === "acquisition"
                   ? `Acquisition: ${getAcquisitionDisplayName(itemToDelete.item)}`
-                  : `Supplier: ${itemToDelete.item.name}`}
+                  : `Fournisseur: ${itemToDelete.item.name}`}
               </p>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

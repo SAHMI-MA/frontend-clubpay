@@ -59,7 +59,7 @@ export function TeamManagement() {
 
   const handleViewTeamDetails = (team: Team) => {
     if (!team || !team.id) {
-      toast.error("Invalid team selected")
+      toast.error("Équipe invalide sélectionnée")
       return
     }
     setSelectedTeam(team)
@@ -78,13 +78,13 @@ export function TeamManagement() {
   const handleCreateSuccess = () => {
     setIsCreateDialogOpen(false)
     dispatch(fetchAllTeams()) // Refresh teams
-    toast.success("Team created successfully")
+    toast.success("Équipe créée avec succès")
   }
 
   const handleEditSuccess = () => {
     setIsEditDialogOpen(false)
     dispatch(fetchAllTeams()) // Refresh teams
-    toast.success("Team updated successfully")
+    toast.success("Équipe mise à jour avec succès")
   }
 
   const totalTeams = teamsWithFallbackCategory.length
@@ -108,19 +108,28 @@ export function TeamManagement() {
     return acc + budget;
   }, 0)
 
+  // Fonction utilitaire pour formater le budget en MAD
+  const formatBudgetMAD = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'MAD',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Team Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage team rosters, players, and matches</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des équipes</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les effectifs, les joueurs et les matchs</p>
         </div>
         <Button 
           className="bg-blue-800 hover:bg-blue-900 text-white" 
           onClick={handleCreateTeamClick}
         >
           <PlusCircle className="h-4 w-4 mr-2" />
-          Create Team
+          Créer une équipe
         </Button>
       </div>
       
@@ -128,8 +137,8 @@ export function TeamManagement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Create New Team</DialogTitle>
-            <DialogDescription>Add a new team to your organization</DialogDescription>
+            <DialogTitle>Créer une nouvelle équipe</DialogTitle>
+            <DialogDescription>Ajoutez une nouvelle équipe à votre organisation</DialogDescription>
           </DialogHeader>
           <TeamForm 
             isCreating={true} 
@@ -143,8 +152,8 @@ export function TeamManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Team</DialogTitle>
-            <DialogDescription>Update team information</DialogDescription>
+            <DialogTitle>Modifier l'équipe</DialogTitle>
+            <DialogDescription>Mettre à jour les informations de l'équipe</DialogDescription>
           </DialogHeader>
           <TeamForm 
             team={teamToEdit}
@@ -159,15 +168,15 @@ export function TeamManagement() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            Dashboard
+            Tableau de bord
           </TabsTrigger>
           <TabsTrigger value="list" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            Teams
+            Équipes
           </TabsTrigger>
           <TabsTrigger value="details" disabled={!selectedTeam} className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            {selectedTeam ? `${selectedTeam.name} Details` : "Team Details"}
+            {selectedTeam ? `Détails de ${selectedTeam.name}` : "Détails de l'équipe"}
           </TabsTrigger>
         </TabsList>
 
@@ -176,7 +185,7 @@ export function TeamManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Teams</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Nombre total d'équipes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
@@ -187,7 +196,7 @@ export function TeamManagement() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Players</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Nombre total de joueurs</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
@@ -198,7 +207,7 @@ export function TeamManagement() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Staff</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Nombre total de staff</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
@@ -209,12 +218,12 @@ export function TeamManagement() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Budget total</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
                   <BarChart3 className="h-5 w-5 mr-2 text-purple-800" />
-                  <span className="text-3xl font-bold">${totalBudget.toLocaleString()}</span>
+                  <span className="text-3xl font-bold">{formatBudgetMAD(totalBudget)}</span>
                 </div>
               </CardContent>
             </Card>
