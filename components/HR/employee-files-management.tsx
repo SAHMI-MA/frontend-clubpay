@@ -179,15 +179,15 @@ export function EmployeeFilesManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Active</Badge>
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Actif</Badge>
       case "expired":
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Expired</Badge>
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Expiré</Badge>
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Pending</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">En attente</Badge>
       case "archived":
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Archived</Badge>
+        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Archivé</Badge>
       default:
-        return <Badge>Unknown</Badge>
+        return <Badge>Inconnu</Badge>
     }
   }
 
@@ -229,20 +229,20 @@ export function EmployeeFilesManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Employee Files Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage employee documents and files</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des dossiers employés</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les documents et fichiers des employés</p>
         </div>
         <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Upload className="w-4 h-4 mr-2" />
-              Upload File
+              Téléverser un fichier
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Upload Employee File</DialogTitle>
-              <DialogDescription>Add a new document to an employee&lsquo;s file</DialogDescription>
+              <DialogTitle>Téléverser un fichier employé</DialogTitle>
+              <DialogDescription>Ajouter un nouveau document au dossier d'un employé</DialogDescription>
             </DialogHeader>
 
             {/* File Drop Zone */}
@@ -256,10 +256,10 @@ export function EmployeeFilesManagement() {
             >
               <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Drop files here or click to browse
+                Déposez les fichiers ici ou cliquez pour parcourir
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Supports PDF, DOC, DOCX, JPG, PNG, TXT (max 10MB each)
+                Prend en charge PDF, DOC, DOCX, JPG, PNG, TXT (max 10Mo chacun)
               </p>
               <input
                 type="file"
@@ -280,13 +280,13 @@ export function EmployeeFilesManagement() {
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               />
               <Button type="button" variant="outline" onClick={() => document.getElementById("file-upload")?.click()}>
-                Browse Files
+                Parcourir les fichiers
               </Button>
 
               {/* Show selected files before upload */}
               {selectedFiles.length > 0 && (
                 <div className="mt-6 space-y-2 text-left">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Selected file{selectedFiles.length > 1 ? 's' : ''}:</p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Fichier{selectedFiles.length > 1 ? 's' : ''} sélectionné{selectedFiles.length > 1 ? 's' : ''} :</p>
                   {selectedFiles.map((file, idx) => (
                     <div key={file.name + file.size + idx} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded px-3 py-2 mb-1">
                       <div className="flex items-center gap-2">
@@ -335,13 +335,13 @@ export function EmployeeFilesManagement() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="employeeId">Employee</Label>
+                  <Label htmlFor="employeeId">Employé</Label>
                   <Select
                     value={newFile.employeeId}
                     onValueChange={(value) => setNewFile({ ...newFile, employeeId: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
+                      <SelectValue placeholder="Sélectionner un employé" />
                     </SelectTrigger>
                     <SelectContent>
                       {employees.map((employee) => (
@@ -353,19 +353,19 @@ export function EmployeeFilesManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fileName">File Name</Label>
+                  <Label htmlFor="fileName">Nom du fichier</Label>
                   <Input
                     id="fileName"
                     value={newFile.fileName}
                     onChange={(e) => setNewFile({ ...newFile, fileName: e.target.value })}
-                    placeholder="Enter file name"
+                    placeholder="Entrez le nom du fichier"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">Catégorie</Label>
                   <Select
                     value={newFile.category}
                     onValueChange={(value: any) => setNewFile({ ...newFile, category: value })}
@@ -374,17 +374,17 @@ export function EmployeeFilesManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="contract">Contract</SelectItem>
-                      <SelectItem value="insurance">Insurance</SelectItem>
+                      <SelectItem value="contract">Contrat</SelectItem>
+                      <SelectItem value="insurance">Assurance</SelectItem>
                       <SelectItem value="certification">Certification</SelectItem>
                       <SelectItem value="performance">Performance</SelectItem>
-                      <SelectItem value="personal">Personal</SelectItem>
-                      <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="personal">Personnel</SelectItem>
+                      <SelectItem value="training">Formation</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
+                  <Label htmlFor="expiryDate">Date d'expiration (optionnel)</Label>
                   <Input
                     id="expiryDate"
                     type="date"
@@ -395,12 +395,12 @@ export function EmployeeFilesManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
+                <Label htmlFor="description">Description (optionnel)</Label>
                 <Textarea
                   id="description"
                   value={newFile.description}
                   onChange={(e) => setNewFile({ ...newFile, description: e.target.value })}
-                  placeholder="Enter file description"
+                  placeholder="Entrez la description du fichier"
                   rows={3}
                 />
               </div>
@@ -408,12 +408,12 @@ export function EmployeeFilesManagement() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button
                 onClick={async () => {
                   if (!selectedFiles.length) {
-                    setError("Please select a file");
+                    setError("Veuillez sélectionner un fichier");
                     return;
                   }
 
@@ -452,7 +452,7 @@ export function EmployeeFilesManagement() {
                 }}
                 disabled={!selectedFiles.length || uploading}
               >
-                {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} File(s)`}
+                {uploading ? 'Téléversement...' : `Téléverser ${selectedFiles.length} fichier(s)`}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -463,42 +463,42 @@ export function EmployeeFilesManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Files</CardTitle>
+            <CardTitle className="text-sm font-medium">Nombre total de fichiers</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalFiles}</div>
-            <p className="text-xs text-muted-foreground">All employee files</p>
+            <p className="text-xs text-muted-foreground">Tous les fichiers employés</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Files</CardTitle>
+            <CardTitle className="text-sm font-medium">Fichiers actifs</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeFiles}</div>
-            <p className="text-xs text-muted-foreground">Currently valid</p>
+            <p className="text-xs text-muted-foreground">Actuellement valides</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+            <CardTitle className="text-sm font-medium">Expiration prochaine</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{expiringFiles}</div>
-            <p className="text-xs text-muted-foreground">Within 30 days</p>
+            <p className="text-xs text-muted-foreground">Dans les 30 jours</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expired</CardTitle>
+            <CardTitle className="text-sm font-medium">Expirés</CardTitle>
             <Trash2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{expiredFiles}</div>
-            <p className="text-xs text-muted-foreground">Need renewal</p>
+            <p className="text-xs text-muted-foreground">À renouveler</p>
           </CardContent>
         </Card>
       </div>
@@ -506,8 +506,8 @@ export function EmployeeFilesManagement() {
       {/* Files Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Employee Files</CardTitle>
-          <CardDescription>Manage all employee documents and files</CardDescription>
+          <CardTitle>Fichiers employés</CardTitle>
+          <CardDescription>Gérez tous les documents et fichiers des employés</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -515,7 +515,7 @@ export function EmployeeFilesManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Search by employee name, file name, or ID..."
+                  placeholder="Rechercher par nom d'employé, nom de fichier ou ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -528,13 +528,13 @@ export function EmployeeFilesManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="contract">Contract</SelectItem>
-                <SelectItem value="insurance">Insurance</SelectItem>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
+                <SelectItem value="contract">Contrat</SelectItem>
+                <SelectItem value="insurance">Assurance</SelectItem>
                 <SelectItem value="certification">Certification</SelectItem>
                 <SelectItem value="performance">Performance</SelectItem>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="training">Training</SelectItem>
+                <SelectItem value="personal">Personnel</SelectItem>
+                <SelectItem value="training">Formation</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -542,11 +542,11 @@ export function EmployeeFilesManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="active">Actif</SelectItem>
+                <SelectItem value="expired">Expiré</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="archived">Archivé</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -555,13 +555,13 @@ export function EmployeeFilesManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>File ID</TableHead>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>File Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Upload Date</TableHead>
-                  <TableHead>Expiry Date</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>ID Fichier</TableHead>
+                  <TableHead>Employé</TableHead>
+                  <TableHead>Nom du fichier</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Date de téléversement</TableHead>
+                  <TableHead>Date d'expiration</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -584,7 +584,7 @@ export function EmployeeFilesManagement() {
                     </TableCell>
                     <TableCell>{getCategoryBadge(file.category)}</TableCell>
                     <TableCell>{file.createdAt}</TableCell>
-                    <TableCell>{file.expiryDate || "No expiry"}</TableCell>
+                    <TableCell>{file.expiryDate || "Pas d'expiration"}</TableCell>
                     <TableCell>{getStatusBadge(file.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -621,48 +621,48 @@ export function EmployeeFilesManagement() {
           {selectedFile && (
             <>
               <DialogHeader>
-                <DialogTitle>File Details - {selectedFile.id}</DialogTitle>
-                <DialogDescription>Complete file information and metadata</DialogDescription>
+                <DialogTitle>Détails du fichier - {selectedFile.id}</DialogTitle>
+                <DialogDescription>Informations complètes et métadonnées du fichier</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Employee</Label>
+                    <Label className="text-sm font-medium text-gray-500">Employé</Label>
                     <p className="text-sm text-gray-600">{selectedFile.employeeId}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Category</Label>
+                    <Label className="text-sm font-medium text-gray-500">Catégorie</Label>
                     <div className="mt-1">{getCategoryBadge(selectedFile.category)}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">File Name</Label>
+                    <Label className="text-sm font-medium text-gray-500">Nom du fichier</Label>
                     <p className="text-lg">{selectedFile.fileName}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">File Size</Label>
+                    <Label className="text-sm font-medium text-gray-500">Taille du fichier</Label>
                     <p className="text-lg">{selectedFile.fileSize}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Upload Date</Label>
+                    <Label className="text-sm font-medium text-gray-500">Date de téléversement</Label>
                     <p className="text-lg">{selectedFile.createdAt}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Expiry Date</Label>
-                    <p className="text-lg">{selectedFile.expiryDate || "No expiry"}</p>
+                    <Label className="text-sm font-medium text-gray-500">Date d'expiration</Label>
+                    <p className="text-lg">{selectedFile.expiryDate || "Pas d'expiration"}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Status</Label>
+                    <Label className="text-sm font-medium text-gray-500">Statut</Label>
                     <div className="mt-1">{getStatusBadge(selectedFile.status)}</div>
                   </div>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedFile(null)}>
-                  Close
+                  Fermer
                 </Button>
                 <Button onClick={() => hrFilesApi.downloadFile(selectedFile.fileName)}>
                   <Download className="w-4 h-4 mr-2" />
-                  Download File
+                  Télécharger le fichier
                 </Button>
               </DialogFooter>
             </>

@@ -109,7 +109,7 @@ export function StaffManagement() {
     }
     
     // Fallback if no team is assigned
-    return "No team assigned";
+    return "Aucune équipe assignée";
   }
 
   const calculateAge = (dateOfBirth: string) => {
@@ -128,7 +128,7 @@ export function StaffManagement() {
   const handleAddStaff = async () => {
     // Validate required fields
     if (!newStaff.firstName || !newStaff.lastName || !newStaff.role || !newStaff.dateOfBirth || !newStaff.teamId) {
-      toast.error("Please fill in all required fields (First Name, Last Name, Role, Date of Birth, Team)")
+      toast.error("Veuillez remplir tous les champs requis (Prénom, Nom, Rôle, Date de naissance, Équipe)")
       return
     }
 
@@ -152,7 +152,7 @@ export function StaffManagement() {
       }
       
       await dispatch(createStaff(staffData))
-      toast.success("Staff member added successfully!")
+      toast.success("Membre du staff ajouté avec succès!")
       setIsAddDialogOpen(false)
       
       // Reset form
@@ -174,7 +174,7 @@ export function StaffManagement() {
       })
     } catch (error) {
       console.error("Error creating staff:", error)
-      toast.error("Failed to add staff member")
+      toast.error("Échec de l'ajout du membre du staff")
     }
   }
 
@@ -226,40 +226,40 @@ export function StaffManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage team staff members, contracts, and roles</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion du staff</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les membres du staff, les contrats et les rôles</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-800 hover:bg-blue-900 text-white">
               <UserPlus className="h-4 w-4 mr-2" />
-              Add Staff Member
+              Ajouter un membre du staff
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Staff Member</DialogTitle>
-              <DialogDescription>Add a new staff member to your team</DialogDescription>
+              <DialogTitle>Ajouter un membre du staff</DialogTitle>
+              <DialogDescription>Ajoutez un nouveau membre du staff à votre équipe</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="firstName">Prénom *</Label>
                   <Input
                     id="firstName"
                     value={newStaff.firstName}
                     onChange={(e) => setNewStaff({ ...newStaff, firstName: e.target.value })}
-                    placeholder="Enter first name"
+                    placeholder="Entrez le prénom"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="lastName">Nom *</Label>
                   <Input
                     id="lastName"
                     value={newStaff.lastName}
                     onChange={(e) => setNewStaff({ ...newStaff, lastName: e.target.value })}
-                    placeholder="Enter last name"
+                    placeholder="Entrez le nom"
                     required
                   />
                 </div>
@@ -267,10 +267,10 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role *</Label>
+                  <Label htmlFor="role">Rôle *</Label>
                   <Select value={newStaff.role} onValueChange={(value) => setNewStaff({ ...newStaff, role: value as StaffRole })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder="Sélectionner un rôle" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.values(StaffRole).map((role) => (
@@ -282,13 +282,13 @@ export function StaffManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="team">Team *</Label>
+                  <Label htmlFor="team">Équipe *</Label>
                   <Select
                     value={newStaff.selectedTeamId?.toString()}
                     onValueChange={(value) => setNewStaff({ ...newStaff, selectedTeamId: parseInt(value), teamId: parseInt(value) })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select team" />
+                      <SelectValue placeholder="Sélectionner une équipe" />
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map((team) => (
@@ -303,7 +303,7 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                  <Label htmlFor="dateOfBirth">Date de naissance *</Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -316,12 +316,12 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Téléphone</Label>
                   <Input
                     id="phone"
                     value={newStaff.phoneNumber}
                     onChange={(e) => setNewStaff({ ...newStaff, phoneNumber: e.target.value })}
-                    placeholder="Enter phone number"
+                    placeholder="Entrez le numéro de téléphone"
                   />
                 </div>
                 <div className="space-y-2">
@@ -331,7 +331,7 @@ export function StaffManagement() {
                     type="email"
                     value={newStaff.email}
                     onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    placeholder="Enter email"
+                    placeholder="Entrez l'email"
                   />
                 </div>
               </div>
@@ -342,48 +342,48 @@ export function StaffManagement() {
                   id="qualification"
                   value={newStaff.qualification}
                   onChange={(e) => setNewStaff({ ...newStaff, qualification: e.target.value })}
-                  placeholder="Enter qualifications"
+                  placeholder="Entrez les qualifications"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="experience">Experience</Label>
+                <Label htmlFor="experience">Expérience</Label>
                 <Textarea
                   id="experience"
                   value={newStaff.experience}
                   onChange={(e) => setNewStaff({ ...newStaff, experience: e.target.value })}
-                  placeholder="Describe experience"
+                  placeholder="Décrivez l'expérience"
                   rows={3}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="salary">Salary</Label>
+                  <Label htmlFor="salary">Salaire</Label>
                   <Input
                     id="salary"
                     type="number"
                     min="0"
                     value={newStaff.salary || ""}
                     onChange={(e) => setNewStaff({ ...newStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="Enter monthly salary"
+                    placeholder="Entrez le salaire mensuel"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="rib">RIB (Bank Account)</Label>
+                  <Label htmlFor="rib">RIB (Compte bancaire)</Label>
                   <Input
                     id="rib"
                     value={newStaff.rib}
                     onChange={(e) => setNewStaff({ ...newStaff, rib: e.target.value })}
-                    placeholder="Bank account information"
+                    placeholder="Informations bancaires"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="contractStartDate">Contract Start Date</Label>
+                  <Label htmlFor="contractStartDate">Début du contrat</Label>
                   <Input
                     id="contractStartDate"
                     type="date"
@@ -393,7 +393,7 @@ export function StaffManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contractEndDate">Contract End Date</Label>
+                  <Label htmlFor="contractEndDate">Fin du contrat</Label>
                   <Input
                     id="contractEndDate"
                     type="date"
@@ -407,10 +407,10 @@ export function StaffManagement() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button onClick={handleAddStaff} className="bg-blue-800 hover:bg-blue-900">
-                Add Staff Member
+                Ajouter le membre du staff
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -421,64 +421,64 @@ export function StaffManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Staff</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Nombre total de staff</CardTitle>
             <Users className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalStaff}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Active staff members</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Membres du staff actifs</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Staff Roles</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Rôles du staff</CardTitle>
             <Calendar className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {roleDistribution.length}
             </div>
-            <p className="text-xs text-orange-600 mt-1">Different roles</p>
+            <p className="text-xs text-orange-600 mt-1">Rôles différents</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Experience</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Expérience</CardTitle>
             <Briefcase className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {staff.filter(s => s.experience && s.experience.length > 0).length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Staff with experience</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Staff avec expérience</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Teams</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Équipes actives</CardTitle>
             <Briefcase className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{teams.length}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">With staff assigned</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Avec staff assigné</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="staff" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="staff">Staff Members</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="staff">Membres du staff</TabsTrigger>
+          <TabsTrigger value="analytics">Analytique</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staff" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Staff Members</CardTitle>
-              <CardDescription>Manage all staff members across teams</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Membres du staff</CardTitle>
+              <CardDescription>Gérez tous les membres du staff des équipes</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Filters */}
@@ -486,7 +486,7 @@ export function StaffManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search staff members..."
+                    placeholder="Rechercher un membre du staff..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -494,10 +494,10 @@ export function StaffManagement() {
                 </div>
                 <Select value={selectedTeam} onValueChange={setSelectedTeam}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by team" />
+                    <SelectValue placeholder="Filtrer par équipe" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Teams</SelectItem>
+                    <SelectItem value="all">Toutes les équipes</SelectItem>
                     {teams.map((team) => (
                       <SelectItem key={team.id} value={team.id.toString()}>
                         {team.name}
@@ -507,10 +507,10 @@ export function StaffManagement() {
                 </Select>
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
+                    <SelectValue placeholder="Filtrer par rôle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="all">Tous les rôles</SelectItem>
                     {Object.values(StaffRole).map((role) => (
                       <SelectItem key={role} value={role}>
                         {role}
@@ -525,11 +525,11 @@ export function StaffManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Staff Member</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Team</TableHead>
+                      <TableHead>Membre du staff</TableHead>
+                      <TableHead>Rôle</TableHead>
+                      <TableHead>Équipe</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Experience</TableHead>
+                      <TableHead>Expérience</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -537,7 +537,7 @@ export function StaffManagement() {
                     {filteredStaff.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-4">
-                          No staff members found matching the criteria
+                          Aucun membre du staff trouvé correspondant aux critères
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -558,7 +558,7 @@ export function StaffManagement() {
                                   {staff.firstName} {staff.lastName}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {calculateAge(staff.dateOfBirth)} years
+                                  {calculateAge(staff.dateOfBirth)} ans
                                 </p>
                               </div>
                             </div>
@@ -609,7 +609,7 @@ export function StaffManagement() {
                                 onClick={() => handleViewStaff(staff)}
                                 className="h-8 w-8 p-0"
                               >
-                                <span className="sr-only">View details</span>
+                                <span className="sr-only">Voir les détails</span>
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
@@ -618,7 +618,7 @@ export function StaffManagement() {
                                 onClick={() => handleEditStaff(staff)}
                                 className="h-8 w-8 p-0"
                               >
-                                <span className="sr-only">Edit</span>
+                                <span className="sr-only">Modifier</span>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button
@@ -627,7 +627,7 @@ export function StaffManagement() {
                                 onClick={() => handleDeleteStaff(staff)}
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                               >
-                                <span className="sr-only">Delete</span>
+                                <span className="sr-only">Supprimer</span>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -646,8 +646,8 @@ export function StaffManagement() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Role Distribution</CardTitle>
-                <CardDescription>Staff members by role</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Répartition des rôles</CardTitle>
+                <CardDescription>Membres du staff par rôle</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -677,8 +677,8 @@ export function StaffManagement() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Experience Overview</CardTitle>
-                <CardDescription>Staff members with notable experience</CardDescription>
+                <CardTitle>Vue d'ensemble de l'expérience</CardTitle>
+                <CardDescription>Membres du staff avec expérience notable</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -713,7 +713,7 @@ export function StaffManagement() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium">
-                            {staff.qualification || "No qualification"}
+                            {staff.qualification || "Aucune qualification"}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             {getTeamName(staff)}
@@ -732,7 +732,7 @@ export function StaffManagement() {
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Staff Member Details</DialogTitle>
+            <DialogTitle>Détails du membre du staff</DialogTitle>
           </DialogHeader>
           {selectedStaff && (
             <div className="space-y-4">
@@ -755,15 +755,15 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Team</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Équipe</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">{getTeamName(selectedStaff)}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Age</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{calculateAge(selectedStaff.dateOfBirth)} years</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Âge</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">{calculateAge(selectedStaff.dateOfBirth)} ans</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Téléphone</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.phoneNumber || "—"}</p>
                 </div>
                 <div>
@@ -771,7 +771,7 @@ export function StaffManagement() {
                   <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.email || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Team</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Équipe</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">
                     {selectedStaff.team ? selectedStaff.team.name : '—'}
                   </p>
@@ -784,7 +784,7 @@ export function StaffManagement() {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Experience</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Expérience</p>
                 <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.experience || "—"}</p>
               </div>
             </div>
@@ -796,14 +796,14 @@ export function StaffManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Staff Member</DialogTitle>
-            <DialogDescription>Update staff member information</DialogDescription>
+            <DialogTitle>Modifier le membre du staff</DialogTitle>
+            <DialogDescription>Mettre à jour les informations du membre du staff</DialogDescription>
           </DialogHeader>
           {editingStaff && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-firstName">First Name</Label>
+                  <Label htmlFor="edit-firstName">Prénom</Label>
                   <Input
                     id="edit-firstName"
                     value={editingStaff.firstName}
@@ -811,7 +811,7 @@ export function StaffManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-lastName">Last Name</Label>
+                  <Label htmlFor="edit-lastName">Nom</Label>
                   <Input
                     id="edit-lastName"
                     value={editingStaff.lastName}
@@ -822,13 +822,13 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-role">Role</Label>
+                  <Label htmlFor="edit-role">Rôle</Label>
                   <Select
                     value={editingStaff.role}
                     onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value as StaffRole })}
                   >
                     <SelectTrigger id="edit-role">
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder="Sélectionner un rôle" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.values(StaffRole).map((role) => (
@@ -840,7 +840,7 @@ export function StaffManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-team">Team</Label>
+                  <Label htmlFor="edit-team">Équipe</Label>
                   <Select
                     value={(editingStaff.team?.id || 0).toString()}
                     onValueChange={(value) => {
@@ -854,7 +854,7 @@ export function StaffManagement() {
                     }}
                   >
                     <SelectTrigger id="edit-team">
-                      <SelectValue placeholder="Select team" />
+                      <SelectValue placeholder="Sélectionner une équipe" />
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map((team) => (
@@ -869,7 +869,7 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Phone Number</Label>
+                  <Label htmlFor="edit-phone">Téléphone</Label>
                   <Input
                     id="edit-phone"
                     value={editingStaff.phoneNumber || ""}
@@ -897,31 +897,31 @@ export function StaffManagement() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-salary">Salary</Label>
+                  <Label htmlFor="edit-salary">Salaire</Label>
                   <Input
                     id="edit-salary"
                     type="number"
                     min="0"
                     value={editingStaff.salary || ""}
                     onChange={(e) => setEditingStaff({ ...editingStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="Enter monthly salary"
+                    placeholder="Entrez le salaire mensuel"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-rib">RIB (Bank Account)</Label>
+                  <Label htmlFor="edit-rib">RIB (Compte bancaire)</Label>
                   <Input
                     id="edit-rib"
                     value={editingStaff.rib || ""}
                     onChange={(e) => setEditingStaff({ ...editingStaff, rib: e.target.value })}
-                    placeholder="Bank account information"
+                    placeholder="Informations bancaires"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-contractStartDate">Contract Start Date</Label>
+                  <Label htmlFor="edit-contractStartDate">Début du contrat</Label>
                   <Input
                     id="edit-contractStartDate"
                     type="date"
@@ -931,7 +931,7 @@ export function StaffManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-contractEndDate">Contract End Date</Label>
+                  <Label htmlFor="edit-contractEndDate">Fin du contrat</Label>
                   <Input
                     id="edit-contractEndDate"
                     type="date"
@@ -944,10 +944,10 @@ export function StaffManagement() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button onClick={handleUpdateStaff} className="bg-blue-800 hover:bg-blue-900">
-              Update Staff Member
+              Mettre à jour le membre du staff
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -957,24 +957,24 @@ export function StaffManagement() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this staff member? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer ce membre du staff ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {selectedStaff && (
             <div className="py-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Staff Member: {selectedStaff.firstName} {selectedStaff.lastName} ({selectedStaff.role})
+                Membre du staff : {selectedStaff.firstName} {selectedStaff.lastName} ({selectedStaff.role})
               </p>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

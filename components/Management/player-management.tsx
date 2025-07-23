@@ -63,7 +63,7 @@ export function PlayerManagement() {
             // Run diagnostics again to confirm token was set
             await debugAuth();
           } else {
-            toast.error("Not authenticated. Please log in.");
+            toast.error("Non authentifié. Veuillez vous connecter.");
             return;
           }
         }
@@ -74,12 +74,12 @@ export function PlayerManagement() {
         console.log('API connection status:', connectionStatus);
         
         if (!connectionStatus.isServerReachable) {
-          toast.error(`Cannot connect to API server: ${connectionStatus.error}`);
+          toast.error(`Impossible de se connecter au serveur API : ${connectionStatus.error}`);
           if (process.env.NODE_ENV === 'development') {
-            toast.info("Using demo data for development", { duration: 5000 });
+            toast.info("Utilisation de données de démonstration pour le développement", { duration: 5000 });
           }
         } else if (!connectionStatus.isAuthenticated) {
-          toast.error("Authentication failed. Please log in again.");
+          toast.error("L'authentification a échoué. Veuillez vous reconnecter.");
           
           // Check if token exists but is invalid
           const token = authService.getToken();
@@ -106,7 +106,7 @@ export function PlayerManagement() {
         });
       } catch (err) {
         console.error('Error initializing player management:', err);
-        toast.error('Failed to initialize application. Please try again.');
+        toast.error('Échec de l\'initialisation de l\'application. Veuillez réessayer.');
       }
     };
     
@@ -117,7 +117,7 @@ export function PlayerManagement() {
   useEffect(() => {
     const handleError = async () => {
       if (error) {
-        toast.error(`Error loading players: ${error}`);
+        toast.error(`Erreur lors du chargement des joueurs : ${error}`);
         
         // Check if error might be auth-related
         if (error.toString().toLowerCase().includes('auth') || 
@@ -128,7 +128,7 @@ export function PlayerManagement() {
         }
         
         if (process.env.NODE_ENV === 'development') {
-          toast.info("Running in development mode. You can continue with limited functionality.");
+          toast.info("Exécution en mode développement. Vous pouvez continuer avec des fonctionnalités limitées.");
         }
       }
     };
@@ -156,19 +156,19 @@ export function PlayerManagement() {
       setApiConnectionStatus(connectionStatus);
       
       if (connectionStatus.isServerReachable && connectionStatus.isAuthenticated) {
-        toast.success("Successfully connected to API server!");
+        toast.success("Connexion au serveur API réussie !");
         // Refresh data
         dispatch(fetchAllPlayers());
         dispatch(fetchAllTeams());
       } else {
-        let errorMessage = "Failed to connect to API server.";
+        let errorMessage = "Échec de la connexion au serveur API.";
         if (connectionStatus.isServerReachable && !connectionStatus.isAuthenticated) {
-          errorMessage = "Connected to server but authentication failed. Please log in again.";
+          errorMessage = "Connecté au serveur mais l'authentification a échoué. Veuillez vous reconnecter.";
         }
         toast.error(errorMessage);
       }
     } catch (err) {
-      toast.error("Failed to test API connection");
+      toast.error("Échec de la connexion au serveur API");
       console.error(err);
     }
   };
@@ -187,13 +187,13 @@ export function PlayerManagement() {
   const handleCreateSuccess = () => {
     setIsCreateDialogOpen(false)
     dispatch(fetchAllPlayers())
-    toast.success("Player created successfully")
+    toast.success("Joueur créé avec succès")
   }
 
   const handleEditSuccess = () => {
     setIsEditDialogOpen(false)
     dispatch(fetchAllPlayers())
-    toast.success("Player updated successfully")
+    toast.success("Joueur mis à jour avec succès")
   }
 
   const handleViewPlayerDetails = (player: Player) => {
@@ -205,8 +205,8 @@ export function PlayerManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Player Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Register and manage players across your organization</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des joueurs</h1>
+          <p className="text-gray-600 dark:text-gray-400">Enregistrez et gérez les joueurs de votre organisation</p>
         </div>
         <div className="flex gap-2">
           {!apiConnectionStatus.isServerReachable && (
@@ -216,7 +216,7 @@ export function PlayerManagement() {
               onClick={handleRetryConnection}
             >
               <AlertTriangle className="h-4 w-4" />
-              <span className="hidden sm:inline">API Disconnected</span>
+              <span className="hidden sm:inline">API déconnectée</span>
               <RefreshCw className="h-4 w-4 ml-1" />
             </Button>
           )}
@@ -225,7 +225,7 @@ export function PlayerManagement() {
             onClick={handleCreatePlayer}
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            Register Player
+            Enregistrer un joueur
           </Button>
         </div>
       </div>
@@ -234,8 +234,8 @@ export function PlayerManagement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Create New Player</DialogTitle>
-            <DialogDescription>Add a new player to your organization</DialogDescription>
+            <DialogTitle>Créer un nouveau joueur</DialogTitle>
+            <DialogDescription>Ajoutez un nouveau joueur à votre organisation</DialogDescription>
           </DialogHeader>
           <PlayerForm 
             isCreating={true}
@@ -249,8 +249,8 @@ export function PlayerManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Player</DialogTitle>
-            <DialogDescription>Update player information</DialogDescription>
+            <DialogTitle>Modifier le joueur</DialogTitle>
+            <DialogDescription>Mettre à jour les informations du joueur</DialogDescription>
           </DialogHeader>
           <PlayerForm 
             player={selectedPlayer}
@@ -281,7 +281,7 @@ export function PlayerManagement() {
         <Dialog open={true} onOpenChange={(open) => !open && setActiveTab("list")}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Player Details</DialogTitle>
+              <DialogTitle>Détails du joueur</DialogTitle>
               <DialogDescription>
                 {`${selectedPlayer.firstName} ${selectedPlayer.lastName}`}
               </DialogDescription>

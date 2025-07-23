@@ -1521,7 +1521,7 @@ export function FinancialManagement() {
   // No payment-related functions needed
 
   const totalIncome = useMemo(() => 
-    transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0) || 0
+    transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0) || 0
   , [transactions]);
   
   const totalExpenses = useMemo(() => {
@@ -1645,8 +1645,8 @@ export function FinancialManagement() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financial Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track and manage all financial transactions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion financière</h1>
+          <p className="text-gray-600 dark:text-gray-400">Suivez et gérez toutes les transactions financières</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -1655,28 +1655,28 @@ export function FinancialManagement() {
             onClick={exportTransactionsAsPDF}
           >
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            Exporter le rapport
           </Button>
           <Button 
             className="bg-purple-600 hover:bg-purple-700 text-white" 
             onClick={() => setIsCustomTransactionDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Custom Transaction
+            Transaction personnalisée
           </Button>
           <Button 
             className="bg-green-600 hover:bg-green-700 text-white" 
             onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Salary Payment
+            Nouveau paiement de salaire
           </Button>
           <Button 
             className="bg-blue-800 hover:bg-blue-900 text-white" 
             onClick={() => setIsCreateTransactionDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create from Acquisition
+            Créer depuis acquisition
           </Button>
         </div>
       </div>
@@ -1685,7 +1685,7 @@ export function FinancialManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des recettes</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -1695,7 +1695,7 @@ export function FinancialManagement() {
 
         <Card className="border-l-4 border-l-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des dépenses</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -1705,7 +1705,7 @@ export function FinancialManagement() {
 
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice net</CardTitle>
             <DollarSign className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
@@ -1715,14 +1715,14 @@ export function FinancialManagement() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Latest Transactions</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Dernières transactions</CardTitle>
             <CreditCard className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {transactions.length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total recorded transactions</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Nombre total de transactions enregistrées</p>
           </CardContent>
         </Card>
       </div>
@@ -1730,15 +1730,15 @@ export function FinancialManagement() {
       <Tabs defaultValue="transactions" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="salary-payments">Salary Payments</TabsTrigger>
-          <TabsTrigger value="reports">Reports & Analytics</TabsTrigger>
+          <TabsTrigger value="salary-payments">Paiements de salaires</TabsTrigger>
+          <TabsTrigger value="reports">Rapports & Analyses</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Recent Transactions</CardTitle>
-              <CardDescription>View and manage all financial transactions</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Transactions récentes</CardTitle>
+              <CardDescription>Consultez et gérez toutes les transactions financières</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Filters */}
@@ -1746,7 +1746,7 @@ export function FinancialManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search transactions..."
+                    placeholder="Rechercher une transaction..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -1754,18 +1754,18 @@ export function FinancialManagement() {
                 </div>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Category" />
+                    <SelectValue placeholder="Catégorie" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
-                    <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
-                    <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
-                    <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
-                    <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
-                    <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
-                    <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
-                    <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                    <SelectItem value="all">Toutes les catégories</SelectItem>
+                    <SelectItem value={TransactionCategory.EQUIPMENT}>Équipement</SelectItem>
+                    <SelectItem value={TransactionCategory.RENTAL}>Location</SelectItem>
+                    <SelectItem value={TransactionCategory.SALARY}>Salaire</SelectItem>
+                    <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsoring</SelectItem>
+                    <SelectItem value={TransactionCategory.REGISTRATION}>Inscription</SelectItem>
+                    <SelectItem value={TransactionCategory.UTILITY}>Service</SelectItem>
+                    <SelectItem value={TransactionCategory.DONATION}>Don</SelectItem>
+                    <SelectItem value={TransactionCategory.OTHER}>Autre</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedType} onValueChange={setSelectedType}>
@@ -1773,9 +1773,9 @@ export function FinancialManagement() {
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
-                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value={TransactionType.INCOME}>Recette</SelectItem>
+                    <SelectItem value={TransactionType.EXPENSE}>Dépense</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1787,11 +1787,11 @@ export function FinancialManagement() {
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
+                      <TableHead>Catégorie</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Purchase Order</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Bon de commande</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1800,14 +1800,14 @@ export function FinancialManagement() {
                         <TableCell colSpan={6} className="h-24 text-center">
                           <div className="flex justify-center items-center">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                            <span>Loading transactions...</span>
+                            <span>Chargement des transactions...</span>
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : filteredTransactions.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          No transactions found.
+                          Aucune transaction trouvée.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1817,13 +1817,13 @@ export function FinancialManagement() {
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>{transaction.category}</TableCell>
                           <TableCell>
-                            <Badge className={getTypeColor(transaction.type)}>{transaction.type}</Badge>
+                            <Badge className={getTypeColor(transaction.type)}>{transaction.type === TransactionType.INCOME ? 'Recette' : 'Dépense'}</Badge>
                           </TableCell>
                           <TableCell className={transaction.type === TransactionType.INCOME ? "text-green-600" : "text-red-600"}>
                             {formatCurrency(transaction.amount)}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(transaction.status)}>{transaction.status}</Badge>
+                            <Badge className={getStatusColor(transaction.status)}>{transaction.status === TransactionPaymentStatus.PAID ? 'Payé' : transaction.status === TransactionPaymentStatus.PENDING ? 'En attente' : transaction.status === TransactionPaymentStatus.APPROVED ? 'Approuvé' : transaction.status}</Badge>
                           </TableCell>
                           <TableCell>
                             {transaction.purchaseOrder && transaction.purchaseOrder.url ? (
@@ -1835,7 +1835,7 @@ export function FinancialManagement() {
                                 title={transaction.purchaseOrder.fileName || 'View Purchase Order'}
                               >
                                 <FileText className="h-4 w-4 mr-1" />
-                                View PDF
+                                Voir PDF
                               </a>
                             ) : (
                               <span className="text-gray-400">N/A</span>
@@ -1854,8 +1854,8 @@ export function FinancialManagement() {
         <TabsContent value="salary-payments" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Salary Payments</CardTitle>
-              <CardDescription>View and manage salary payments for players and staff</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Paiements de salaires</CardTitle>
+              <CardDescription>Consultez et gérez les paiements de salaires des joueurs et du staff</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Filters */}
@@ -1863,7 +1863,7 @@ export function FinancialManagement() {
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search salary payments..."
+                    placeholder="Rechercher un paiement de salaire..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -1874,7 +1874,7 @@ export function FinancialManagement() {
                   onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  New Salary Payment
+                  Nouveau paiement de salaire
                 </Button>
               </div>
 
@@ -1883,13 +1883,13 @@ export function FinancialManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Payment Date</TableHead>
-                      <TableHead>Recipient</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Gross Amount</TableHead>
-                      <TableHead>Tax Amount</TableHead>
-                      <TableHead>Net Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Date de paiement</TableHead>
+                      <TableHead>Bénéficiaire</TableHead>
+                      <TableHead>Période</TableHead>
+                      <TableHead>Montant brut</TableHead>
+                      <TableHead>Montant des taxes</TableHead>
+                      <TableHead>Montant net</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1899,14 +1899,14 @@ export function FinancialManagement() {
                         <TableCell colSpan={8} className="h-24 text-center">
                           <div className="flex justify-center items-center">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                            <span>Loading salary payments...</span>
+                            <span>Chargement des paiements de salaires...</span>
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : !salaryPayments || salaryPayments.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center">
-                          No salary payments found.
+                          Aucuns paiements de salaires trouvés.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1932,7 +1932,7 @@ export function FinancialManagement() {
                             <TableCell>{formatCurrency(payment.taxAmount)}</TableCell>
                             <TableCell>{formatCurrency(payment.netAmount)}</TableCell>
                             <TableCell>
-                              <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
+                              <Badge className={getStatusColor(payment.status)}>{payment.status === TransactionPaymentStatus.PAID ? 'Payé' : payment.status === TransactionPaymentStatus.PENDING ? 'En attente' : payment.status === TransactionPaymentStatus.APPROVED ? 'Approuvé' : payment.status}</Badge>
                             </TableCell>
                             <TableCell>
                               {payment.status === TransactionPaymentStatus.PENDING && (
@@ -1943,7 +1943,7 @@ export function FinancialManagement() {
                                   onClick={() => openTransactionTypeDialog(payment.id)}
                                 >
                                   <FileText className="h-3 w-3 mr-1" />
-                                  Create Transaction
+                                  Créer la transaction
                                 </Button>
                               )}
                             </TableCell>
@@ -1962,15 +1962,15 @@ export function FinancialManagement() {
           {/* Header with Year Selector and Generate Report Button */}
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Financial Reports & Analytics</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Generate reports and view financial performance trends</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rapports & Analyses financières</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Générez des rapports et visualisez les tendances de performance financière</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Label htmlFor="year-select" className="text-sm font-medium">Year:</Label>
+                <Label htmlFor="year-select" className="text-sm font-medium">Année :</Label>
                 <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
                   <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Select year" />
+                    <SelectValue placeholder="Sélectionner une année" />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 5 }, (_, i) => {
@@ -1991,14 +1991,14 @@ export function FinancialManagement() {
                   onClick={exportAnalyticsAsPDF}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export Analytics
+                  Exporter l'analyse
                 </Button>
                 <Button 
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() => setIsGenerateReportDialogOpen(true)}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Generate Report
+                  Générer un rapport
                 </Button>
               </div>
             </div>
@@ -2009,7 +2009,7 @@ export function FinancialManagement() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-l-4 border-l-green-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income ({selectedYear})</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des recettes ({selectedYear})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{formatCurrency(transactionStats.totalIncome || 0)}</div>
@@ -2017,7 +2017,7 @@ export function FinancialManagement() {
               </Card>
               <Card className="border-l-4 border-l-red-500">
                                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses ({selectedYear})</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des dépenses ({selectedYear})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-600">{formatCurrency(transactionStats.totalExpenses || 0)}</div>
@@ -2025,7 +2025,7 @@ export function FinancialManagement() {
               </Card>
               <Card className="border-l-4 border-l-blue-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Profit ({selectedYear})</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice net ({selectedYear})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold ${(transactionStats.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -2040,8 +2040,8 @@ export function FinancialManagement() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Monthly Income vs Expenses ({selectedYear})</CardTitle>
-                <CardDescription>Financial performance for {selectedYear}</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Recettes vs Dépenses mensuelles ({selectedYear})</CardTitle>
+                <CardDescription>Performance financière pour {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStats ? (
@@ -2055,8 +2055,8 @@ export function FinancialManagement() {
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="income" fill="#10B981" name="Income" />
-                      <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
+                      <Bar dataKey="income" fill="#10B981" name="Recettes" />
+                      <Bar dataKey="expenses" fill="#EF4444" name="Dépenses" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -2065,8 +2065,8 @@ export function FinancialManagement() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Profit Trend ({selectedYear})</CardTitle>
-                <CardDescription>Net profit trend for {selectedYear}</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Tendance du bénéfice ({selectedYear})</CardTitle>
+                <CardDescription>Tendance du bénéfice net pour {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStats ? (
@@ -2085,7 +2085,7 @@ export function FinancialManagement() {
                         dataKey="profit" 
                         stroke="#1E3A8A" 
                         strokeWidth={2} 
-                        name="Profit" 
+                        name="Bénéfice" 
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -2097,21 +2097,21 @@ export function FinancialManagement() {
           {/* Generated Reports Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Generated Financial Reports</CardTitle>
-              <CardDescription>View and manage previously generated financial reports</CardDescription>
+              <CardTitle className="text-gray-900 dark:text-white">Rapports financiers générés</CardTitle>
+              <CardDescription>Consultez et gérez les rapports financiers générés précédemment</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Total Income</TableHead>
-                      <TableHead>Total Expenses</TableHead>
-                      <TableHead>Net Profit</TableHead>
-                      <TableHead>Generated By</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Titre</TableHead>
+                      <TableHead>Période</TableHead>
+                      <TableHead>Total des recettes</TableHead>
+                      <TableHead>Total des dépenses</TableHead>
+                      <TableHead>Bénéfice net</TableHead>
+                      <TableHead>Généré par</TableHead>
+                      <TableHead>Créé le</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2121,7 +2121,7 @@ export function FinancialManagement() {
                         <TableCell colSpan={8} className="h-24 text-center">
                           <div className="flex justify-center items-center">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                            <span>Loading reports...</span>
+                            <span>Chargement des rapports...</span>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -2153,7 +2153,7 @@ export function FinancialManagement() {
                                 onClick={() => handleViewReport(report.id)}
                               >
                                 <Eye className="h-4 w-4 mr-1" />
-                                View
+                                Voir
                               </Button>
                               <Button
                                 variant="outline"
@@ -2180,19 +2180,19 @@ export function FinancialManagement() {
       <Dialog open={isCreateTransactionDialogOpen} onOpenChange={setIsCreateTransactionDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Transaction from Approved Acquisition</DialogTitle>
+            <DialogTitle>Créer une transaction depuis une acquisition approuvée</DialogTitle>
             <DialogDescription>
-              Select an approved acquisition to create a financial transaction.
-              This will record the financial transaction associated with the acquisition.
-              The transaction will use the current date and will be created with your user ID.
+              Sélectionnez une acquisition approuvée pour créer une transaction financière.
+              Cela enregistrera la transaction financière associée à l'acquisition.
+              La transaction utilisera la date actuelle et sera créée avec votre identifiant utilisateur.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {isLoadingAcquisitions ? (
               <div className="flex flex-col justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
-                <span className="text-gray-600">Loading pending acquisitions...</span>
-                <p className="text-xs text-gray-500 mt-1">Please wait while we retrieve the pending acquisitions data</p>
+                <span className="text-gray-600">Chargement des acquisitions en attente...</span>
+                <p className="text-xs text-gray-500 mt-1">Veuillez patienter pendant la récupération des données d'acquisitions en attente</p>
               </div>
             ) : acquisitionError ? (
               <div className="py-4 text-center bg-red-50 p-4 rounded-md border border-red-200">
@@ -2204,13 +2204,13 @@ export function FinancialManagement() {
                   className="mt-2 border-red-300 hover:bg-red-100"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
-                  Retry Loading Acquisitions
+                  Réessayer
                 </Button>
               </div>
             ) : approvedAcquisitions.length === 0 ? (
               <div className="py-4 text-center bg-blue-50 p-4 rounded-md border border-blue-200">
-                <p className="text-blue-600 mb-3">No approved acquisitions found</p>
-                <p className="text-sm text-gray-600">There are no approved acquisitions available to create transactions from.</p>
+                <p className="text-blue-600 mb-3">Aucune acquisition approuvée trouvée</p>
+                <p className="text-sm text-gray-600">Aucune acquisition approuvée n'est disponible pour créer des transactions.</p>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -2218,14 +2218,14 @@ export function FinancialManagement() {
                   className="mt-3 border-blue-300 hover:bg-blue-100"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
-                  Refresh
+                  Rafraîchir
                 </Button>
               </div>
             ) : (
               <div className="grid gap-4">
                 {/* Purchase Order File Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="purchaseOrderFile">Purchase Order File (optional)</Label>
+                  <Label htmlFor="purchaseOrderFile">Bon de commande (optionnel)</Label>
                   <div className="flex gap-2 items-center">
                     <Input
                       id="purchaseOrderFile"
@@ -2309,7 +2309,7 @@ export function FinancialManagement() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateTransactionDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button 
               onClick={handleCreateTransaction} 
@@ -2319,10 +2319,10 @@ export function FinancialManagement() {
               {isSubmittingTransaction ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  Traitement...
                 </>
               ) : (
-                "Approve & Create Transaction"
+                "Approuver & Créer la transaction"
               )}
             </Button>
           </DialogFooter>
@@ -2333,9 +2333,9 @@ export function FinancialManagement() {
       <Dialog open={isCreateSalaryPaymentDialogOpen} onOpenChange={setIsCreateSalaryPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Create New Salary Payment</DialogTitle>
+            <DialogTitle>Créer un nouveau paiement de salaire</DialogTitle>
             <DialogDescription>
-              Create a new salary payment for a player or staff member.
+              Créez un nouveau paiement de salaire pour un joueur ou un membre du staff.
             </DialogDescription>
           </DialogHeader>
           
@@ -2349,7 +2349,7 @@ export function FinancialManagement() {
             {/* Recipient Type */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="recipientType" className="text-right">
-                Recipient Type*
+                Type de bénéficiaire*
               </Label>
               <div className="col-span-3 flex gap-4">
                 <div className="flex items-center space-x-2">
@@ -2362,7 +2362,7 @@ export function FinancialManagement() {
                     onChange={() => setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null })}
                     className="h-4 w-4 border-gray-300 text-blue-600"
                   />
-                  <Label htmlFor="playerType" className="cursor-pointer">Player</Label>
+                  <Label htmlFor="playerType" className="cursor-pointer">Joueur</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
@@ -2382,7 +2382,7 @@ export function FinancialManagement() {
             {/* Recipient Selection */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="recipient" className="text-right">
-                Recipient*
+                Bénéficiaire*
               </Label>
               <div className="col-span-3">
                 {salaryPaymentForm.recipientType === "player" ? (
@@ -2442,10 +2442,10 @@ export function FinancialManagement() {
             {/* Payment Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="amount" className="text-right">
-                Gross Amount*
+                Montant brut*
               </Label>
               <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
                 <Input
                   id="amount"
                   type="number"
@@ -2462,7 +2462,7 @@ export function FinancialManagement() {
             {/* Payment Date */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="paymentDate" className="text-right">
-                Payment Date*
+                Date de paiement*
               </Label>
               <div className="col-span-3">
                 <Input
@@ -2477,7 +2477,7 @@ export function FinancialManagement() {
             {/* Period Start */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="periodStart" className="text-right">
-                Period Start*
+                Début de période*
               </Label>
               <div className="col-span-3">
                 <Input
@@ -2492,7 +2492,7 @@ export function FinancialManagement() {
             {/* Period End */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="periodEnd" className="text-right">
-                Period End*
+                Fin de période*
               </Label>
               <div className="col-span-3">
                 <Input
@@ -2507,10 +2507,10 @@ export function FinancialManagement() {
             {/* Bonus (optional) */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="bonus" className="text-right">
-                Bonus
+                Prime
               </Label>
               <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
                 <Input
                   id="bonus"
                   type="number"
@@ -2527,10 +2527,10 @@ export function FinancialManagement() {
             {/* Tax Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="taxAmount" className="text-right">
-                Tax Amount*
+                Montant des taxes*
               </Label>
               <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
                 <Input
                   id="taxAmount"
                   type="number"
@@ -2547,10 +2547,10 @@ export function FinancialManagement() {
             {/* Net Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="netAmount" className="text-right">
-                Net Amount*
+                Montant net*
               </Label>
               <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
                 <Input
                   id="netAmount"
                   type="number"
@@ -2570,7 +2570,7 @@ export function FinancialManagement() {
               variant="outline"
               onClick={() => setIsCreateSalaryPaymentDialogOpen(false)}
             >
-              Cancel
+              Annuler
             </Button>
             <Button
               onClick={handleCreateSalaryPayment}
@@ -2579,10 +2579,10 @@ export function FinancialManagement() {
               {isSubmittingSalaryPayment ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  Création...
                 </>
               ) : (
-                "Create Salary Payment"
+                "Créer le paiement de salaire"
               )}
             </Button>
           </DialogFooter>
@@ -2593,16 +2593,16 @@ export function FinancialManagement() {
       <Dialog open={isTransactionTypeDialogOpen} onOpenChange={setIsTransactionTypeDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Create Transaction from Salary Payment</DialogTitle>
+            <DialogTitle>Créer une transaction depuis un paiement de salaire</DialogTitle>
             <DialogDescription>
-              Select the transaction type and category for this salary payment.
+              Sélectionnez le type et la catégorie de transaction pour ce paiement de salaire.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="transactionType" className="text-right">
-                Transaction Type*
+                Type de transaction*
               </Label>
               <div className="col-span-3">
                 <Select 
@@ -2613,8 +2613,8 @@ export function FinancialManagement() {
                     <SelectValue placeholder="Select transaction type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
-                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
+                    <SelectItem value={TransactionType.EXPENSE}>Dépense</SelectItem>
+                    <SelectItem value={TransactionType.INCOME}>Recette</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2622,7 +2622,7 @@ export function FinancialManagement() {
             
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">
-                Category*
+                Catégorie*
               </Label>
               <div className="col-span-3">
                 <Select 
@@ -2635,18 +2635,18 @@ export function FinancialManagement() {
                   <SelectContent>
                     {selectedTransactionType === TransactionType.EXPENSE ? (
                       <>
-                        <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
-                        <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
-                        <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
-                        <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
-                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                        <SelectItem value={TransactionCategory.SALARY}>Salaire</SelectItem>
+                        <SelectItem value={TransactionCategory.RENTAL}>Location</SelectItem>
+                        <SelectItem value={TransactionCategory.EQUIPMENT}>Équipement</SelectItem>
+                        <SelectItem value={TransactionCategory.UTILITY}>Service</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Autre</SelectItem>
                       </>
                     ) : (
                       <>
-                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
-                        <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
-                        <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
-                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsoring</SelectItem>
+                        <SelectItem value={TransactionCategory.DONATION}>Don</SelectItem>
+                        <SelectItem value={TransactionCategory.REGISTRATION}>Inscription</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Autre</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -2665,13 +2665,13 @@ export function FinancialManagement() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTransactionTypeDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button 
               onClick={handleCreateTransactionFromSalaryPayment}
               className="bg-blue-800 hover:bg-blue-900 text-white"
             >
-              Create Transaction
+              Créer la transaction
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2681,9 +2681,9 @@ export function FinancialManagement() {
       <Dialog open={isCustomTransactionDialogOpen} onOpenChange={setIsCustomTransactionDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Create Custom Transaction</DialogTitle>
+            <DialogTitle>Créer une transaction personnalisée</DialogTitle>
             <DialogDescription>
-              Create a custom income or expense transaction.
+              Créez une transaction de recette ou de dépense personnalisée.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -2705,8 +2705,8 @@ export function FinancialManagement() {
                     <SelectValue placeholder="Select transaction type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={TransactionType.INCOME}>Income</SelectItem>
-                    <SelectItem value={TransactionType.EXPENSE}>Expense</SelectItem>
+                    <SelectItem value={TransactionType.INCOME}>Recette</SelectItem>
+                    <SelectItem value={TransactionType.EXPENSE}>Dépense</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2730,18 +2730,18 @@ export function FinancialManagement() {
                   <SelectContent>
                     {customTransactionForm.type === TransactionType.INCOME ? (
                       <>
-                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsorship</SelectItem>
-                        <SelectItem value={TransactionCategory.DONATION}>Donation</SelectItem>
-                        <SelectItem value={TransactionCategory.REGISTRATION}>Registration</SelectItem>
-                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                        <SelectItem value={TransactionCategory.SPONSORSHIP}>Sponsoring</SelectItem>
+                        <SelectItem value={TransactionCategory.DONATION}>Don</SelectItem>
+                        <SelectItem value={TransactionCategory.REGISTRATION}>Inscription</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Autre</SelectItem>
                       </>
                     ) : (
                       <>
-                        <SelectItem value={TransactionCategory.SALARY}>Salary</SelectItem>
-                        <SelectItem value={TransactionCategory.RENTAL}>Rental</SelectItem>
-                        <SelectItem value={TransactionCategory.EQUIPMENT}>Equipment</SelectItem>
-                        <SelectItem value={TransactionCategory.UTILITY}>Utility</SelectItem>
-                        <SelectItem value={TransactionCategory.OTHER}>Other</SelectItem>
+                        <SelectItem value={TransactionCategory.SALARY}>Salaire</SelectItem>
+                        <SelectItem value={TransactionCategory.RENTAL}>Location</SelectItem>
+                        <SelectItem value={TransactionCategory.EQUIPMENT}>Équipement</SelectItem>
+                        <SelectItem value={TransactionCategory.UTILITY}>Service</SelectItem>
+                        <SelectItem value={TransactionCategory.OTHER}>Autre</SelectItem>
                       </>
                     )}
                   </SelectContent>
@@ -2835,13 +2835,13 @@ export function FinancialManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCustomTransactionDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button 
               onClick={handleCreateCustomTransaction}
               className="bg-blue-800 hover:bg-blue-900 text-white"
             >
-              Create Transaction
+              Créer la transaction
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2851,9 +2851,9 @@ export function FinancialManagement() {
       <Dialog open={isGenerateReportDialogOpen} onOpenChange={setIsGenerateReportDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Generate Financial Report</DialogTitle>
+            <DialogTitle>Générer un rapport financier</DialogTitle>
             <DialogDescription>
-              Create a comprehensive financial report for a specified time period.
+              Créez un rapport financier complet pour une période donnée.
             </DialogDescription>
           </DialogHeader>
           
@@ -2866,11 +2866,11 @@ export function FinancialManagement() {
           <div className="grid gap-4 py-4">
             {/* Report Title */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="reportTitle" className="text-right">Title*</Label>
+              <Label htmlFor="reportTitle" className="text-right">Titre*</Label>
               <div className="col-span-3">
                 <Input
                   id="reportTitle"
-                  placeholder="e.g., Q2 2025 Financial Report"
+                  placeholder="ex : Rapport financier T2 2025"
                   value={reportForm.title}
                   onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
                 />
@@ -2879,7 +2879,7 @@ export function FinancialManagement() {
             
             {/* Period Start */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodStart" className="text-right">Start Date*</Label>
+              <Label htmlFor="periodStart" className="text-right">Date de début*</Label>
               <div className="col-span-3">
                 <Input
                   id="periodStart"
@@ -2892,7 +2892,7 @@ export function FinancialManagement() {
             
             {/* Period End */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodEnd" className="text-right">End Date*</Label>
+              <Label htmlFor="periodEnd" className="text-right">Date de fin*</Label>
               <div className="col-span-3">
                 <Input
                   id="periodEnd"
@@ -2919,7 +2919,7 @@ export function FinancialManagement() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsGenerateReportDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button 
               onClick={handleGenerateReport} 
@@ -2929,12 +2929,12 @@ export function FinancialManagement() {
               {isGeneratingReport ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
+                  Génération...
                 </>
               ) : (
                 <>
                   <FileText className="mr-2 h-4 w-4" />
-                  Generate Report
+                  Générer le rapport
                 </>
               )}
             </Button>
@@ -2948,7 +2948,7 @@ export function FinancialManagement() {
           <DialogHeader>
             <DialogTitle>{selectedReport?.title}</DialogTitle>
             <DialogDescription>
-              Financial report for {selectedReport && new Date(selectedReport.periodStart).toLocaleDateString()} - {selectedReport && new Date(selectedReport.periodEnd).toLocaleDateString()}
+              Rapport financier pour {selectedReport && new Date(selectedReport.periodStart).toLocaleDateString('fr-FR')} - {selectedReport && new Date(selectedReport.periodEnd).toLocaleDateString('fr-FR')}
             </DialogDescription>
           </DialogHeader>
           
@@ -2958,7 +2958,7 @@ export function FinancialManagement() {
               <div className="grid grid-cols-3 gap-4">
                 <Card className="border-l-4 border-l-green-500">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-600">Total des recettes</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold text-green-600">{formatCurrency(selectedReport.totalIncome || 0)}</div>
@@ -2966,7 +2966,7 @@ export function FinancialManagement() {
                 </Card>
                 <Card className="border-l-4 border-l-red-500">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Total Expenses</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-600">Total des dépenses</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold text-red-600">{formatCurrency(selectedReport.totalExpenses || 0)}</div>
@@ -2974,7 +2974,7 @@ export function FinancialManagement() {
                 </Card>
                 <Card className="border-l-4 border-l-blue-500">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-600">Bénéfice net</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className={`text-xl font-bold ${selectedReport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -3020,7 +3020,7 @@ export function FinancialManagement() {
                     <span className="font-medium">Generated by:</span> {selectedReport.generatedBy?.firstName} {selectedReport.generatedBy?.lastName}
                   </div>
                   <div>
-                    <span className="font-medium">Created:</span> {new Date(selectedReport.createdAt).toLocaleString()}
+                    <span className="font-medium">Created:</span> {new Date(selectedReport.createdAt).toLocaleString('fr-FR')}
                   </div>
                 </div>
                 {selectedReport.notes && (
@@ -3035,7 +3035,7 @@ export function FinancialManagement() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsReportDetailDialogOpen(false)}>
-              Close
+              Fermer
             </Button>
             <Button 
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -3043,7 +3043,7 @@ export function FinancialManagement() {
               disabled={!selectedReport}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export PDF
+              Exporter PDF
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -35,115 +35,115 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const navigationGroups = [
   {
-    title: "Overview",
+    title: "Aperçu",
     items: [
       {
-        title: "Dashboard",
+        title: "Tableau de bord",
         icon: Home,
         id: "dashboard",
       },
     ],
   },
   {
-    title: "Management",
+    title: "Gestion",
     items: [
       {
-        title: "User Management",
+        title: "Gestion des utilisateurs",
         icon: Users,
         id: "users",
       },
       {
-        title: "Club & Teams",
+        title: "Clubs & Équipes",
         icon: Building2,
         id: "clubs",
       },
       {
-        title: "Player Management",
+        title: "Gestion des joueurs",
         icon: Users,
         id: "players",
       },
       {
-        title: "Staff Management",
+        title: "Gestion du staff",
         icon: UserCheck,
         id: "staff",
       },
     ],
   },
   {
-    title: "Human Resources",
+    title: "Ressources humaines",
     items: [
       {
-        title: "HR Management",
+        title: "Gestion RH",
         icon: UserCog,
         id: "hr",
       },
       {
-        title: "Employee Files",
+        title: "Dossiers employés",
         icon: FileText,
         id: "employee-files",
       },
       {
-        title: "Absence & Leave",
+        title: "Absences & Congés",
         icon: Calendar,
         id: "absence-leave",
       },
       {
-        title: "Salary Payments",
+        title: "Paiements des salaires",
         icon: DollarSign,
         id: "salary-payments",
       },
     ],
   },
   {
-    title: "Operations",
+    title: "Service d'achat",
     items: [
       {
-        title: "Rental & Acquisitions",
+        title: "Locations & Acquisitions",
         icon: Warehouse,
         id: "rentals",
       },
       {
-        title: "Supplier Management",
+        title: "Gestion des fournisseurs",
         icon: Truck,
         id: "suppliers",
       },
       {
-        title: "Financial",
+        title: "Financier",
         icon: CreditCard,
         id: "financial",
       },
     ],
   },
   {
-    title: "Sports",
+    title: "Sport",
     items: [
       {
-        title: "Contracts & Bonuses",
+        title: "Contrats & Primes",
         icon: FileText,
         id: "contracts",
       },
       {
-        title: "Objectives & Rewards",
+        title: "Objectifs & Récompenses",
         icon: Trophy,
         id: "objectives",
       },
       {
-        title: "Match Management",
+        title: "Gestion des matchs",
         icon: Calendar,
         id: "matches",
       },
     ],
   },
   {
-    title: "System",
+    title: "Système",
     items: [
       {
-        title: "Analytics",
+        title: "Analytique",
         icon: BarChart3,
         id: "analytics",
       },
       {
-        title: "Settings & Logs",
+        title: "Paramètres & Journaux",
         icon: Settings,
         id: "settings",
       },
@@ -163,8 +163,8 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
         <div className="flex items-center gap-2">
           <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Sports Manager</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Association System</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Gestionnaire Sportif</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Système d'Association</p>
           </div>
         </div>
       </SidebarHeader>
@@ -203,7 +203,7 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400">© 2024 Sports Association</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">© 2024 Association Sportive</div>
       </SidebarFooter>
     </Sidebar>
   )

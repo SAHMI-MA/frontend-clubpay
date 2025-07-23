@@ -241,27 +241,27 @@ export function AbsenceLeaveManagement() {
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             <CheckCircle className="w-3 h-3 mr-1" />
-            Approved
+            Approuvée
           </Badge>
         );
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
             <Clock className="w-3 h-3 mr-1" />
-            Pending
+            En attente
           </Badge>
         );
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             <XCircle className="w-3 h-3 mr-1" />
-            Rejected
+            Rejetée
           </Badge>
         );
       case "cancelled":
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Cancelled</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Annulée</Badge>;
       default:
-        return <Badge>Unknown</Badge>;
+        return <Badge>Inconnu</Badge>;
     }
   }
 
@@ -331,7 +331,7 @@ export function AbsenceLeaveManagement() {
         reason: "",
       })
     } catch (err: any) {
-      alert(err?.message || "Failed to create leave request")
+      alert(err?.message || "Échec de la création de la demande de congé")
     }
   }
 
@@ -357,7 +357,7 @@ export function AbsenceLeaveManagement() {
         )
       );
     } catch (err: any) {
-      alert(err?.message || "Failed to approve leave request");
+      alert(err?.message || "Échec de l'approbation de la demande de congé");
     }
     setActionDialog({ open: false, type: null, request: null });
     setApproverComments("");
@@ -385,7 +385,7 @@ export function AbsenceLeaveManagement() {
         )
       );
     } catch (err: any) {
-      alert(err?.message || "Failed to reject leave request")
+      alert(err?.message || "Échec du rejet de la demande de congé")
     }
     setActionDialog({ open: false, type: null, request: null });
     setApproverComments("");
@@ -398,7 +398,7 @@ export function AbsenceLeaveManagement() {
       await hrLeavesApi.deleteLeave(idStr)
       setLeaveRequests((prev) => prev.filter((r) => r.id !== requestId))
     } catch (err: any) {
-      alert(err?.message || "Failed to delete leave request")
+      alert(err?.message || "Échec de la suppression de la demande de congé")
     }
   }
 
@@ -412,30 +412,30 @@ export function AbsenceLeaveManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Absence & Leave Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage employee leave requests and balances</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des absences et congés</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les demandes et soldes de congés des employés</p>
         </div>
         <Dialog open={showNewRequestDialog} onOpenChange={setShowNewRequestDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
-              New Request
+              Nouvelle demande
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Leave Request</DialogTitle>
-              <DialogDescription>Submit a new leave request for an employee</DialogDescription>
+              <DialogTitle>Créer une demande de congé</DialogTitle>
+              <DialogDescription>Soumettre une nouvelle demande de congé pour un employé</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="employeeId">Employee</Label>
+                <Label htmlFor="employeeId">Employé</Label>
                 <Select
                   value={newRequest.employeeId.toString()}
                   onValueChange={(value) => setNewRequest({ ...newRequest, employeeId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
+                    <SelectValue placeholder="Sélectionner un employé" />
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((employee) => (
@@ -447,13 +447,13 @@ export function AbsenceLeaveManagement() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="leaveType">Leave Type</Label>
+                <Label htmlFor="leaveType">Type de congé</Label>
                 <Select
                   value={newRequest.leaveType}
                   onValueChange={(value) => setNewRequest({ ...newRequest, leaveType: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select leave type" />
+                    <SelectValue placeholder="Sélectionner le type de congé" />
                   </SelectTrigger>
                   <SelectContent>
                     {leaveTypeOptions.map((type) => (
@@ -464,7 +464,7 @@ export function AbsenceLeaveManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
+                  <Label htmlFor="startDate">Date de début</Label>
                   <Input
                     id="startDate"
                     type="date"
@@ -473,7 +473,7 @@ export function AbsenceLeaveManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date</Label>
+                  <Label htmlFor="endDate">Date de fin</Label>
                   <Input
                     id="endDate"
                     type="date"
@@ -485,30 +485,30 @@ export function AbsenceLeaveManagement() {
               {newRequest.startDate && newRequest.endDate && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Total days: {calculateDays(newRequest.startDate, newRequest.endDate)}
+                    Nombre total de jours : {calculateDays(newRequest.startDate, newRequest.endDate)}
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">Motif</Label>
                 <Textarea
                   id="reason"
                   value={newRequest.reason}
                   onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
-                  placeholder="Enter reason for leave request"
+                  placeholder="Entrez le motif de la demande de congé"
                   rows={3}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowNewRequestDialog(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button
                 onClick={handleCreateRequest}
                 disabled={!newRequest.employeeId || !newRequest.startDate || !newRequest.endDate}
               >
-                Submit Request
+                Soumettre la demande
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -519,42 +519,42 @@ export function AbsenceLeaveManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <CardTitle className="text-sm font-medium">Nombre total de demandes</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalRequests}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs text-muted-foreground">Historique</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">En attente</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingRequests}</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
+            <p className="text-xs text-muted-foreground">En attente d'approbation</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
+            <CardTitle className="text-sm font-medium">Approuvées</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{approvedRequests}</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">Ce mois-ci</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+            <CardTitle className="text-sm font-medium">Rejetées</CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{rejectedRequests}</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">Ce mois-ci</p>
           </CardContent>
         </Card>
       </div>
@@ -562,15 +562,15 @@ export function AbsenceLeaveManagement() {
       {/* Main Content Tabs */}
       <Tabs defaultValue="requests" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="requests">Leave Requests</TabsTrigger>
-          <TabsTrigger value="balances">Leave Balances</TabsTrigger>
+          <TabsTrigger value="requests">Demandes de congé</TabsTrigger>
+          <TabsTrigger value="balances">Soldes de congés</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests">
           <Card>
             <CardHeader>
-              <CardTitle>Leave Requests</CardTitle>
-              <CardDescription>Manage all employee leave requests</CardDescription>
+              <CardTitle>Demandes de congé</CardTitle>
+              <CardDescription>Gérez toutes les demandes de congé des employés</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -578,7 +578,7 @@ export function AbsenceLeaveManagement() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Search by employee name, ID, or position..."
+                      placeholder="Rechercher par nom, ID ou poste..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -591,11 +591,11 @@ export function AbsenceLeaveManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="approved">Approuvée</SelectItem>
+                    <SelectItem value="rejected">Rejetée</SelectItem>
+                    <SelectItem value="cancelled">Annulée</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -603,7 +603,7 @@ export function AbsenceLeaveManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="all">Tous les types</SelectItem>
                     {leaveTypeOptions.map((type: string) => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
@@ -615,12 +615,12 @@ export function AbsenceLeaveManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Request ID</TableHead>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Leave Type</TableHead>
+                      <TableHead>ID Demande</TableHead>
+                      <TableHead>Employé</TableHead>
+                      <TableHead>Type de congé</TableHead>
                       <TableHead>Dates</TableHead>
-                      <TableHead>Days</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Jours</TableHead>
+                      <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -654,7 +654,7 @@ export function AbsenceLeaveManagement() {
                         <TableCell>
                           <div className="text-sm">
                             <div>{request.startDate}</div>
-                            <div className="text-gray-500">to {request.endDate}</div>
+                            <div className="text-gray-500">à {request.endDate}</div>
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">{request.daysRequested}</TableCell>
@@ -682,14 +682,14 @@ export function AbsenceLeaveManagement() {
               <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Confirm Deletion</DialogTitle>
+                    <DialogTitle>Confirmer la suppression</DialogTitle>
                     <DialogDescription>
-                      Are you sure you want to delete this leave request? This action cannot be undone.
+                      Êtes-vous sûr de vouloir supprimer cette demande de congé ? Cette action est irréversible.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
-                      Cancel
+                      Annuler
                     </Button>
                     <Button
                       variant="destructive"
@@ -698,7 +698,7 @@ export function AbsenceLeaveManagement() {
                         setConfirmDeleteId(null)
                       }}
                     >
-                      Delete
+                      Supprimer
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -710,18 +710,18 @@ export function AbsenceLeaveManagement() {
         <TabsContent value="balances">
           <Card>
             <CardHeader>
-              <CardTitle>Leave Balances</CardTitle>
-              <CardDescription>Track employee leave balances and usage</CardDescription>
+              <CardTitle>Soldes de congés</CardTitle>
+              <CardDescription>Suivi des soldes et utilisations de congés des employés</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Annual Leave</TableHead>
-                      <TableHead>Sick Leave</TableHead>
-                      <TableHead>Personal Leave</TableHead>
+                      <TableHead>Employé</TableHead>
+                      <TableHead>Congé annuel</TableHead>
+                      <TableHead>Congé maladie</TableHead>
+                      <TableHead>Congé personnel</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -734,8 +734,8 @@ export function AbsenceLeaveManagement() {
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex justify-between text-sm">
-                              <span>Used: {balance.annual.used}</span>
-                              <span>Remaining: {balance.annual.remaining}</span>
+                              <span>Utilisé : {balance.annual.used}</span>
+                              <span>Restant : {balance.annual.remaining}</span>
                             </div>
                             <div className="w-full flex justify-center">
                               <div className="bg-gray-200 rounded-full h-2 w-[120px]">
@@ -745,14 +745,14 @@ export function AbsenceLeaveManagement() {
                                 ></div>
                               </div>
                             </div>
-                            <div className="text-xs text-gray-500">Total: {balance.annual.total} days</div>
+                            <div className="text-xs text-gray-500">Total : {balance.annual.total} jours</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex justify-between text-sm">
-                              <span>Used: {balance.sick.used}</span>
-                              <span>Remaining: {balance.sick.remaining}</span>
+                              <span>Utilisé : {balance.sick.used}</span>
+                              <span>Restant : {balance.sick.remaining}</span>
                             </div>
                             <div className="w-full flex justify-center">
                               <div className="bg-gray-200 rounded-full h-2 w-[120px]">
@@ -762,14 +762,14 @@ export function AbsenceLeaveManagement() {
                                 ></div>
                               </div>
                             </div>
-                            <div className="text-xs text-gray-500">Total: {balance.sick.total} days</div>
+                            <div className="text-xs text-gray-500">Total : {balance.sick.total} jours</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex justify-between text-sm">
-                              <span>Used: {balance.personal.used}</span>
-                              <span>Remaining: {balance.personal.remaining}</span>
+                              <span>Utilisé : {balance.personal.used}</span>
+                              <span>Restant : {balance.personal.remaining}</span>
                             </div>
                             <div className="w-full flex justify-center">
                               <div className="bg-gray-200 rounded-full h-2 w-[120px]">
@@ -779,7 +779,7 @@ export function AbsenceLeaveManagement() {
                                 ></div>
                               </div>
                             </div>
-                            <div className="text-xs text-gray-500">Total: {balance.personal.total} days</div>
+                            <div className="text-xs text-gray-500">Total : {balance.personal.total} jours</div>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -797,13 +797,13 @@ export function AbsenceLeaveManagement() {
         <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Leave Request Details - {selectedRequest?.id}</DialogTitle>
-              <DialogDescription>Complete leave request information</DialogDescription>
+              <DialogTitle>Détails de la demande de congé - {selectedRequest?.id}</DialogTitle>
+              <DialogDescription>Informations complètes sur la demande de congé</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Employee</Label>
+                  <Label className="text-sm font-medium text-gray-500">Employé</Label>
                   <p className="text-lg font-semibold">
                     {selectedRequest?.employee?.user
                       ? `${selectedRequest.employee.user.firstName} ${selectedRequest.employee.user.lastName}`
@@ -824,56 +824,56 @@ export function AbsenceLeaveManagement() {
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Leave Type</Label>
+                  <Label className="text-sm font-medium text-gray-500">Type de congé</Label>
                   <div className="mt-1">{getLeaveTypeBadge(selectedRequest?.leaveType ?? "")}</div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Start Date</Label>
+                  <Label className="text-sm font-medium text-gray-500">Date de début</Label>
                   <p className="text-lg">{selectedRequest?.startDate}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">End Date</Label>
+                  <Label className="text-sm font-medium text-gray-500">Date de fin</Label>
                   <p className="text-lg">{selectedRequest?.endDate}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Total Days</Label>
+                  <Label className="text-sm font-medium text-gray-500">Nombre total de jours</Label>
                   <p className="text-lg font-semibold">{selectedRequest?.daysRequested}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Status</Label>
+                  <Label className="text-sm font-medium text-gray-500">Statut</Label>
                   <div className="mt-1">{getStatusBadge(selectedRequest?.status ?? "")}</div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Request Date</Label>
+                  <Label className="text-sm font-medium text-gray-500">Date de la demande</Label>
                   <p className="text-lg">{formatDate(selectedRequest?.createdAt)}</p>
                 </div>
                 {selectedRequest?.approvedAt && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Approval Date</Label>
+                    <Label className="text-sm font-medium text-gray-500">Date d'approbation</Label>
                     <p className="text-lg">{formatDate(selectedRequest.approvedAt)}</p>
                   </div>
                 )}
                 {selectedRequest?.approvedByUserId !== undefined && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Approved By User ID</Label>
+                    <Label className="text-sm font-medium text-gray-500">ID utilisateur approbateur</Label>
                     <p className="text-lg">{selectedRequest.approvedByUserId ?? "N/A"}</p>
                   </div>
                 )}
                 {selectedRequest?.approverComments && (
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Approver Comments</Label>
+                    <Label className="text-sm font-medium text-gray-500">Commentaires de l'approbateur</Label>
                     <p className="text-lg">{selectedRequest.approverComments}</p>
                   </div>
                 )}
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-500">Reason</Label>
+                <Label className="text-sm font-medium text-gray-500">Motif</Label>
                 <p className="text-lg mt-1">{selectedRequest?.reason}</p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedRequest(null)}>
-                Close
+                Fermer
               </Button>
               {selectedRequest && selectedRequest.status?.toLowerCase() === "pending" && (
                 <>
@@ -884,7 +884,7 @@ export function AbsenceLeaveManagement() {
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Approve
+                    Approuver
                   </Button>
                   <Button
                     onClick={() => {
@@ -893,7 +893,7 @@ export function AbsenceLeaveManagement() {
                     variant="destructive"
                   >
                     <XCircle className="w-4 h-4 mr-2" />
-                    Reject
+                    Rejeter
                   </Button>
                 </>
               )}
@@ -901,15 +901,15 @@ export function AbsenceLeaveManagement() {
               <Dialog open={actionDialog.open} onOpenChange={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }}>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>{actionDialog.type === 'approve' ? 'Approve Leave Request' : 'Reject Leave Request'}</DialogTitle>
+                    <DialogTitle>{actionDialog.type === 'approve' ? 'Approuver la demande de congé' : 'Rejeter la demande de congé'}</DialogTitle>
                     <DialogDescription>
                       {actionDialog.type === 'approve'
-                        ? 'Please provide comments before approving this leave request.'
-                        : 'Please provide comments before rejecting this leave request.'}
+                        ? 'Veuillez fournir un commentaire avant d\'approuver cette demande de congé.'
+                        : 'Veuillez fournir un commentaire avant de rejeter cette demande de congé.'}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <Label htmlFor="approverComments">Comments</Label>
+                    <Label htmlFor="approverComments">Commentaires</Label>
                     <Textarea
                       id="approverComments"
                       value={approverComments}
@@ -920,7 +920,7 @@ export function AbsenceLeaveManagement() {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }}>
-                      Cancel
+                      Annuler
                     </Button>
                     <Button
                       onClick={() => {
@@ -936,7 +936,7 @@ export function AbsenceLeaveManagement() {
                       className={actionDialog.type === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
                     >
                       {actionDialog.type === 'approve' ? <CheckCircle className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                      {actionDialog.type === 'approve' ? 'Approve' : 'Reject'}
+                      {actionDialog.type === 'approve' ? 'Approuver' : 'Rejeter'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

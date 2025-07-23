@@ -59,7 +59,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
 
     try {
       if (!loginData.email || !loginData.password) {
-        setLoginError("Please enter both email and password")
+        setLoginError("Veuillez entrer l'email et le mot de passe")
         return;
       }
 
@@ -69,12 +69,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         password: loginData.password
       })).unwrap().catch((error) => {
         console.error("Login error:", error);
-        setLoginError(typeof error === 'string' ? error : "Failed to login. Please check your credentials.");
+        setLoginError(typeof error === 'string' ? error : "Échec de la connexion. Veuillez vérifier vos identifiants.");
       });
       
     } catch (error) {
       console.error("Login error:", error);
-      setLoginError(error instanceof Error ? error.message : "Failed to login. Please check your credentials.");
+      setLoginError(error instanceof Error ? error.message : "Échec de la connexion. Veuillez vérifier vos identifiants.");
     }
   }
   
@@ -86,17 +86,17 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
     
     try {
       if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
-        setRegisterError("Please fill in all required fields")
+        setRegisterError("Veuillez remplir tous les champs obligatoires")
         return
       }
 
       if (registerData.password !== registerData.confirmPassword) {
-        setRegisterError("Passwords do not match")
+        setRegisterError("Les mots de passe ne correspondent pas")
         return
       }
 
       if (registerData.password.length < 6) {
-        setRegisterError("Password must be at least 6 characters long")
+        setRegisterError("Le mot de passe doit contenir au moins 6 caractères")
         return
       }// Dispatch register action
       await dispatch(registerUser({
@@ -104,7 +104,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         lastName: registerData.lastName,
         email: registerData.email,
         password: registerData.password      })).unwrap().then(() => {
-        setRegisterSuccess("Account created successfully! You can now log in.");
+        setRegisterSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
         
         // Reset form on success
         setRegisterData({ 
@@ -117,12 +117,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         });
       }).catch((error) => {
         console.error("Registration error:", error);
-        setRegisterError(typeof error === 'string' ? error : "Failed to register. Please try again.");
+        setRegisterError(typeof error === 'string' ? error : "Échec de l'inscription. Veuillez réessayer.");
       })
       
     } catch (error) {
       console.error("Registration error:", error);
-      setRegisterError(error instanceof Error ? error.message : "Failed to register. Please try again.");
+      setRegisterError(error instanceof Error ? error.message : "Échec de l'inscription. Veuillez réessayer.");
     }    // No need to manually set isLoading to false since it's controlled by the Redux state
   }
 
@@ -146,22 +146,22 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
               <Shield className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sports Manager</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Association Management System</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestionnaire Sportif</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Système de gestion d'association</p>
         </div>
 
         <Tabs defaultValue="login" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Sign In</TabsTrigger>
-            <TabsTrigger value="register">Sign Up</TabsTrigger>
+            <TabsTrigger value="login">Connexion</TabsTrigger>
+            <TabsTrigger value="register">Créer un compte</TabsTrigger>
           </TabsList>
 
           {/* Login Tab */}
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Welcome Back</CardTitle>
-                <CardDescription>Sign in to your account to continue</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Bienvenue</CardTitle>
+                <CardDescription>Connectez-vous à votre compte pour continuer</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -177,7 +177,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="Entrez votre email"
                       value={loginData.email}
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                       required
@@ -185,12 +185,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <Label htmlFor="login-password">Mot de passe</Label>
                     <div className="relative">
                       <Input
                         id="login-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
+                        placeholder="Entrez votre mot de passe"
                         value={loginData.password}
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                         required
@@ -212,7 +212,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     className="w-full bg-blue-800 hover:bg-blue-900 text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Signing In..." : "Sign In"}
+                    {isLoading ? "Connexion en cours..." : "Connexion"}
                   </Button>
                 </form>
               </CardContent>
@@ -223,8 +223,8 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Create Account</CardTitle>
-                <CardDescription>Join the sports association management system</CardDescription>
+                <CardTitle className="text-gray-900 dark:text-white">Créer un compte</CardTitle>
+                <CardDescription>Rejoignez le système de gestion d'association sportive</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
@@ -244,22 +244,22 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     </Alert>
                   )}                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="register-first-name">First Name</Label>
+                      <Label htmlFor="register-first-name">Prénom</Label>
                       <Input
                         id="register-first-name"
                         type="text"
-                        placeholder="Enter your first name"
+                        placeholder="Entrez votre prénom"
                         value={registerData.firstName}
                         onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="register-last-name">Last Name</Label>
+                      <Label htmlFor="register-last-name">Nom</Label>
                       <Input
                         id="register-last-name"
                         type="text"
-                        placeholder="Enter your last name"
+                        placeholder="Entrez votre nom"
                         value={registerData.lastName}
                         onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
                         required
@@ -272,7 +272,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     <Input
                       id="register-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder="Entrez votre email"
                       value={registerData.email}
                       onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
                       required
@@ -298,12 +298,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                   </div> */}
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
+                    <Label htmlFor="register-password">Mot de passe</Label>
                     <div className="relative">
                       <Input
                         id="register-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
+                        placeholder="Créez un mot de passe"
                         value={registerData.password}
                         onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                         required
@@ -321,12 +321,12 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="register-confirm-password">Confirmez le mot de passe</Label>
                     <div className="relative">
                       <Input
                         id="register-confirm-password"
                         type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm your password"
+                        placeholder="Confirmez votre mot de passe"
                         value={registerData.confirmPassword}
                         onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                         required
@@ -348,7 +348,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
                     className="w-full bg-blue-800 hover:bg-blue-900 text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                    {isLoading ? "Création du compte..." : "Créer un compte"}
                   </Button>
                 </form>
               </CardContent>
@@ -358,7 +358,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-sm text-gray-500 dark:text-gray-400">© 2024 Sports Association Management System</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">© 2024 Système de gestion d'association sportive</p>
         </div>
       </div>
     </div>

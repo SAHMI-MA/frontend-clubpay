@@ -150,7 +150,7 @@ export function UserManagement() {
   const handleCreateUser = async () => {
     try {
       await dispatch(createUser(newUser)).unwrap()
-      toast.success("User created successfully")
+      toast.success("Utilisateur créé avec succès")
       setIsUserDialogOpen(false)
       setNewUser({
         email: "",
@@ -160,7 +160,7 @@ export function UserManagement() {
         isActive: true,
       })
     } catch (error) {
-      toast.error("Failed to create user " + (error instanceof Error ? error.message : ""))
+      toast.error("Échec de la création de l'utilisateur " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -181,11 +181,11 @@ export function UserManagement() {
     
     try {
       await dispatch(updateUser({ id: editingUser.id, userData })).unwrap()
-      toast.success("User updated successfully")
+      toast.success("Utilisateur mis à jour avec succès")
       setIsEditUserDialogOpen(false)
       setEditingUser(null)
     } catch (error) {
-      toast.error("Failed to update user " + (error instanceof Error ? error.message : ""))
+      toast.error("Échec de la mise à jour de l'utilisateur " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -214,7 +214,7 @@ export function UserManagement() {
         await Promise.all(permissionPromises)
       }
       
-      toast.success("Role created successfully")
+      toast.success("Rôle créé avec succès")
       setIsRoleDialogOpen(false)
       setNewRole({
         name: "",
@@ -222,7 +222,7 @@ export function UserManagement() {
         permissions: [],
       })
     } catch (error) {
-      toast.error("Failed to create role " + (error instanceof Error ? error.message : ""))
+      toast.error("Échec de la création du rôle " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -294,11 +294,11 @@ export function UserManagement() {
       // Wait for all permission operations to complete
       await Promise.all([...addPromises, ...removePromises])
       
-      toast.success("Role updated successfully")
+      toast.success("Rôle mis à jour avec succès")
       setIsEditRoleDialogOpen(false)
       setEditingRole(null)
     } catch (error) {
-      toast.error("Failed to update role " + (error instanceof Error ? error.message : ""))
+      toast.error("Échec de la mise à jour du rôle " + (error instanceof Error ? error.message : ""))
     }
   }
 
@@ -317,31 +317,31 @@ export function UserManagement() {
         roleId: roleToAssign 
       })).unwrap()
       
-      toast.success("Role assigned successfully")
+      toast.success("Rôle affecté avec succès")
       setIsAssignRoleDialogOpen(false)
       setUserForRoleAssignment(null)
       setRoleToAssign(null)
     } catch (error) {
-      toast.error("Failed to assign role " + (error instanceof Error ? error.message : ""))
+      toast.error("Échec de l'affectation du rôle " + (error instanceof Error ? error.message : ""))
     }
   }
 
   const handleRemoveRoleFromUser = async (userId: number, roleId: number) => {
     try {
       // Show loading toast
-      toast.loading("Removing role...")
+      toast.loading("Suppression du rôle...")
       
       // Dispatch the action to remove the role
       await dispatch(removeRoleFromUser({ userId, roleId })).unwrap()
       
       // Show success toast
-      toast.success("Role removed successfully")
+      toast.success("Rôle supprimé avec succès")
       
       // Refresh the users list to ensure UI is updated
       dispatch(fetchAllUsers())
     } catch (error) {
       console.error("Error removing role:", error)
-      toast.error("Failed to remove role")
+      toast.error("Échec de la suppression du rôle")
     }
   }
 
@@ -350,24 +350,24 @@ export function UserManagement() {
     
     try {
       // Show loading toast
-      toast.loading(`Deleting ${itemToDelete.type}...`)
+      toast.loading(`Suppression de ${itemToDelete.type}...`)
       
       if (itemToDelete.type === "user") {
         await dispatch(deleteUser(itemToDelete.id)).unwrap()
-        toast.success("User deleted successfully")
+        toast.success("Utilisateur supprimé avec succès")
         
         // Refresh users list
         dispatch(fetchAllUsers())
       } else if (itemToDelete.type === "role") {
         await dispatch(deleteRole(itemToDelete.id)).unwrap()
-        toast.success("Role deleted successfully")
+        toast.success("Rôle supprimé avec succès")
         
         // Refresh roles list
         dispatch(fetchAllRoles())
       }
     } catch (error) {
       console.error(`Error deleting ${itemToDelete.type}:`, error)
-      toast.error(`Failed to delete ${itemToDelete.type}`)
+      toast.error(`Échec de la suppression de ${itemToDelete.type}`)
     } finally {
       setIsDeleteDialogOpen(false)
       setItemToDelete(null)
@@ -378,8 +378,8 @@ export function UserManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage users, roles, and permissions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des utilisateurs</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les utilisateurs, les rôles et les permissions</p>
         </div>
       </div>
 
@@ -387,15 +387,15 @@ export function UserManagement() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Users
+            Utilisateurs
           </TabsTrigger>
           <TabsTrigger value="roles" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Roles
+            Rôles
           </TabsTrigger>
           <TabsTrigger value="assignments" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            Role Assignments
+            Affectations de rôles
           </TabsTrigger>
         </TabsList>
 
@@ -405,29 +405,29 @@ export function UserManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-gray-900 dark:text-white">Users</CardTitle>
-                  <CardDescription>Create and manage user accounts</CardDescription>
+                  <CardTitle className="text-gray-900 dark:text-white">Utilisateurs</CardTitle>
+                  <CardDescription>Créer et gérer les comptes utilisateurs</CardDescription>
                 </div>
                 <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Add User
+                      Ajouter un utilisateur
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Create New User</DialogTitle>
-                      <DialogDescription>Add a new user to the system</DialogDescription>
+                      <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
+                      <DialogDescription>Ajouter un nouvel utilisateur au système</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="firstName" className="text-right">
-                          First Name
+                          Prénom
                         </Label>
                         <Input 
                           id="firstName" 
-                          placeholder="First name" 
+                          placeholder="Prénom" 
                           className="col-span-3" 
                           value={newUser.firstName}
                           onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
@@ -435,11 +435,11 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="lastName" className="text-right">
-                          Last Name
+                          Nom
                         </Label>
                         <Input 
                           id="lastName" 
-                          placeholder="Last name" 
+                          placeholder="Nom" 
                           className="col-span-3" 
                           value={newUser.lastName}
                           onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
@@ -452,7 +452,7 @@ export function UserManagement() {
                         <Input 
                           id="email" 
                           type="email" 
-                          placeholder="email@example.com" 
+                          placeholder="email@exemple.com" 
                           className="col-span-3" 
                           value={newUser.email}
                           onChange={(e) => setNewUser({...newUser, email: e.target.value})}
@@ -460,12 +460,12 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="password" className="text-right">
-                          Password
+                          Mot de passe
                         </Label>
                         <Input 
                           id="password" 
                           type="password" 
-                          placeholder="Password" 
+                          placeholder="Mot de passe" 
                           className="col-span-3" 
                           value={newUser.password}
                           onChange={(e) => setNewUser({...newUser, password: e.target.value})}
@@ -473,18 +473,18 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="isActive" className="text-right">
-                          Status
+                          Statut
                         </Label>
                         <Select 
                           value={newUser.isActive ? "active" : "inactive"}
                           onValueChange={(value) => setNewUser({...newUser, isActive: value === "active"})}
                         >
                           <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Sélectionner le statut" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="active">Actif</SelectItem>
+                            <SelectItem value="inactive">Inactif</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -497,7 +497,7 @@ export function UserManagement() {
                         disabled={usersLoading}
                       >
                         {usersLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Create User
+                        Créer l'utilisateur
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -506,13 +506,13 @@ export function UserManagement() {
                 <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Edit User</DialogTitle>
-                      <DialogDescription>Update user information</DialogDescription>
+                      <DialogTitle>Modifier l'utilisateur</DialogTitle>
+                      <DialogDescription>Mettre à jour les informations de l'utilisateur</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-firstName" className="text-right">
-                          First Name
+                          Prénom
                         </Label>
                         <Input
                           id="edit-firstName"
@@ -523,7 +523,7 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-lastName" className="text-right">
-                          Last Name
+                          Nom
                         </Label>
                         <Input
                           id="edit-lastName"
@@ -546,25 +546,25 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-status" className="text-right">
-                          Status
+                          Statut
                         </Label>
                         <Select
                           value={editingUser?.isActive ? "active" : "inactive"}
                           onValueChange={(value) => setEditingUser((prev) => ({ ...prev!, isActive: value === "active" }))}
                         >
                           <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Sélectionner le statut" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="active">Actif</SelectItem>
+                            <SelectItem value="inactive">Inactif</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
-                        Cancel
+                        Annuler
                       </Button>
                       <Button 
                         type="submit" 
@@ -573,7 +573,7 @@ export function UserManagement() {
                         disabled={usersLoading}
                       >
                         {usersLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update User
+                        Mettre à jour
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -585,7 +585,7 @@ export function UserManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search users..."
+                    placeholder="Rechercher des utilisateurs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -593,10 +593,10 @@ export function UserManagement() {
                 </div>
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                   <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
+                    <SelectValue placeholder="Filtrer par rôle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="all">Tous les rôles</SelectItem>
                     {roles.map((role) => (
                       <SelectItem key={role.id} value={role.name.toLowerCase()}>{role.name}</SelectItem>
                     ))}
@@ -613,11 +613,11 @@ export function UserManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>Nom</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Last Login</TableHead>
+                        <TableHead>Rôles</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Dernière connexion</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -625,7 +625,7 @@ export function UserManagement() {
                       {filteredUsers.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-4 text-gray-500">
-                            No users found
+                            Aucun utilisateur trouvé
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -651,16 +651,16 @@ export function UserManagement() {
                                   </Badge>
                                 ))}
                                 {!user.roles?.length && (
-                                  <span className="text-gray-400 text-sm">No roles</span>
+                                  <span className="text-gray-400 text-sm">Aucun rôle</span>
                                 )}
                               </div>
                             </TableCell>
                             <TableCell>
                               <Badge className={getStatusColor(user.isActive)}>
-                                {user.isActive ? "Active" : "Inactive"}
+                                {user.isActive ? "Actif" : "Inactif"}
                               </Badge>
                             </TableCell>
-                            <TableCell>{user.lastLogin || "Never"}</TableCell>
+                            <TableCell>{user.lastLogin || "Jamais"}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
                                 <Button
@@ -698,29 +698,29 @@ export function UserManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-gray-900 dark:text-white">Roles & Permissions</CardTitle>
-                  <CardDescription>Create and manage user roles with specific permissions</CardDescription>
+                  <CardTitle className="text-gray-900 dark:text-white">Rôles & Permissions</CardTitle>
+                  <CardDescription>Créer et gérer les rôles utilisateurs avec des permissions spécifiques</CardDescription>
                 </div>
                 <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                       <Plus className="h-4 w-4 mr-2" />
-                      Create Role
+                      Créer un rôle
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Create New Role</DialogTitle>
-                      <DialogDescription>Define a new role with specific permissions</DialogDescription>
+                      <DialogTitle>Créer un nouveau rôle</DialogTitle>
+                      <DialogDescription>Définir un nouveau rôle avec des permissions spécifiques</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="roleName" className="text-right">
-                          Role Name
+                          Nom du rôle
                         </Label>
                         <Input
                           id="roleName"
-                          placeholder="Enter role name"
+                          placeholder="Nom du rôle"
                           className="col-span-3"
                           value={newRole.name}
                           onChange={(e) => setNewRole((prev) => ({ ...prev, name: e.target.value }))}
@@ -732,7 +732,7 @@ export function UserManagement() {
                         </Label>
                         <Textarea
                           id="roleDescription"
-                          placeholder="Describe the role's purpose"
+                          placeholder="Décrivez le rôle"
                           className="col-span-3"
                           value={newRole.description || ""}
                           onChange={(e) => setNewRole((prev) => ({ ...prev, description: e.target.value }))}
@@ -760,7 +760,7 @@ export function UserManagement() {
                                   >
                                     {permission.name}
                                   </Label>
-                                  <p className="text-xs text-muted-foreground">{permission.description || `For ${permission.page} page`}</p>
+                                  <p className="text-xs text-muted-foreground">{permission.description || `Pour la page ${permission.page}`}</p>
                                 </div>
                               </div>
                             ))
@@ -776,7 +776,7 @@ export function UserManagement() {
                         disabled={rolesLoading}
                       >
                         {rolesLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Create Role
+                        Créer le rôle
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -785,13 +785,13 @@ export function UserManagement() {
                 <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
                   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Edit Role</DialogTitle>
-                      <DialogDescription>Update role information and permissions</DialogDescription>
+                      <DialogTitle>Modifier le rôle</DialogTitle>
+                      <DialogDescription>Mettre à jour les informations et permissions du rôle</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-roleName" className="text-right">
-                          Role Name
+                          Nom du rôle
                         </Label>
                         <Input
                           id="edit-roleName"
@@ -835,7 +835,7 @@ export function UserManagement() {
                                   >
                                     {permission.name}
                                   </Label>
-                                  <p className="text-xs text-muted-foreground">{permission.description || `For ${permission.page} page`}</p>
+                                  <p className="text-xs text-muted-foreground">{permission.description || `Pour la page ${permission.page}`}</p>
                                 </div>
                               </div>
                             ))
@@ -845,7 +845,7 @@ export function UserManagement() {
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsEditRoleDialogOpen(false)}>
-                        Cancel
+                        Annuler
                       </Button>
                       <Button 
                         onClick={handleUpdateRole} 
@@ -853,7 +853,7 @@ export function UserManagement() {
                         disabled={rolesLoading}
                       >
                         {rolesLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update Role
+                        Mettre à jour
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -869,7 +869,7 @@ export function UserManagement() {
                 <div className="grid gap-4">
                   {roles.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      No roles found. Create a new role to get started.
+                      Aucun rôle trouvé. Créez un nouveau rôle pour commencer.
                     </div>
                   ) : (
                     roles.map((role) => (
@@ -878,10 +878,10 @@ export function UserManagement() {
                           <div className="flex items-center justify-between">
                             <div>
                               <CardTitle className="text-lg">{role.name}</CardTitle>
-                              <CardDescription>{role.description || "No description"}</CardDescription>
+                              <CardDescription>{role.description || "Aucune description"}</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline">{role.userCount || 0} users</Badge>
+                              <Badge variant="outline">{role.userCount || 0} utilisateurs</Badge>
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditRole(role)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -907,7 +907,7 @@ export function UserManagement() {
                                   </Badge>
                                 ))
                               ) : (
-                                <span className="text-gray-400 text-sm">No permissions</span>
+                                <span className="text-gray-400 text-sm">Aucune permission</span>
                               )}
                             </div>
                           </div>
@@ -927,29 +927,29 @@ export function UserManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-gray-900 dark:text-white">Role Assignments</CardTitle>
-                  <CardDescription>Assign roles to users and manage permissions</CardDescription>
+                  <CardTitle className="text-gray-900 dark:text-white">Affectations de rôles</CardTitle>
+                  <CardDescription>Affecter des rôles aux utilisateurs et gérer les permissions</CardDescription>
                 </div>
                 <Dialog open={isAssignRoleDialogOpen} onOpenChange={setIsAssignRoleDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-800 hover:bg-blue-900 text-white">
                       <Settings className="h-4 w-4 mr-2" />
-                      Assign Role
+                      Assigner un rôle
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Assign Role to User</DialogTitle>
-                      <DialogDescription>Select a user and assign them to one or more roles</DialogDescription>
+                      <DialogTitle>Assigner un rôle à un utilisateur</DialogTitle>
+                      <DialogDescription>Sélectionnez un utilisateur et assignez-lui un ou plusieurs rôles</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="selectUser" className="text-right">
-                          User
+                          Utilisateur
                         </Label>
                         <Select onValueChange={(value) => setUserForRoleAssignment(Number(value))}>
                           <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select user" />
+                            <SelectValue placeholder="Sélectionner un utilisateur" />
                           </SelectTrigger>
                           <SelectContent>
                             {users.map((user) => (
@@ -962,11 +962,11 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="selectRole" className="text-right">
-                          Role
+                          Rôle
                         </Label>
                         <Select onValueChange={(value) => setRoleToAssign(Number(value))}>
                           <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select role" />
+                            <SelectValue placeholder="Sélectionner un rôle" />
                           </SelectTrigger>
                           <SelectContent>
                             {roles.map((role) => (
@@ -986,7 +986,7 @@ export function UserManagement() {
                         disabled={usersLoading || !userForRoleAssignment || !roleToAssign}
                       >
                         {usersLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Assign Role
+                        Assigner le rôle
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -997,7 +997,7 @@ export function UserManagement() {
               <div className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input placeholder="Search user assignments..." className="pl-10" />
+                  <Input placeholder="Rechercher des affectations..." className="pl-10" />
                 </div>
 
                 {usersLoading ? (
@@ -1009,9 +1009,9 @@ export function UserManagement() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>User</TableHead>
+                          <TableHead>Utilisateur</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Roles</TableHead>
+                          <TableHead>Rôles</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1019,7 +1019,7 @@ export function UserManagement() {
                         {filteredUsers.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                              No users found
+                              Aucun utilisateur trouvé
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -1045,7 +1045,7 @@ export function UserManagement() {
                                     </Badge>
                                   ))}
                                   {!user.roles?.length && (
-                                    <span className="text-gray-400 text-sm">No roles</span>
+                                    <span className="text-gray-400 text-sm">Aucun rôle</span>
                                   )}
                                 </div>
                               </TableCell>
@@ -1059,7 +1059,7 @@ export function UserManagement() {
                                     setIsAssignRoleDialogOpen(true);
                                   }}
                                 >
-                                  Assign Role
+                                  Assigner un rôle
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -1078,14 +1078,14 @@ export function UserManagement() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this {itemToDelete?.type}? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer cet élément ({itemToDelete?.type === 'user' ? 'utilisateur' : 'rôle'}) ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button 
               variant="destructive" 
@@ -1093,7 +1093,7 @@ export function UserManagement() {
               disabled={usersLoading || rolesLoading}
             >
               {(usersLoading || rolesLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -255,58 +255,58 @@ export function SupplierManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Supplier Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage supplier relationships and vendor information</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des fournisseurs</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les relations et informations des fournisseurs</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-800 hover:bg-blue-900 text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Add Supplier
+              Ajouter un fournisseur
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add New Supplier</DialogTitle>
-              <DialogDescription>Register a new supplier for your organization</DialogDescription>
+              <DialogTitle>Ajouter un nouveau fournisseur</DialogTitle>
+              <DialogDescription>Enregistrez un nouveau fournisseur pour votre organisation</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="supplierName">Company Name</Label>
+                <Label htmlFor="supplierName">Nom de l'entreprise</Label>
                 <Input
                   id="supplierName"
                   value={newSupplier.name}
                   onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
-                  placeholder="Enter company name"
+                  placeholder="Saisir le nom de l'entreprise"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Label htmlFor="contactPerson">Personne à contacter</Label>
                   <Input
                     id="contactPerson"
                     value={newSupplier.contactPerson}
                     onChange={(e) => setNewSupplier({ ...newSupplier, contactPerson: e.target.value })}
-                    placeholder="Contact person name"
+                    placeholder="Nom du contact"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">Catégorie</Label>
                   <Select
                     value={newSupplier.category}
                     onValueChange={(value) => setNewSupplier({ ...newSupplier, category: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Sélectionner une catégorie" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Equipment">Equipment</SelectItem>
-                      <SelectItem value="Uniforms">Uniforms</SelectItem>
-                      <SelectItem value="Medical">Medical</SelectItem>
+                      <SelectItem value="Equipment">Équipements</SelectItem>
+                      <SelectItem value="Uniforms">Tenues</SelectItem>
+                      <SelectItem value="Medical">Médical</SelectItem>
                       <SelectItem value="Maintenance">Maintenance</SelectItem>
-                      <SelectItem value="Catering">Catering</SelectItem>
-                      <SelectItem value="Transportation">Transportation</SelectItem>
+                      <SelectItem value="Catering">Restauration</SelectItem>
+                      <SelectItem value="Transportation">Transport</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -320,47 +320,47 @@ export function SupplierManagement() {
                     type="email"
                     value={newSupplier.email}
                     onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
-                    placeholder="Enter email"
+                    placeholder="Saisir l'email"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="supplierPhone">Phone</Label>
+                  <Label htmlFor="supplierPhone">Téléphone</Label>
                   <Input
                     id="supplierPhone"
                     value={newSupplier.phone}
                     onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
-                    placeholder="Enter phone number"
+                    placeholder="Saisir le numéro de téléphone"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supplierRib">RIB (Bank Account)</Label>
+                <Label htmlFor="supplierRib">RIB (Compte bancaire)</Label>
                 <Input
                   id="supplierRib"
                   value={newSupplier.rib}
                   onChange={(e) => setNewSupplier({ ...newSupplier, rib: e.target.value })}
-                  placeholder="Bank account information"
+                  placeholder="Informations bancaires"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supplierAddress">Address</Label>
+                <Label htmlFor="supplierAddress">Adresse</Label>
                 <Textarea
                   id="supplierAddress"
                   value={newSupplier.address}
                   onChange={(e) => setNewSupplier({ ...newSupplier, address: e.target.value })}
-                  placeholder="Enter full address"
+                  placeholder="Saisir l'adresse complète"
                   rows={3}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button onClick={handleAddSupplier} className="bg-blue-800 hover:bg-blue-900">
-                Add Supplier
+                Ajouter
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -371,47 +371,47 @@ export function SupplierManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Suppliers</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Nombre total de fournisseurs</CardTitle>
             <Building className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSuppliers}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{activeSuppliers} active</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{activeSuppliers} actifs</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total dépensé</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSpent.toLocaleString()} MAD</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">All time</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalSpent.toLocaleString('fr-FR')} MAD</div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Historique</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Rating</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Note moyenne</CardTitle>
             <Star className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{averageRating.toFixed(1)}</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Out of 5.0</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Sur 5,0</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Catégories</CardTitle>
             <Package className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {categoryStats.filter((c) => c.count > 0).length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Active categories</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Catégories actives</p>
           </CardContent>
         </Card>
       </div>
@@ -419,8 +419,8 @@ export function SupplierManagement() {
       {/* Suppliers Management */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Suppliers</CardTitle>
-          <CardDescription>Manage all supplier information and relationships</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white">Fournisseurs</CardTitle>
+          <CardDescription>Gérez toutes les informations et relations fournisseurs</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Filters */}
@@ -428,7 +428,7 @@ export function SupplierManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search suppliers..."
+                placeholder="Rechercher un fournisseur..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -436,26 +436,26 @@ export function SupplierManagement() {
             </div>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Equipment">Equipment</SelectItem>
-                <SelectItem value="Uniforms">Uniforms</SelectItem>
-                <SelectItem value="Medical">Medical</SelectItem>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
+                <SelectItem value="Equipment">Équipements</SelectItem>
+                <SelectItem value="Uniforms">Tenues</SelectItem>
+                <SelectItem value="Medical">Médical</SelectItem>
                 <SelectItem value="Maintenance">Maintenance</SelectItem>
-                <SelectItem value="Catering">Catering</SelectItem>
-                <SelectItem value="Transportation">Transportation</SelectItem>
+                <SelectItem value="Catering">Restauration</SelectItem>
+                <SelectItem value="Transportation">Transport</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="active">Actif</SelectItem>
+                <SelectItem value="inactive">Inactif</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -465,14 +465,14 @@ export function SupplierManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Fournisseur</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Rating</TableHead>
-                  <TableHead>Orders</TableHead>
-                  <TableHead>Total Spent</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Order</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Commandes</TableHead>
+                  <TableHead>Total dépensé</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Dernière commande</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -493,7 +493,7 @@ export function SupplierManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getCategoryColor(supplier.category)}>{supplier.category}</Badge>
+                      <Badge className={getCategoryColor(supplier.category)}>{supplier.category === 'Equipment' ? 'Équipements' : supplier.category === 'Uniforms' ? 'Tenues' : supplier.category === 'Medical' ? 'Médical' : supplier.category === 'Maintenance' ? 'Maintenance' : supplier.category === 'Catering' ? 'Restauration' : supplier.category === 'Transportation' ? 'Transport' : supplier.category}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
@@ -517,11 +517,11 @@ export function SupplierManagement() {
                     <TableCell className="font-medium">{supplier.totalSpent?.toLocaleString() || '0'} MAD</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(supplier.isActive)}>
-                        {supplier.isActive ? "Active" : "Inactive"}
+                        {supplier.isActive ? "Actif" : "Inactif"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {supplier.lastOrderDate ? new Date(supplier.lastOrderDate).toLocaleDateString() : "Never"}
+                      {supplier.lastOrderDate ? new Date(supplier.lastOrderDate).toLocaleDateString('fr-FR') : "Jamais"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -563,7 +563,7 @@ export function SupplierManagement() {
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Supplier Details</DialogTitle>
+            <DialogTitle>Détails du fournisseur</DialogTitle>
           </DialogHeader>
           {selectedSupplier && (
             <div className="space-y-6">
@@ -576,9 +576,9 @@ export function SupplierManagement() {
                 <div>
                   <h3 className="text-lg font-semibold">{selectedSupplier.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge className={getCategoryColor(selectedSupplier.category)}>{selectedSupplier.category}</Badge>
+                    <Badge className={getCategoryColor(selectedSupplier.category)}>{selectedSupplier.category === 'Equipment' ? 'Équipements' : selectedSupplier.category === 'Uniforms' ? 'Tenues' : selectedSupplier.category === 'Medical' ? 'Médical' : selectedSupplier.category === 'Maintenance' ? 'Maintenance' : selectedSupplier.category === 'Catering' ? 'Restauration' : selectedSupplier.category === 'Transportation' ? 'Transport' : selectedSupplier.category}</Badge>
                     <Badge className={getStatusColor(selectedSupplier.isActive)}>
-                      {selectedSupplier.isActive ? "Active" : "Inactive"}
+                      {selectedSupplier.isActive ? "Actif" : "Inactif"}
                     </Badge>
                   </div>
                 </div>
@@ -586,11 +586,11 @@ export function SupplierManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Contact Person</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Personne à contacter</Label>
                   <p>{selectedSupplier.contactPerson}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Rating</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Note</Label>
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-500">{getRatingStars(selectedSupplier.rating)}</span>
                     <span className="font-medium">{selectedSupplier.rating}</span>
@@ -607,7 +607,7 @@ export function SupplierManagement() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Téléphone</Label>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
                     <span>{selectedSupplier.phone}</span>
@@ -616,7 +616,7 @@ export function SupplierManagement() {
               </div>
 
               <div>
-                <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Address</Label>
+                <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Adresse</Label>
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 mt-0.5" />
                   <span>{selectedSupplier.address}</span>
@@ -625,27 +625,27 @@ export function SupplierManagement() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Commandes totales</Label>
                   <p className="text-lg font-bold">{selectedSupplier.totalOrders}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total dépensé</Label>
                   <p className="text-lg font-bold">{selectedSupplier.totalSpent?.toLocaleString() || '0'} MAD</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Order</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Dernière commande</Label>
                   <p className="text-lg font-bold">
-                    {selectedSupplier.lastOrderDate ? new Date(selectedSupplier.lastOrderDate).toLocaleDateString() : "Never"}
+                    {selectedSupplier.lastOrderDate ? new Date(selectedSupplier.lastOrderDate).toLocaleDateString('fr-FR') : "Jamais"}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Registration Date</Label>
+                  <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date d'inscription</Label>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{selectedSupplier.createdAt ? new Date(selectedSupplier.createdAt).toLocaleDateString() : 'Unknown'}</span>
+                    <span>{selectedSupplier.createdAt ? new Date(selectedSupplier.createdAt).toLocaleDateString('fr-FR') : 'Inconnue'}</span>
                   </div>
                 </div>
               </div>
@@ -658,13 +658,13 @@ export function SupplierManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Supplier</DialogTitle>
-            <DialogDescription>Update supplier information</DialogDescription>
+            <DialogTitle>Modifier le fournisseur</DialogTitle>
+            <DialogDescription>Mettre à jour les informations du fournisseur</DialogDescription>
           </DialogHeader>
           {selectedSupplier && (
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-supplier-name">Company Name</Label>
+                <Label htmlFor="edit-supplier-name">Nom de l'entreprise</Label>
                 <Input
                   id="edit-supplier-name"
                   value={selectedSupplier.name}
@@ -674,7 +674,7 @@ export function SupplierManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-contact-person">Contact Person</Label>
+                  <Label htmlFor="edit-contact-person">Personne à contacter</Label>
                   <Input
                     id="edit-contact-person"
                     value={selectedSupplier.contactPerson}
@@ -682,7 +682,7 @@ export function SupplierManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-supplier-category">Category</Label>
+                  <Label htmlFor="edit-supplier-category">Catégorie</Label>
                   <Select
                     value={selectedSupplier.category || ''}
                     onValueChange={(value) => handleSelectChange(value, 'category')}
@@ -691,12 +691,12 @@ export function SupplierManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Equipment">Equipment</SelectItem>
-                      <SelectItem value="Uniforms">Uniforms</SelectItem>
-                      <SelectItem value="Medical">Medical</SelectItem>
+                      <SelectItem value="Equipment">Équipements</SelectItem>
+                      <SelectItem value="Uniforms">Tenues</SelectItem>
+                      <SelectItem value="Medical">Médical</SelectItem>
                       <SelectItem value="Maintenance">Maintenance</SelectItem>
-                      <SelectItem value="Catering">Catering</SelectItem>
-                      <SelectItem value="Transportation">Transportation</SelectItem>
+                      <SelectItem value="Catering">Restauration</SelectItem>
+                      <SelectItem value="Transportation">Transport</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -713,7 +713,7 @@ export function SupplierManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-supplier-phone">Phone</Label>
+                  <Label htmlFor="edit-supplier-phone">Téléphone</Label>
                   <Input
                     id="edit-supplier-phone"
                     value={selectedSupplier.phone}
@@ -724,7 +724,7 @@ export function SupplierManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-supplier-rating">Rating</Label>
+                  <Label htmlFor="edit-supplier-rating">Note</Label>
                   <Input
                     id="edit-supplier-rating"
                     type="number"
@@ -741,7 +741,7 @@ export function SupplierManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-supplier-status">Status</Label>
+                  <Label htmlFor="edit-supplier-status">Statut</Label>
                   <Select
                     value={selectedSupplier.isActive ? "active" : "inactive"}
                     onValueChange={(value) => handleCheckboxChange(value === "active", 'isActive')}
@@ -750,15 +750,15 @@ export function SupplierManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="active">Actif</SelectItem>
+                      <SelectItem value="inactive">Inactif</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-supplier-address">Address</Label>
+                <Label htmlFor="edit-supplier-address">Adresse</Label>
                 <Textarea
                   id="edit-supplier-address"
                   value={selectedSupplier.address}
@@ -770,10 +770,10 @@ export function SupplierManagement() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button onClick={handleUpdateSupplier} className="bg-blue-800 hover:bg-blue-900">
-              Update Supplier
+              Mettre à jour
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -783,22 +783,22 @@ export function SupplierManagement() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirmation de suppression</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this supplier? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer ce fournisseur ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           {selectedSupplier && (
             <div className="py-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Supplier: {selectedSupplier.name}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Fournisseur : {selectedSupplier.name}</p>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

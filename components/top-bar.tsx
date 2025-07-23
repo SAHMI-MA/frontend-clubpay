@@ -13,8 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { useLanguage } from "@/lib/i18n/language-context"
-import { useTranslation } from "react-i18next"
 import { useEffect, useState } from "react"
 import { notificationAPI, Notification } from "@/lib/api/notification-api"
 
@@ -26,9 +24,6 @@ interface TopBarProps {
 }
 
 export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
-  const { t } = useTranslation();
-  const { language, changeLanguage } = useLanguage();
-
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -84,37 +79,28 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder={t('common.search') || 'Search...'}
+            placeholder="Rechercher..."
             className="w-64 pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Language Selector */}
+        {/* Sélecteur de langue (désactivé car i18n supprimé) */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="text-gray-600 dark:text-gray-400"
-              title={t('common.language') || 'Language'}
+              title="Langue"
             >
               <Globe className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => changeLanguage('en')}
-              className={language === 'en' ? 'bg-gray-100 dark:bg-gray-700' : ''}
-            >
-              {t('common.english') || 'English'}
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => changeLanguage('fr')}
-              className={language === 'fr' ? 'bg-gray-100 dark:bg-gray-700' : ''}
-            >
-              {t('common.french') || 'Français'}
+            <DropdownMenuItem className={'fr' === 'fr' ? 'bg-gray-100 dark:bg-gray-700' : ''}>
+              Français
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -125,7 +111,7 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
           size="icon"
           onClick={() => setDarkMode(!darkMode)}
           className="text-gray-600 dark:text-gray-400"
-          title={darkMode ? (t('common.lightMode') || 'Light Mode') : (t('common.darkMode') || 'Dark Mode')}
+          title={darkMode ? 'Mode clair' : 'Mode sombre'}
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
@@ -137,7 +123,7 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
               variant="ghost"
               size="icon"
               className="relative text-gray-600 dark:text-gray-400"
-              title={t('common.notifications') || 'Notifications'}
+              title="Notifications"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -149,14 +135,14 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-96 max-h-96 overflow-y-auto p-0">
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <DropdownMenuLabel>{t('common.notifications') || 'Notifications'}</DropdownMenuLabel>
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               {unreadCount > 0 && (
                 <button
                   className="text-xs text-blue-600 hover:underline disabled:opacity-50"
                   onClick={handleMarkAllAsRead}
                   disabled={markingAll}
                 >
-                  {markingAll ? (t('common.loading') || 'Loading...') : (t('common.markAllRead') || 'Mark all as read')}
+                  {markingAll ? 'Chargement...' : 'Tout marquer comme lu'}
                 </button>
               )}
             </div>
@@ -164,12 +150,12 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
             {loading ? (
               <div className="flex flex-col items-center p-6 text-gray-400">
                 <Info className="h-8 w-8 mb-2 animate-pulse" />
-                <span>{t('common.loading') || 'Loading...'}</span>
+                <span>Chargement...</span>
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center p-6 text-gray-400">
                 <Bell className="h-8 w-8 mb-2" />
-                <span>{t('common.noNotifications') || 'No notifications'}</span>
+                <span>Aucune notification</span>
               </div>
             ) : notifications.map(n => {
               const title = n.data?.title || n.type;
@@ -186,12 +172,12 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
                     {message && <span className="block text-xs text-gray-500 dark:text-gray-400">{message}</span>}
                     <span className="block text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</span>
                   </span>
-                  {!n.isRead && <span className="text-xs text-orange-500 mt-1">{t('common.unread') || 'Unread'}</span>}
+                  {!n.isRead && <span className="text-xs text-orange-500 mt-1">Non lu</span>}
                 </DropdownMenuItem>
               );
             })}
             <div className="px-4 py-2 text-center text-xs text-blue-600 hover:underline cursor-pointer border-t border-gray-100 dark:border-gray-700">
-              {t('common.viewAll') || 'View all notifications'}
+              Voir toutes les notifications
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -215,11 +201,11 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>{t('common.profile') || 'Profile'}</DropdownMenuItem>
-            <DropdownMenuItem>{t('common.settings') || 'Settings'}</DropdownMenuItem>
+            <DropdownMenuItem>Profil</DropdownMenuItem>
+            <DropdownMenuItem>Paramètres</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400">
-              {t('common.logout') || 'Sign out'}
+              Déconnexion
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

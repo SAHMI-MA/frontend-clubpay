@@ -22,7 +22,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Plus,
   Search,
@@ -66,7 +65,6 @@ import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import type { AppDispatch, RootState } from "@/lib/redux/store"
 import type { PlayerContract, StaffContract } from "@/lib/api/contract-api"
 import type { Player, Staff } from "@/lib/types/team-management"
-import { useTranslation } from 'react-i18next';
 
 // Type guard helper functions
 const isPlayerContract = (contract: PlayerContract | StaffContract): contract is PlayerContract => {
@@ -80,7 +78,6 @@ const isStaffContract = (contract: PlayerContract | StaffContract): contract is 
 export function ContractManagement() {
   // All hooks must be declared before any return
   const dispatch = useDispatch<AppDispatch>()
-  const { t } = useTranslation();
 
   // Redux state
   const playerContracts = useSelector(selectPlayerContracts)
@@ -225,15 +222,15 @@ export function ContractManagement() {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
-              <h3 className="text-lg font-semibold">Authentication Required</h3>
+              <h3 className="text-lg font-semibold">Authentification requise</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Please log in to access contract management features.
+                Veuillez vous connecter pour accéder aux fonctionnalités de gestion des contrats.
               </p>
               <Button
                 onClick={() => window.location.href = '/login'}
                 className="w-full"
               >
-                Go to Login
+                Aller à la connexion
               </Button>
             </div>
           </CardContent>
@@ -248,7 +245,7 @@ export function ContractManagement() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center space-y-4">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="text-gray-600 dark:text-gray-400">Loading contract data...</p>
+          <p className="text-gray-600 dark:text-gray-400">Chargement des données des contrats...</p>
         </div>
       </div>
     )
@@ -262,21 +259,21 @@ export function ContractManagement() {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <XCircle className="h-12 w-12 text-red-500 mx-auto" />
-              <h3 className="text-lg font-semibold">Authentication Error</h3>
+              <h3 className="text-lg font-semibold">Erreur d'authentification</h3>
               <p className="text-gray-600 dark:text-gray-400">{error}</p>
               <div className="space-y-2">
                 <Button
                   onClick={() => window.location.href = '/login'}
                   className="w-full"
                 >
-                  Go to Login
+                  Aller à la connexion
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => dispatch(clearError())}
                   className="w-full"
                 >
-                  Dismiss
+                  Dismisser
                 </Button>
               </div>
             </div>
@@ -304,7 +301,7 @@ export function ContractManagement() {
     return (
       <Badge className={`${config.color} flex items-center gap-1`}>
         <Icon className="h-3 w-3" />
-        {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'}
+        {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Inconnu'}
         {terminationDate && status === "terminated" && <span className="ml-1 text-xs">({terminationDate})</span>}
       </Badge>
     )
@@ -327,7 +324,7 @@ export function ContractManagement() {
 
       if (contractForm.contractType === "player") {
         if (!contractForm.playerId) {
-          alert("Please select a player from the dropdown")
+          alert("Veuillez sélectionner un joueur dans le menu déroulant")
           return
         }
         const result = await dispatch(createPlayerContract({
@@ -335,11 +332,11 @@ export function ContractManagement() {
           playerId: contractForm.playerId,
         }))
         if (createPlayerContract.fulfilled.match(result)) {
-          console.log("✅ Player contract created successfully")
+          console.log("✅ Contrat joueur créé avec succès")
         }
       } else {
         if (!contractForm.staffId) {
-          alert("Please select a staff member from the dropdown")
+          alert("Veuillez sélectionner un membre du staff dans le menu déroulant")
           return
         }
         const result = await dispatch(createStaffContract({
@@ -349,7 +346,7 @@ export function ContractManagement() {
           terms: contractForm.terms,
         }))
         if (createStaffContract.fulfilled.match(result)) {
-          console.log("✅ Staff contract created successfully")
+          console.log("✅ Contrat staff créé avec succès")
         }
       }
 
@@ -373,7 +370,7 @@ export function ContractManagement() {
       setUploadedFileId(null)
       setUploadedFileName(null)
     } catch (error) {
-      console.error("Failed to create contract:", error)
+      console.error("Échec de la création du contrat:", error)
     }
   }
 
@@ -381,17 +378,14 @@ export function ContractManagement() {
   const handleFileUpload = async () => {
     setFileUploadError(null)
     if (!contractFile) {
-      setFileUploadError('Please select a file to upload.')
+      setFileUploadError('Veuillez sélectionner un fichier à télécharger.')
       return
     }
     setFileUploading(true)
-    console.log('Uploading file:', contractFile);
+    console.log('Téléchargement du fichier:', contractFile);
     const formData = new FormData()
     formData.append('file', contractFile)
     // Log FormData contents
-    for (let [key, value] of formData.entries()) {
-      console.log('FormData entry:', key, value);
-    }
     try {
       const token = authService.getToken();
       const res = await fetch(`${apiConfig.baseUrl}/contracts/file`, {
@@ -399,16 +393,16 @@ export function ContractManagement() {
         body: formData,
         headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       })
-      console.log('File upload response status:', res.status)
+      console.log('Statut de la réponse de téléchargement de fichier:', res.status)
       const responseText = await res.text();
-      console.log('File upload response text:', responseText)
-      if (!res.ok) throw new Error(responseText || 'File upload failed')
+      console.log('Texte de la réponse de téléchargement de fichier:', responseText)
+      if (!res.ok) throw new Error(responseText || 'Échec du téléchargement du fichier')
       const fileData = JSON.parse(responseText)
       setUploadedFileId(fileData.id)
       setUploadedFileName(contractFile.name)
     } catch (err: any) {
-      setFileUploadError('File upload failed: ' + (err.message || err))
-      console.error('File upload error:', err)
+      setFileUploadError('Échec du téléchargement du fichier: ' + (err.message || err))
+      console.error('Erreur de téléchargement de fichier:', err)
     }
     setFileUploading(false)
   }
@@ -424,7 +418,7 @@ export function ContractManagement() {
           reason: terminationReason || undefined
         }));
         if (terminatePlayerContract.fulfilled.match(result)) {
-          console.log("✅ Player contract terminated successfully");
+          console.log("✅ Contrat joueur résilié avec succès");
         }
       } else {
         const result = await dispatch(terminateStaffContract({
@@ -433,11 +427,11 @@ export function ContractManagement() {
           reason: terminationReason || undefined
         }));
         if (terminateStaffContract.fulfilled.match(result)) {
-          console.log("✅ Staff contract terminated successfully");
+          console.log("✅ Contrat staff résilié avec succès");
         }
       }
     } catch (error) {
-      console.error("Failed to terminate contract:", error);
+      console.error("Échec de la résiliation du contrat:", error);
     }
     setTerminateDialogOpen(false);
     setContractToTerminate(null);
@@ -452,7 +446,7 @@ export function ContractManagement() {
         await dispatch(deleteStaffContract(contractToDelete.id));
       }
     } catch (error) {
-      console.error("Failed to delete contract:", error);
+      console.error("Échec de la suppression du contrat:", error);
     }
     setDeleteDialogOpen(false);
     setContractToDelete(null);
@@ -536,14 +530,14 @@ export function ContractManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('contractManagement.title', 'Contract Management')}</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage player and staff contracts</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des contrats</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gérez les contrats des joueurs et du staff</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             onClick={async () => {
-              console.log('🔄 Refreshing all data...')
+              console.log('🔄 Rafraîchir toutes les données...')
               try {
                 const results = await Promise.allSettled([
                   dispatch(fetchAllContracts()),
@@ -554,88 +548,82 @@ export function ContractManagement() {
                 results.forEach((result, index) => {
                   const dataTypes = ['contracts', 'players', 'staff']
                   if (result.status === 'fulfilled') {
-                    console.log(`✅ Refreshed ${dataTypes[index]} successfully`)
+                    console.log(`✅ Rafraîchi ${dataTypes[index]} avec succès`)
                   } else {
-                    console.error(`❌ Failed to refresh ${dataTypes[index]}:`, result.reason)
+                    console.error(`❌ Échec du rafraîchissement de ${dataTypes[index]}:`, result.reason)
                   }
                 })
               } catch (error) {
-                console.error('❌ Error during refresh:', error)
+                console.error('❌ Erreur lors du rafraîchissement:', error)
               }
             }}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            Rafraîchir
           </Button>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
-                New Contract
+                Nouveau contrat
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Create New Contract</DialogTitle>
-                <DialogDescription>Create a new player or staff contract with terms and conditions</DialogDescription>
+                <DialogTitle>Créer un nouveau contrat</DialogTitle>
+                <DialogDescription>Créer un nouveau contrat joueur ou staff avec conditions</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="contractType">Contract Type</Label>
+                    <Label htmlFor="contractType">Type de contrat</Label>
                     <Select
                       value={contractForm.contractType}
                       onValueChange={(value) => setContractForm({ ...contractForm, contractType: value as "player" | "staff" })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select contract type" />
+                        <SelectValue placeholder="Sélectionner le type de contrat" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="player">Player Contract</SelectItem>
-                        <SelectItem value="staff">Staff Contract</SelectItem>
+                        <SelectItem value="player">Contrat joueur</SelectItem>
+                        <SelectItem value="staff">Contrat staff</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="title">Contract Title</Label>
+                    <Label htmlFor="title">Titre du contrat</Label>
                     <Input
                       id="title"
                       value={contractForm.title}
                       onChange={(e) => setContractForm({ ...contractForm, title: e.target.value })}
-                      placeholder="e.g., Professional Player Contract"
+                      placeholder="ex : Contrat joueur professionnel"
                     />
                   </div>
 
                   {contractForm.contractType === "player" ? (
                     <div>
-                      <Label htmlFor="playerId">Select Player</Label>
+                      <Label htmlFor="playerId">Sélectionner un joueur</Label>
                       <Select
                         value={contractForm.playerId}
                         onValueChange={(value) => setContractForm({ ...contractForm, playerId: value })}
                         disabled={playersLoading}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={
-                            playersLoading
-                              ? "Loading players..."
-                              : players.length === 0
-                                ? "No players available"
-                                : "Select a player"
-                          } />
+                          <SelectValue placeholder={playersLoading ? "Chargement des joueurs..." : players.length === 0 ? "Aucun joueur disponible" : "Sélectionner un joueur"} />
                         </SelectTrigger>
                         <SelectContent>
                           {(() => {
-                            console.log('🔍 Rendering player dropdown, players:', players, 'loading:', playersLoading)
+                            console.log('🔍 Rendu du menu déroulant des joueurs, joueurs:', players, 'chargement:', playersLoading)
                             if (players.length === 0 && !playersLoading) {
                               return (
                                 <SelectItem value="no-players" disabled>
-                                  No players available
+                                  Aucun joueur disponible
                                 </SelectItem>
                               )
                             }
                             return players.map((player: Player) => {
-                              console.log('🔍 Rendering player:', player)
+                              console.log('🔍 Rendu du joueur:', player)
                               return (
                                 <SelectItem key={player.id} value={player.id.toString()}>
                                   <div className="flex flex-col">
@@ -655,33 +643,27 @@ export function ContractManagement() {
                     </div>
                   ) : (
                     <div>
-                      <Label htmlFor="staffId">Select Staff Member</Label>
+                      <Label htmlFor="staffId">Sélectionner un membre du staff</Label>
                       <Select
                         value={contractForm.staffId}
                         onValueChange={(value) => setContractForm({ ...contractForm, staffId: value })}
                         disabled={staffLoading}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={
-                            staffLoading
-                              ? "Loading staff..."
-                              : staff.length === 0
-                                ? "No staff available"
-                                : "Select a staff member"
-                          } />
+                          <SelectValue placeholder={staffLoading ? "Chargement du staff..." : staff.length === 0 ? "Aucun staff disponible" : "Sélectionner un membre du staff"} />
                         </SelectTrigger>
                         <SelectContent>
                           {(() => {
-                            console.log('🔍 Rendering staff dropdown, staff:', staff, 'loading:', staffLoading)
+                            console.log('🔍 Rendu du menu déroulant du staff, staff:', staff, 'chargement:', staffLoading)
                             if (staff.length === 0 && !staffLoading) {
                               return (
                                 <SelectItem value="no-staff" disabled>
-                                  No staff available
+                                  Aucun staff disponible
                                 </SelectItem>
                               )
                             }
                             return staff.map((staffMember: Staff) => {
-                              console.log('🔍 Rendering staff:', staffMember)
+                              console.log('🔍 Rendu du membre du staff:', staffMember)
                               return (
                                 <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
                                   <div className="flex flex-col">
@@ -702,7 +684,7 @@ export function ContractManagement() {
                   )}
 
                   <div>
-                    <Label htmlFor="salary">{t('contractManagement.annualSalary', 'Annual Salary')}</Label>
+                    <Label htmlFor="salary">Salaire annuel (MAD)</Label>
                     <Input
                       id="salary"
                       type="number"
@@ -712,7 +694,7 @@ export function ContractManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="signatureBonus">Signature Bonus</Label>
+                    <Label htmlFor="signatureBonus">Prime de signature</Label>
                     <Input
                       id="signatureBonus"
                       type="number"
@@ -722,7 +704,7 @@ export function ContractManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="startDate">Start Date</Label>
+                    <Label htmlFor="startDate">Date de début</Label>
                     <Input
                       id="startDate"
                       type="date"
@@ -731,7 +713,7 @@ export function ContractManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="endDate">End Date</Label>
+                    <Label htmlFor="endDate">Date de fin</Label>
                     <Input
                       id="endDate"
                       type="date"
@@ -746,21 +728,21 @@ export function ContractManagement() {
                     id="description"
                     value={contractForm.description}
                     onChange={(e) => setContractForm({ ...contractForm, description: e.target.value })}
-                    placeholder="Contract description and key details..."
+                    placeholder="Description du contrat et détails clés..."
                   />
                 </div>
                 <div>
-                  <Label htmlFor="terms">Terms & Conditions</Label>
+                  <Label htmlFor="terms">Conditions générales</Label>
                   <Textarea
                     id="terms"
                     value={contractForm.terms}
                     onChange={(e) => setContractForm({ ...contractForm, terms: e.target.value })}
-                    placeholder="Specific terms, clauses, and conditions..."
+                    placeholder="Conditions, clauses et spécificités..."
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <Label htmlFor="contractFile">{t('contractManagement.contractFile', 'Contract File (PDF, DOCX, etc.)')}</Label>
+                  <Label htmlFor="contractFile">Fichier du contrat (PDF, DOCX, etc.)</Label>
                   <div className="flex gap-2 items-center">
                     <Input
                       id="contractFile"
@@ -780,14 +762,14 @@ export function ContractManagement() {
                       disabled={fileUploading}
                     />
                     <Button type="button" onClick={handleFileUpload} disabled={!contractFile || fileUploading || !!uploadedFileId}>
-                      {fileUploading ? 'Uploading...' : uploadedFileId ? 'Uploaded' : t('contractManagement.uploadFile', 'Upload File')}
+                      {fileUploading ? 'Téléversement...' : uploadedFileId ? 'Téléversé' : 'Téléverser le fichier'}
                     </Button>
                   </div>
                   {contractFile && !uploadedFileId && (
-                    <div className="text-xs text-gray-600 mt-1">Selected: {contractFile.name}</div>
+                    <div className="text-xs text-gray-600 mt-1">Sélectionné : {contractFile.name}</div>
                   )}
                   {uploadedFileId && uploadedFileName && (
-                    <div className="text-xs text-green-600 mt-1">Uploaded: {uploadedFileName}</div>
+                    <div className="text-xs text-green-600 mt-1">Téléversé : {uploadedFileName}</div>
                   )}
                   {fileUploadError && (
                     <div className="text-xs text-red-600 mt-1">{fileUploadError}</div>
@@ -795,9 +777,9 @@ export function ContractManagement() {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancel
+                    Annuler
                   </Button>
-                  <Button onClick={handleCreateContract}>Create Contract</Button>
+                  <Button onClick={handleCreateContract}>Créer le contrat</Button>
                 </div>
               </div>
             </DialogContent>
@@ -807,9 +789,9 @@ export function ContractManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="players">{t('contractManagement.playerContracts', 'Player Contracts')}</TabsTrigger>
-          <TabsTrigger value="staff">{t('contractManagement.staffContracts', 'Staff Contracts')}</TabsTrigger>
-          <TabsTrigger value="analytics">{t('contractManagement.analytics', 'Analytics')}</TabsTrigger>
+          <TabsTrigger value="players">Contrats joueurs</TabsTrigger>
+          <TabsTrigger value="staff">Contrats staff</TabsTrigger>
+          <TabsTrigger value="analytics">Statistiques</TabsTrigger>
         </TabsList>
 
         <TabsContent value="players" className="space-y-6">
@@ -817,47 +799,47 @@ export function ContractManagement() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.activeContracts', 'Active Contracts')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Contrats actifs</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">{contractStats.player.active}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.currentlyActive', 'Currently active')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Actuellement actifs</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.totalValue', 'Total Value')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Valeur totale</CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  ${contractStats.player.totalValue.toLocaleString()}
+                  {(contractStats.player.totalValue).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.annualSalaryCommitment', 'Annual salary commitment')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Engagement salarial annuel</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.expired', 'Expired')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Expirés</CardTitle>
                 <Clock className="h-4 w-4 text-gray-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-600">{contractStats.player.expired}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.needRenewal', 'Need renewal')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">À renouveler</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.terminated', 'Terminated')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Résiliés</CardTitle>
                 <XCircle className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">{contractStats.player.terminated}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.earlyTerminations', 'Early terminations')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Résiliations anticipées</p>
               </CardContent>
             </Card>
           </div>
@@ -865,8 +847,8 @@ export function ContractManagement() {
           {/* Player Contracts Management */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('contractManagement.playerContracts', 'Player Contracts')}</CardTitle>
-              <CardDescription>{t('contractManagement.manageAllPlayerContracts', 'Manage all player contracts and agreements')}</CardDescription>
+              <CardTitle>Contrats joueurs</CardTitle>
+              <CardDescription>Gérez tous les contrats et accords des joueurs</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Search and Filter */}
@@ -874,7 +856,7 @@ export function ContractManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder={t('contractManagement.searchContracts', 'Search contracts...')}
+                    placeholder="Rechercher un contrat..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -883,14 +865,14 @@ export function ContractManagement() {
                 <Select value={filterStatus || "all"} onValueChange={handleStatusFilterChange}>
                   <SelectTrigger className="w-48">
                     <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder={t('contractManagement.filterByStatus', 'Filter by status')} />
+                    <SelectValue placeholder="Filtrer par statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t('contractManagement.allStatus', 'All Status')}</SelectItem>
-                    <SelectItem value="active">{t('contractManagement.active', 'Active')}</SelectItem>
-                    <SelectItem value="expired">{t('contractManagement.expired', 'Expired')}</SelectItem>
-                    <SelectItem value="terminated">{t('contractManagement.terminated', 'Terminated')}</SelectItem>
-                    <SelectItem value="draft">{t('contractManagement.draft', 'Draft')}</SelectItem>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="expired">Expiré</SelectItem>
+                    <SelectItem value="terminated">Résilié</SelectItem>
+                    <SelectItem value="draft">Brouillon</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -899,31 +881,31 @@ export function ContractManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('contractManagement.player', 'Player')}</TableHead>
-                    <TableHead>{t('contractManagement.position', 'Position')}</TableHead>
-                    <TableHead>{t('contractManagement.contractTitle', 'Contract Title')}</TableHead>
-                    <TableHead>{t('contractManagement.salary', 'Salary')}</TableHead>
-                    <TableHead>{t('contractManagement.period', 'Period')}</TableHead>
-                    <TableHead>{t('contractManagement.status', 'Status')}</TableHead>
-                    <TableHead>{t('contractManagement.bonus', 'Bonus')}</TableHead>
-                    <TableHead>{t('contractManagement.actions', 'Actions')}</TableHead>
+                    <TableHead>Joueur</TableHead>
+                    <TableHead>Poste</TableHead>
+                    <TableHead>Titre du contrat</TableHead>
+                    <TableHead>Salaire</TableHead>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Bonus</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPlayerContracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell className="font-medium">
-                        {contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : 'Unknown')}
+                        {contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : 'Inconnu')}
                       </TableCell>
                       <TableCell>{contract.position || contract.player?.position || 'N/A'}</TableCell>
                       <TableCell>{contract.title}</TableCell>
                       <TableCell className="font-medium">
-                        ${(typeof contract.salary === 'string' ? parseFloat(contract.salary) : contract.salary).toLocaleString()}
+                        {(typeof contract.salary === 'string' ? parseFloat(contract.salary) : contract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>{contract.startDate}</div>
-                          <div className="text-gray-500">{t('contractManagement.to', 'to')} {contract.endDate}</div>
+                          <div className="text-gray-500">à {contract.endDate}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(contract.status, contract.terminationDate)}</TableCell>
@@ -931,10 +913,10 @@ export function ContractManagement() {
                         {contract.hasBonus ? (
                           <Badge className="bg-green-100 text-green-800">
                             <Award className="h-3 w-3 mr-1" />
-                            {t('contractManagement.yes', 'Yes')}
+                            Oui
                           </Badge>
                         ) : (
-                          <Badge variant="secondary">{t('contractManagement.no', 'No')}</Badge>
+                          <Badge variant="secondary">Non</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -947,80 +929,80 @@ export function ContractManagement() {
                             </DialogTrigger>
                             <DialogContent className="max-w-3xl">
                               <DialogHeader>
-                                <DialogTitle>{t('contractManagement.playerContractDetails', 'Player Contract Details')}</DialogTitle>
+                                <DialogTitle>Détails du contrat joueur</DialogTitle>
                                 <DialogDescription>
-                                  {t('contractManagement.completeContractInformation', 'Complete contract information for')} {selectedContract && isPlayerContract(selectedContract) ? selectedContract.playerName : 'N/A'}
+                                  Informations complètes du contrat pour {selectedContract && isPlayerContract(selectedContract) ? selectedContract.playerName : 'N/A'}
                                 </DialogDescription>
                               </DialogHeader>
                               {selectedContract && isPlayerContract(selectedContract) && (
                                 <div className="space-y-6">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.contractId', 'Contract ID')}</Label>
+                                      <Label className="text-sm font-medium">ID du contrat</Label>
                                       <p className="text-sm text-gray-600">{selectedContract.id}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.player', 'Player')}</Label>
+                                      <Label className="text-sm font-medium">Joueur</Label>
                                       <p className="text-sm font-bold">{selectedContract.playerName}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.position', 'Position')}</Label>
+                                      <Label className="text-sm font-medium">Poste</Label>
                                       <p className="text-sm text-gray-600">{selectedContract.position || 'N/A'}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.annualSalary', 'Annual Salary')}</Label>
-                                      <p className="text-sm font-bold">${selectedContract.salary?.toLocaleString()}</p>
+                                      <Label className="text-sm font-medium">Salaire annuel (MAD)</Label>
+                                      <p className="text-sm font-bold">{(typeof selectedContract.salary === 'string' ? parseFloat(selectedContract.salary) : selectedContract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.signatureBonus', 'Signature Bonus')}</Label>
+                                      <Label className="text-sm font-medium">Prime de signature</Label>
                                       <p className="text-sm text-gray-600">
-                                        ${selectedContract.signatureBonus?.toLocaleString()}
+                                        {selectedContract.signatureBonus ? (typeof selectedContract.signatureBonus === 'string' ? parseFloat(selectedContract.signatureBonus) : selectedContract.signatureBonus).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 }) : '-'}
                                       </p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.contractPeriod', 'Contract Period')}</Label>
+                                      <Label className="text-sm font-medium">Période du contrat</Label>
                                       <p className="text-sm text-gray-600">
-                                        {selectedContract.startDate} {t('contractManagement.to', 'to')} {selectedContract.endDate}
+                                        {selectedContract.startDate} à {selectedContract.endDate}
                                       </p>
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.status', 'Status')}</Label>
+                                    <Label className="text-sm font-medium">Statut</Label>
                                     <div className="mt-1">
                                       {getStatusBadge(selectedContract.status, selectedContract.terminationDate)}
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.description', 'Description')}</Label>
+                                    <Label className="text-sm font-medium">Description</Label>
                                     <p className="text-sm text-gray-600">{selectedContract.description}</p>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.performanceBonuses', 'Performance Bonuses')}</Label>
+                                    <Label className="text-sm font-medium">Bonus de performance</Label>
                                     <p className="text-sm text-gray-600">
-                                      {selectedContract.hasBonus ? t('contractManagement.includedInContract', 'Included in contract') : t('contractManagement.notIncluded', 'Not included')}
+                                      {selectedContract.hasBonus ? 'Inclus dans le contrat' : 'Non inclus'}
                                     </p>
                                   </div>
                                   <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
                                     <div>
-                                      <Label className="text-xs font-medium">{t('contractManagement.created', 'Created')}</Label>
+                                      <Label className="text-xs font-medium">Créé le</Label>
                                       <p>{selectedContract.createdAt}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-xs font-medium">{t('contractManagement.lastUpdated', 'Last Updated')}</Label>
+                                      <Label className="text-xs font-medium">Dernière modification</Label>
                                       <p>{selectedContract.updatedAt}</p>
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.contractFile', 'Contract File')}</Label>
+                                    <Label className="text-sm font-medium">Fichier du contrat</Label>
                                     {selectedContract.contractFile && selectedContract.contractFile.url ? (
                                       <Button
                                         className="mt-2"
                                         onClick={() => window.open(getApiUrl(selectedContract.contractFile!.url), '_blank', 'noopener,noreferrer')}
                                       >
-                                        {t('contractManagement.viewContract', 'View Contract')}
+                                        Voir le contrat
                                       </Button>
                                     ) : (
-                                      <p className="text-gray-400 mt-2">{t('contractManagement.noContractFileAvailable', 'No contract file available.')}</p>
+                                      <p className="text-gray-400 mt-2">Aucun fichier de contrat disponible.</p>
                                     )}
                                   </div>
                                 </div>
@@ -1054,7 +1036,7 @@ export function ContractManagement() {
                               setDeleteDialogOpen(true);
                             }}
                           >
-                            {t('contractManagement.delete', 'Delete')}
+                            Supprimer
                           </Button>
                         </div>
                       </TableCell>
@@ -1071,47 +1053,47 @@ export function ContractManagement() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.activeContracts', 'Active Contracts')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Contrats actifs</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">{contractStats.staff.active}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.currentlyActive', 'Currently active')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Actuellement actifs</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.totalValue', 'Total Value')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Valeur totale</CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  ${contractStats.staff.totalValue.toLocaleString()}
+                  {(contractStats.staff.totalValue).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.annualSalaryCommitment', 'Annual salary commitment')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Engagement salarial annuel</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.expired', 'Expired')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Expirés</CardTitle>
                 <Clock className="h-4 w-4 text-gray-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-600">{contractStats.staff.expired}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.needRenewal', 'Need renewal')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">À renouveler</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('contractManagement.terminated', 'Terminated')}</CardTitle>
+                <CardTitle className="text-sm font-medium">Résiliés</CardTitle>
                 <XCircle className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">{contractStats.staff.terminated}</div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{t('contractManagement.earlyTerminations', 'Early terminations')}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Résiliations anticipées</p>
               </CardContent>
             </Card>
           </div>
@@ -1119,8 +1101,8 @@ export function ContractManagement() {
           {/* Staff Contracts Management */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('contractManagement.staffContracts', 'Staff Contracts')}</CardTitle>
-              <CardDescription>{t('contractManagement.manageAllStaffContracts', 'Manage all staff contracts and employment agreements')}</CardDescription>
+              <CardTitle>Contrats staff</CardTitle>
+              <CardDescription>Gérez tous les contrats et accords du staff</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Search and Filter */}
@@ -1128,7 +1110,7 @@ export function ContractManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder={t('contractManagement.searchContracts', 'Search contracts...')}
+                    placeholder="Rechercher un contrat..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -1137,14 +1119,14 @@ export function ContractManagement() {
                 <Select value={filterStatus || "all"} onValueChange={handleStatusFilterChange}>
                   <SelectTrigger className="w-48">
                     <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder={t('contractManagement.filterByStatus', 'Filter by status')} />
+                    <SelectValue placeholder="Filtrer par statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t('contractManagement.allStatus', 'All Status')}</SelectItem>
-                    <SelectItem value="active">{t('contractManagement.active', 'Active')}</SelectItem>
-                    <SelectItem value="expired">{t('contractManagement.expired', 'Expired')}</SelectItem>
-                    <SelectItem value="terminated">{t('contractManagement.terminated', 'Terminated')}</SelectItem>
-                    <SelectItem value="draft">{t('contractManagement.draft', 'Draft')}</SelectItem>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="expired">Expiré</SelectItem>
+                    <SelectItem value="terminated">Résilié</SelectItem>
+                    <SelectItem value="draft">Brouillon</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1153,40 +1135,40 @@ export function ContractManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('contractManagement.staffMember', 'Staff Member')}</TableHead>
-                    <TableHead>{t('contractManagement.department', 'Department')}</TableHead>
-                    <TableHead>{t('contractManagement.role', 'Role')}</TableHead>
-                    <TableHead>{t('contractManagement.salary', 'Salary')}</TableHead>
-                    <TableHead>{t('contractManagement.period', 'Period')}</TableHead>
-                    <TableHead>{t('contractManagement.status', 'Status')}</TableHead>
-                    <TableHead>{t('contractManagement.benefits', 'Benefits')}</TableHead>
-                    <TableHead>{t('contractManagement.actions', 'Actions')}</TableHead>
+                    <TableHead>Membre du staff</TableHead>
+                    <TableHead>Département</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Salaire</TableHead>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Avantages</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStaffContracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell className="font-medium">
-                        {contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : 'Unknown')}
+                        {contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : 'Inconnu')}
                       </TableCell>
                       <TableCell>{contract.department || contract.staff?.team?.name || 'N/A'}</TableCell>
                       <TableCell>{contract.role || contract.staff?.role || 'N/A'}</TableCell>
                       <TableCell className="font-medium">
-                        ${(typeof contract.salary === 'string' ? parseFloat(contract.salary) : contract.salary).toLocaleString()}
+                        {(typeof contract.salary === 'string' ? parseFloat(contract.salary) : contract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>{contract.startDate}</div>
-                          <div className="text-gray-500">{t('contractManagement.to', 'to')} {contract.endDate}</div>
+                          <div className="text-gray-500">à {contract.endDate}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(contract.status, contract.terminationDate)}</TableCell>
                       <TableCell>
                         {contract.benefits?.healthInsurance && (
-                          <Badge className="bg-blue-100 text-blue-800 mr-1">{t('contractManagement.health', 'Health')}</Badge>
+                          <Badge className="bg-blue-100 text-blue-800 mr-1">Santé</Badge>
                         )}
                         {contract.benefits?.carAllowance && contract.benefits.carAllowance > 0 && (
-                          <Badge className="bg-green-100 text-green-800">{t('contractManagement.car', 'Car')}</Badge>
+                          <Badge className="bg-green-100 text-green-800">Véhicule</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1199,93 +1181,93 @@ export function ContractManagement() {
                             </DialogTrigger>
                             <DialogContent className="max-w-3xl">
                               <DialogHeader>
-                                <DialogTitle>{t('contractManagement.staffContractDetails', 'Staff Contract Details')}</DialogTitle>
+                                <DialogTitle>Détails du contrat staff</DialogTitle>
                                 <DialogDescription>
-                                  {t('contractManagement.completeContractInformation', 'Complete contract information for')} {selectedContract && isStaffContract(selectedContract) ? selectedContract.staffName : 'N/A'}
+                                  Informations complètes du contrat pour {selectedContract && isStaffContract(selectedContract) ? selectedContract.staffName : 'N/A'}
                                 </DialogDescription>
                               </DialogHeader>
                               {selectedContract && isStaffContract(selectedContract) && (
                                 <div className="space-y-6">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.contractId', 'Contract ID')}</Label>
+                                      <Label className="text-sm font-medium">ID du contrat</Label>
                                       <p className="text-sm text-gray-600">{selectedContract.id}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.staffMember', 'Staff Member')}</Label>
+                                      <Label className="text-sm font-medium">Membre du staff</Label>
                                       <p className="text-sm font-bold">{selectedContract.staffName}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.department', 'Department')}</Label>
+                                      <Label className="text-sm font-medium">Département</Label>
                                       <p className="text-sm text-gray-600">{selectedContract.department || 'N/A'}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.role', 'Role')}</Label>
+                                      <Label className="text-sm font-medium">Rôle</Label>
                                       <p className="text-sm text-gray-600">{selectedContract.role || 'N/A'}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.annualSalary', 'Annual Salary')}</Label>
-                                      <p className="text-sm font-bold">${selectedContract.salary?.toLocaleString()}</p>
+                                      <Label className="text-sm font-medium">Salaire annuel (MAD)</Label>
+                                      <p className="text-sm font-bold">{(typeof selectedContract.salary === 'string' ? parseFloat(selectedContract.salary) : selectedContract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.signatureBonus', 'Signature Bonus')}</Label>
+                                      <Label className="text-sm font-medium">Prime de signature</Label>
                                       <p className="text-sm text-gray-600">
-                                        ${selectedContract.signatureBonus?.toLocaleString()}
+                                        {selectedContract.signatureBonus ? (typeof selectedContract.signatureBonus === 'string' ? parseFloat(selectedContract.signatureBonus) : selectedContract.signatureBonus).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 }) : '-'}
                                       </p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">{t('contractManagement.contractPeriod', 'Contract Period')}</Label>
+                                      <Label className="text-sm font-medium">Période du contrat</Label>
                                       <p className="text-sm text-gray-600">
-                                        {selectedContract.startDate} {t('contractManagement.to', 'to')} {selectedContract.endDate}
+                                        {selectedContract.startDate} à {selectedContract.endDate}
                                       </p>
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.status', 'Status')}</Label>
+                                    <Label className="text-sm font-medium">Statut</Label>
                                     <div className="mt-1">
                                       {getStatusBadge(selectedContract.status, selectedContract.terminationDate)}
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.benefitsPackage', 'Benefits Package')}</Label>
+                                    <Label className="text-sm font-medium">Avantages</Label>
                                     <div className="mt-2 space-y-2">
                                       {selectedContract.benefits?.healthInsurance && (
-                                        <Badge className="bg-blue-100 text-blue-800 mr-2">{t('contractManagement.healthInsurance', 'Health Insurance')}</Badge>
+                                        <Badge className="bg-blue-100 text-blue-800 mr-2">Assurance santé</Badge>
                                       )}
                                       {selectedContract.benefits?.carAllowance &&
                                         selectedContract.benefits.carAllowance > 0 && (
                                           <Badge className="bg-green-100 text-green-800 mr-2">
-                                            {t('contractManagement.carAllowance', 'Car Allowance')}: ${selectedContract.benefits.carAllowance}/month
+                                            Véhicule : {(selectedContract.benefits.carAllowance || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}/mois
                                           </Badge>
                                         )}
                                       {selectedContract.benefits?.continuingEducation && (
                                         <Badge className="bg-purple-100 text-purple-800 mr-2">
-                                          {t('contractManagement.education', 'Education')}: ${selectedContract.benefits.continuingEducation}
+                                          Formation : {(selectedContract.benefits.continuingEducation || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
                                         </Badge>
                                       )}
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.termsConditions', 'Terms & Conditions')}</Label>
+                                    <Label className="text-sm font-medium">Conditions générales</Label>
                                     <p className="text-sm text-gray-600">{selectedContract.terms || 'N/A'}</p>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.description', 'Description')}</Label>
+                                    <Label className="text-sm font-medium">Description</Label>
                                     <p className="text-sm text-gray-600">{selectedContract.description}</p>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">{t('contractManagement.performanceBonuses', 'Performance Bonuses')}</Label>
+                                    <Label className="text-sm font-medium">Bonus de performance</Label>
                                     <p className="text-sm text-gray-600">
-                                      {selectedContract.hasBonus ? t('contractManagement.includedInContract', 'Included in contract') : t('contractManagement.notIncluded', 'Not included')}
+                                      {selectedContract.hasBonus ? 'Inclus dans le contrat' : 'Non inclus'}
                                     </p>
                                   </div>
                                   <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
                                     <div>
-                                      <Label className="text-xs font-medium">{t('contractManagement.created', 'Created')}</Label>
+                                      <Label className="text-xs font-medium">Créé le</Label>
                                       <p>{selectedContract.createdAt}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-xs font-medium">{t('contractManagement.lastUpdated', 'Last Updated')}</Label>
+                                      <Label className="text-xs font-medium">Dernière modification</Label>
                                       <p>{selectedContract.updatedAt}</p>
                                     </div>
                                   </div>
@@ -1325,14 +1307,14 @@ export function ContractManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('contractManagement.contractValueDistribution', 'Contract Value Distribution')}</CardTitle>
-                <CardDescription>{t('contractManagement.breakdownOfContractValues', 'Breakdown of contract values by type')}</CardDescription>
+                <CardTitle>Répartition de la valeur des contrats</CardTitle>
+                <CardDescription>Répartition des valeurs des contrats par type</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span>{t('contractManagement.playerContracts', 'Player Contracts')}</span>
-                    <span className="font-bold">${contractStats.player.totalValue.toLocaleString()}</span>
+                    <span>Contrats joueurs</span>
+                    <span className="font-bold">{contractStats.player.totalValue.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
@@ -1343,8 +1325,8 @@ export function ContractManagement() {
                     ></div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>{t('contractManagement.staffContracts', 'Staff Contracts')}</span>
-                    <span className="font-bold">${contractStats.staff.totalValue.toLocaleString()}</span>
+                    <span>Contrats staff</span>
+                    <span className="font-bold">{contractStats.staff.totalValue.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
@@ -1360,29 +1342,29 @@ export function ContractManagement() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{t('contractManagement.contractStatusOverview', 'Contract Status Overview')}</CardTitle>
-                <CardDescription>{t('contractManagement.currentStatusOfAllContracts', 'Current status of all contracts')}</CardDescription>
+                <CardTitle>Statut des contrats</CardTitle>
+                <CardDescription>Statut actuel de tous les contrats</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
-                      {t('contractManagement.activeContracts', 'Active Contracts')}
+                      Contrats actifs
                     </span>
                     <span className="font-bold">{contractStats.player.active + contractStats.staff.active}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-600" />
-                      {t('contractManagement.expiredContracts', 'Expired Contracts')}
+                      Contrats expirés
                     </span>
                     <span className="font-bold">{contractStats.player.expired + contractStats.staff.expired}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-2">
                       <XCircle className="h-4 w-4 text-red-600" />
-                      {t('contractManagement.terminatedContracts', 'Terminated Contracts')}
+                      Contrats résiliés
                     </span>
                     <span className="font-bold">
                       {contractStats.player.terminated + contractStats.staff.terminated}
@@ -1395,13 +1377,13 @@ export function ContractManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('contractManagement.upcomingContractRenewals', 'Upcoming Contract Renewals')}</CardTitle>
-              <CardDescription>{t('contractManagement.contractsExpiringInNext6Months', 'Contracts expiring in the next 6 months')}</CardDescription>
+              <CardTitle>Renouvellements à venir</CardTitle>
+              <CardDescription>Contrats expirant dans les 6 prochains mois</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-gray-500">
                 <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{t('contractManagement.noContractsExpiringInNext6Months', 'No contracts expiring in the next 6 months')}</p>
+                <p>Aucun contrat expirant dans les 6 prochains mois</p>
               </div>
             </CardContent>
           </Card>
@@ -1411,19 +1393,19 @@ export function ContractManagement() {
       <Dialog open={terminateDialogOpen} onOpenChange={setTerminateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('contractManagement.confirmTermination', 'Confirm Termination')}</DialogTitle>
+            <DialogTitle>Confirmer la résiliation</DialogTitle>
             <DialogDescription>
-              {t('contractManagement.areYouSureYouWantToTerminateThisContract', 'Are you sure you want to terminate this contract? You may provide a reason (optional):')}
+              Êtes-vous sûr de vouloir résilier ce contrat ? Vous pouvez indiquer une raison (optionnel) :
             </DialogDescription>
           </DialogHeader>
           <Input
-            placeholder={t('contractManagement.reasonForTermination', 'Reason for termination (optional)')}
+            placeholder="Raison de la résiliation (optionnel)"
             value={terminationReason}
             onChange={e => setTerminationReason(e.target.value)}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTerminateDialogOpen(false)}>{t('contractManagement.cancel', 'Cancel')}</Button>
-            <Button variant="destructive" onClick={handleTerminateContract}>{t('contractManagement.terminate', 'Terminate')}</Button>
+            <Button variant="outline" onClick={() => setTerminateDialogOpen(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={handleTerminateContract}>Résilier</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1431,14 +1413,14 @@ export function ContractManagement() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('contractManagement.confirmDeletion', 'Confirm Deletion')}</DialogTitle>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              {t('contractManagement.areYouSureYouWantToPermanentlyDeleteThisContract', 'Are you sure you want to permanently delete this contract? This action cannot be undone.')}
+              Êtes-vous sûr de vouloir supprimer définitivement ce contrat ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>{t('contractManagement.cancel', 'Cancel')}</Button>
-            <Button variant="destructive" onClick={handleDeleteContract}>{t('contractManagement.delete', 'Delete')}</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={handleDeleteContract}>Supprimer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

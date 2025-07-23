@@ -133,27 +133,27 @@ export function SalaryPaymentManagement() {
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             <CheckCircle className="w-3 h-3 mr-1" />
-            Processed
+            Traité
           </Badge>
         )
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
             <Clock className="w-3 h-3 mr-1" />
-            Pending
+            En attente
           </Badge>
         )
       case "failed":
         return (
           <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             <XCircle className="w-3 h-3 mr-1" />
-            Failed
+            Échoué
           </Badge>
         )
       case "cancelled":
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Cancelled</Badge>
+        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300">Annulé</Badge>
       default:
-        return <Badge>Unknown</Badge>
+        return <Badge>Inconnu</Badge>
     }
   }
 
@@ -314,7 +314,7 @@ export function SalaryPaymentManagement() {
       {loading && (
         <Alert variant="default" className="flex items-center gap-2">
           <Loader2 className="animate-spin w-5 h-5 mr-2" />
-          Loading salary payments...
+          Chargement des paiements de salaires...
         </Alert>
       )}
       {error && (
@@ -325,25 +325,25 @@ export function SalaryPaymentManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Salary Payment Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Process and manage employee salary payments</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des paiements de salaires</h1>
+          <p className="text-gray-600 dark:text-gray-400">Traitez et gérez les paiements de salaires des employés</p>
         </div>
         <div className="flex items-center space-x-2">
         <Dialog open={showNewPaymentDialog} onOpenChange={setShowNewPaymentDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
-              New Payment
+              Nouveau paiement
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Salary Payment</DialogTitle>
-              <DialogDescription>Process a new salary payment for an employee</DialogDescription>
+              <DialogTitle>Créer un nouveau paiement de salaire</DialogTitle>
+              <DialogDescription>Traiter un nouveau paiement de salaire pour un employé</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="employee">Employee</Label>
+                <Label htmlFor="employee">Employé</Label>
                 <Select
                   value={newPayment.employeeId}
                   onValueChange={(value) => {
@@ -356,28 +356,28 @@ export function SalaryPaymentManagement() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
+                    <SelectValue placeholder="Sélectionner un employé" />
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((employee) => (
                       <SelectItem key={employee.employeeId} value={employee.employeeId}>
-                        {employee.name} - {employee.position ? employee.position.title : "No Position"}
+                        {employee.name} - {employee.position ? employee.position.title : "Aucune position"}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payPeriod">Pay Period</Label>
+                <Label htmlFor="payPeriod">Période de paie</Label>
                 <Input
                   id="payPeriod"
                   value={newPayment.payPeriod}
                   onChange={(e) => setNewPayment({ ...newPayment, payPeriod: e.target.value })}
-                  placeholder="e.g., December 2024"
+                  placeholder="ex : Décembre 2024"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="periodStart">Period Start</Label>
+                <Label htmlFor="periodStart">Début de la période</Label>
                 <Input
                   id="periodStart"
                   type="date"
@@ -386,7 +386,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="periodEnd">Period End</Label>
+                <Label htmlFor="periodEnd">Fin de la période</Label>
                 <Input
                   id="periodEnd"
                   type="date"
@@ -395,7 +395,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="baseSalary">Base Salary</Label>
+                <Label htmlFor="baseSalary">Salaire de base</Label>
                 <Input
                   id="baseSalary"
                   type="number"
@@ -404,7 +404,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="overtime">Overtime</Label>
+                <Label htmlFor="overtime">Heures supplémentaires</Label>
                 <Input
                   id="overtime"
                   type="number"
@@ -413,7 +413,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bonuses">Bonuses</Label>
+                <Label htmlFor="bonuses">Primes</Label>
                 <Input
                   id="bonuses"
                   type="number"
@@ -422,7 +422,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="paymentDate">Payment Date</Label>
+                <Label htmlFor="paymentDate">Date de paiement</Label>
                 <Input
                   id="paymentDate"
                   type="date"
@@ -431,7 +431,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Label htmlFor="paymentMethod">Méthode de paiement</Label>
                 <Select
                   value={newPayment.paymentMethod}
                   onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
@@ -440,28 +440,28 @@ export function SalaryPaymentManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="Direct Deposit">Direct Deposit</SelectItem>
-                    <SelectItem value="Check">Check</SelectItem>
-                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Bank Transfer">Virement bancaire</SelectItem>
+                    <SelectItem value="Direct Deposit">Dépôt direct</SelectItem>
+                    <SelectItem value="Check">Chèque</SelectItem>
+                    <SelectItem value="Cash">Espèces</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             {newPayment.employeeId && (
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <h4 className="font-semibold mb-2">Payment Calculation</h4>
+                <h4 className="font-semibold mb-2">Calcul du paiement</h4>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Gross Pay:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Salaire brut :</span>
                     <p className="font-semibold">{calculatePayment().grossPay.toLocaleString()} MAD</p>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Deductions:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Déductions :</span>
                     <p className="font-semibold">{calculatePayment().totalDeductions.toLocaleString()} MAD</p>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Net Pay:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Salaire net :</span>
                     <p className="font-semibold text-green-600">{calculatePayment().netPay.toLocaleString()} MAD</p>
                   </div>
                 </div>
@@ -469,10 +469,10 @@ export function SalaryPaymentManagement() {
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowNewPaymentDialog(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button onClick={handleCreatePayment} disabled={!newPayment.employeeId || !newPayment.payPeriod}>
-                Create Payment
+                Créer le paiement
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -481,17 +481,17 @@ export function SalaryPaymentManagement() {
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
-              New Bulk Payment
+              Nouveau paiement groupé
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Bulk Salary Payment</DialogTitle>
-                <DialogDescription>Process bulk salary payments for multiple employees</DialogDescription>
+              <DialogTitle>Créer un paiement de salaire groupé</DialogTitle>
+                <DialogDescription>Traiter des paiements de salaires groupés pour plusieurs employés</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="departement">Departement</Label>
+                <Label htmlFor="departement">Département</Label>
                 <Select
                   value={selectedDepartment?.id?.toString() || "0"}
                   onValueChange={(value) => {
@@ -500,11 +500,11 @@ export function SalaryPaymentManagement() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Departement" />
+                    <SelectValue placeholder="Sélectionner un département" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem key={0} value={"0"} disabled>
-                      Select department
+                      Sélectionner un département
                     </SelectItem>
                     {departmentsList.map((department) => (
                       <SelectItem key={department.id} value={department.id.toString()}>
@@ -515,16 +515,16 @@ export function SalaryPaymentManagement() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payPeriod">Pay Period</Label>
+                <Label htmlFor="payPeriod">Période de paie</Label>
                 <Input
                   id="payPeriod"
                   value={newPayment.payPeriod}
                   onChange={(e) => setNewPayment({ ...newPayment, payPeriod: e.target.value })}
-                  placeholder="e.g., December 2024"
+                  placeholder="ex : Décembre 2024"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="periodStart">Period Start</Label>
+                <Label htmlFor="periodStart">Début de la période</Label>
                 <Input
                   id="periodStart"
                   type="date"
@@ -533,7 +533,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="periodEnd">Period End</Label>
+                <Label htmlFor="periodEnd">Fin de la période</Label>
                 <Input
                   id="periodEnd"
                   type="date"
@@ -542,7 +542,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="overtime">Overtime</Label>
+                <Label htmlFor="overtime">Heures supplémentaires</Label>
                 <Input
                   id="overtime"
                   type="number"
@@ -551,7 +551,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bonuses">Bonuses</Label>
+                <Label htmlFor="bonuses">Primes</Label>
                 <Input
                   id="bonuses"
                   type="number"
@@ -560,7 +560,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="paymentDate">Payment Date</Label>
+                <Label htmlFor="paymentDate">Date de paiement</Label>
                 <Input
                   id="paymentDate"
                   type="date"
@@ -569,7 +569,7 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Label htmlFor="paymentMethod">Méthode de paiement</Label>
                 <Select
                   value={newPayment.paymentMethod}
                   onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
@@ -578,28 +578,28 @@ export function SalaryPaymentManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="Direct Deposit">Direct Deposit</SelectItem>
-                    <SelectItem value="Check">Check</SelectItem>
-                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Bank Transfer">Virement bancaire</SelectItem>
+                    <SelectItem value="Direct Deposit">Dépôt direct</SelectItem>
+                    <SelectItem value="Check">Chèque</SelectItem>
+                    <SelectItem value="Cash">Espèces</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             {selectedDepartment?.employees && (
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <h4 className="font-semibold mb-2">Payment Calculation</h4>
+                <h4 className="font-semibold mb-2">Calcul du paiement</h4>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Gross Pay:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Salaire brut :</span>
                     <p className="font-semibold">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Deductions:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Déductions :</span>
                     <p className="font-semibold">{"0"} MAD</p>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Net Pay:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Salaire net :</span>
                     <p className="font-semibold text-green-600">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
                   </div>
                 </div>
@@ -607,10 +607,10 @@ export function SalaryPaymentManagement() {
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowBulkPaymentDialog(false)}>
-                Cancel
+                Annuler
               </Button>
               <Button onClick={handleCreateBulkPayment} disabled={!selectedDepartment || !selectedDepartment || !newPayment.payPeriod}>
-                Create Bulk Payment
+                Créer le paiement groupé
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -622,42 +622,42 @@ export function SalaryPaymentManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">Montant total des paiements</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalPayments.toLocaleString()} MAD</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">Ce mois-ci</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">En attente</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingPayments}</div>
-            <p className="text-xs text-muted-foreground">Awaiting processing</p>
+            <p className="text-xs text-muted-foreground">En attente de traitement</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Processed</CardTitle>
+            <CardTitle className="text-sm font-medium">Traités</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{processedPayments}</div>
-            <p className="text-xs text-muted-foreground">Successfully paid</p>
+            <p className="text-xs text-muted-foreground">Payés avec succès</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed</CardTitle>
+            <CardTitle className="text-sm font-medium">Échoués</CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{failedPayments}</div>
-            <p className="text-xs text-muted-foreground">Need attention</p>
+            <p className="text-xs text-muted-foreground">À vérifier</p>
           </CardContent>
         </Card>
       </div>
@@ -665,8 +665,8 @@ export function SalaryPaymentManagement() {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment Records</CardTitle>
-          <CardDescription>Manage and track all salary payments</CardDescription>
+          <CardTitle>Historique des paiements</CardTitle>
+          <CardDescription>Gérez et suivez tous les paiements de salaires</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -674,7 +674,7 @@ export function SalaryPaymentManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Search by employee name, position, or payment ID..."
+                  placeholder="Rechercher par nom, poste ou ID de paiement..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -687,16 +687,16 @@ export function SalaryPaymentManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processed">Processed</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="processed">Traité</SelectItem>
+                <SelectItem value="failed">Échoué</SelectItem>
+                <SelectItem value="cancelled">Annulé</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
-              Export
+              Exporter
             </Button>
           </div>
 
@@ -704,13 +704,13 @@ export function SalaryPaymentManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Payment ID</TableHead>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Pay Period</TableHead>
-                  <TableHead>Gross Pay (MAD)</TableHead>
-                  <TableHead>Deductions (MAD)</TableHead>
-                  <TableHead>Net Pay (MAD)</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>ID Paiement</TableHead>
+                  <TableHead>Employé</TableHead>
+                  <TableHead>Période de paie</TableHead>
+                  <TableHead>Salaire brut (MAD)</TableHead>
+                  <TableHead>Déductions (MAD)</TableHead>
+                  <TableHead>Salaire net (MAD)</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -784,39 +784,39 @@ export function SalaryPaymentManagement() {
         <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Payment Details - {selectedPayment.id}</DialogTitle>
-              <DialogDescription>Complete payment information and breakdown</DialogDescription>
+              <DialogTitle>Détails du paiement - {selectedPayment.id}</DialogTitle>
+              <DialogDescription>Informations complètes et ventilation du paiement</DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="details">Payment Details</TabsTrigger>
-                <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+                <TabsTrigger value="details">Détails du paiement</TabsTrigger>
+                <TabsTrigger value="breakdown">Ventilation</TabsTrigger>
               </TabsList>
               <TabsContent value="details" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Employee</Label>
+                    <Label className="text-sm font-medium text-gray-500">Employé</Label>
                     <p className="text-lg font-semibold">{selectedPayment.employee?.employeeId || selectedPayment.employeeId}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Pay Period</Label>
+                    <Label className="text-sm font-medium text-gray-500">Période de paie</Label>
                     <p className="text-lg">{selectedPayment.payPeriod}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Payment Method</Label>
+                    <Label className="text-sm font-medium text-gray-500">Méthode de paiement</Label>
                     <p className="text-lg">{selectedPayment.paymentMethod}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Status</Label>
+                    <Label className="text-sm font-medium text-gray-500">Statut</Label>
                     <div className="mt-1">{getStatusBadge(selectedPayment.status)}</div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Payment Date</Label>
+                    <Label className="text-sm font-medium text-gray-500">Date de paiement</Label>
                     <p className="text-lg">{selectedPayment.paymentDate}</p>
                   </div>
                   {selectedPayment.processedDate && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Processed Date</Label>
+                      <Label className="text-sm font-medium text-gray-500">Date de traitement</Label>
                       <p className="text-lg">{selectedPayment.processedDate}</p>
                     </div>
                   )}
@@ -826,30 +826,30 @@ export function SalaryPaymentManagement() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <Label className="text-sm font-medium text-blue-600">Base Salary</Label>
+                      <Label className="text-sm font-medium text-blue-600">Salaire de base</Label>
                       <p className="text-2xl font-bold text-blue-800">{Number(selectedPayment.baseSalary).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <Label className="text-sm font-medium text-green-600">Overtime</Label>
+                      <Label className="text-sm font-medium text-green-600">Heures supplémentaires</Label>
                       <p className="text-2xl font-bold text-green-800">{Number(selectedPayment.overtime).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <Label className="text-sm font-medium text-purple-600">Bonuses</Label>
+                      <Label className="text-sm font-medium text-purple-600">Primes</Label>
                       <p className="text-2xl font-bold text-purple-800">{Number(selectedPayment.bonuses).toLocaleString()} MAD</p>
                     </div>
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <Label className="text-sm font-medium text-red-600">Amount</Label>
+                      <Label className="text-sm font-medium text-red-600">Montant</Label>
                       <p className="text-2xl font-bold text-red-800">{Number(selectedPayment.amount).toLocaleString()} MAD</p>
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700">
                     <div className="flex justify-between items-center">
                       <div>
-                        <Label className="text-sm font-medium text-gray-600">Gross Pay</Label>
+                        <Label className="text-sm font-medium text-gray-600">Salaire brut</Label>
                         <p className="text-xl font-semibold">{(Number(selectedPayment.baseSalary) + Number(selectedPayment.overtime) + Number(selectedPayment.bonuses)).toLocaleString()} MAD</p>
                       </div>
                       <div className="text-right">
-                        <Label className="text-sm font-medium text-green-600">Net Pay</Label>
+                        <Label className="text-sm font-medium text-green-600">Salaire net</Label>
                         <p className="text-2xl font-bold text-green-800">{Number(selectedPayment.amount).toLocaleString()} MAD</p>
                       </div>
                     </div>
@@ -859,7 +859,7 @@ export function SalaryPaymentManagement() {
             </Tabs>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSelectedPayment(null)}>
-                Close
+                Fermer
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -873,17 +873,17 @@ export function SalaryPaymentManagement() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Salary Payment</DialogTitle>
+            <DialogTitle>Supprimer le paiement de salaire</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete payment {deleteDialog.payment?.id}? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer le paiement {deleteDialog.payment?.id} ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialog({ open: false, payment: null })}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={handleDeletePayment}>
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>
