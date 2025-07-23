@@ -13,6 +13,7 @@ import {
   fetchAllDashboardData, 
   markAlertAsRead 
 } from "@/lib/redux/dashboardSlice"
+import { useTranslation } from 'react-i18next';
 
 export function Dashboard() {
   const dispatch = useDispatch<AppDispatch>()
@@ -29,8 +30,9 @@ export function Dashboard() {
     error,
     lastUpdated 
   } = useSelector((state: RootState) => state.dashboard)
+  
+  const { t } = useTranslation();
 
-  // Load dashboard data on component mount (only if authenticated)
   useEffect(() => {
     if (authState.isAuthenticated && authState.token) {
       dispatch(fetchAllDashboardData({}))
@@ -51,10 +53,10 @@ export function Dashboard() {
           <CardContent className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Authentication Required
+              {t('auth.loginRequired', 'Authentication Required')}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Please log in to view the dashboard.
+              {t('auth.pleaseLoginDashboard', 'Please log in to view the dashboard.')}
             </p>
           </CardContent>
         </Card>
@@ -118,13 +120,13 @@ export function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('dashboard.title', 'Dashboard')}</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Welcome back! Here&apos;s what&apos;s happening with your association.
+            {t('dashboard.welcomeMessage', `Welcome back! Here's what's happening with your association.`)}
           </p>
           {lastUpdated && (
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-              Last updated: {new Date(lastUpdated).toLocaleString()}
+              {t('dashboard.lastUpdated', { date: new Date(lastUpdated).toLocaleString(), defaultValue: 'Last updated: {{date}}' })}
             </p>
           )}
         </div>
@@ -135,7 +137,7 @@ export function Dashboard() {
           className="text-blue-800 border-blue-800 hover:bg-blue-50"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${Object.values(loading).some(Boolean) ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common.refresh', 'Refresh')}
         </Button>
       </div>
 
@@ -143,7 +145,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.totalRevenue', 'Total Revenue')}</CardTitle>
             <DollarSign className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
@@ -156,7 +158,7 @@ export function Dashboard() {
                 </div>
                 <p className={`text-xs flex items-center mt-1 ${metrics.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   <TrendingUp className={`h-3 w-3 mr-1 ${metrics.revenueGrowth < 0 ? 'rotate-180' : ''}`} />
-                  {metrics.revenueGrowth >= 0 ? '+' : ''}{metrics.revenueGrowth}% from last month
+                  {metrics.revenueGrowth >= 0 ? '+' : ''}{metrics.revenueGrowth}% {t('dashboard.fromLastMonth', 'from last month')}
                 </p>
               </>
             ) : (
@@ -167,7 +169,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Players</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.activePlayers', 'Active Players')}</CardTitle>
             <Users className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -180,7 +182,7 @@ export function Dashboard() {
                 </div>
                 <p className="text-xs text-green-600 flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  +{metrics.newPlayersThisWeek} new this week
+                  +{metrics.newPlayersThisWeek} {t('dashboard.newThisWeek', 'new this week')}
                 </p>
               </>
             ) : (
@@ -191,7 +193,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-cyan-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Teams</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.totalTeams', 'Total Teams')}</CardTitle>
             <Building2 className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
@@ -202,7 +204,7 @@ export function Dashboard() {
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
                   {metrics.totalTeamsCount}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Across all divisions</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.acrossAllDivisions', 'Across all divisions')}</p>
               </>
             ) : (
               <div className="text-2xl font-bold text-gray-400">--</div>
@@ -212,7 +214,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.monthlyExpenses', 'Monthly Expenses')}</CardTitle>
             <CreditCard className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -225,7 +227,7 @@ export function Dashboard() {
                 </div>
                 <p className={`text-xs flex items-center mt-1 ${metrics.expensesGrowth <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   <TrendingUp className={`h-3 w-3 mr-1 ${metrics.expensesGrowth > 0 ? 'rotate-180' : ''}`} />
-                  {metrics.expensesGrowth >= 0 ? '+' : ''}{metrics.expensesGrowth}% from last month
+                  {metrics.expensesGrowth >= 0 ? '+' : ''}{metrics.expensesGrowth}% {t('dashboard.fromLastMonth', 'from last month')}
                 </p>
               </>
             ) : (
@@ -239,8 +241,8 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Revenue vs Expenses</CardTitle>
-            <CardDescription>Monthly financial overview for the current year</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">{t('dashboard.revenueVsExpenses', 'Revenue vs Expenses')}</CardTitle>
+            <CardDescription>{t('dashboard.monthlyFinancialOverview', 'Monthly financial overview for the current year')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.financialData ? (
@@ -258,7 +260,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                {error.financialData ? `Error: ${error.financialData}` : 'No financial data available'}
+                {error.financialData ? `Error: ${error.financialData}` : t('dashboard.noFinancialDataAvailable', 'No financial data available')}
               </div>
             )}
           </CardContent>
@@ -266,8 +268,8 @@ export function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Team Distribution</CardTitle>
-            <CardDescription>Breakdown of teams by category</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">{t('dashboard.teamDistribution', 'Team Distribution')}</CardTitle>
+            <CardDescription>{t('dashboard.teamBreakdown', 'Breakdown of teams by category')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.teamDistribution ? (
@@ -294,7 +296,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-gray-500">
-                {error.teamDistribution ? `Error: ${error.teamDistribution}` : 'No team distribution data available'}
+                {error.teamDistribution ? `Error: ${error.teamDistribution}` : t('dashboard.noTeamDistributionDataAvailable', 'No team distribution data available')}
               </div>
             )}
           </CardContent>
@@ -307,9 +309,9 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Upcoming Matches
+              {t('dashboard.upcomingMatches', 'Upcoming Matches')}
             </CardTitle>
-            <CardDescription>Next scheduled games this week</CardDescription>
+            <CardDescription>{t('dashboard.nextScheduledGames', 'Next scheduled games this week')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.upcomingMatches ? (
@@ -322,7 +324,7 @@ export function Dashboard() {
               <div className="space-y-4">
                 {upcomingMatches.map((match) => (
                   <div
-                    key={match.id}
+                    key={`match-${match.id}-${match.dateTime}`}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
                     <div>
@@ -353,7 +355,7 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                {error.upcomingMatches ? `Error: ${error.upcomingMatches}` : 'No upcoming matches scheduled'}
+                {error.upcomingMatches ? `Error: ${error.upcomingMatches}` : t('dashboard.noUpcomingMatchesScheduled', 'No upcoming matches scheduled')}
               </div>
             )}
           </CardContent>
@@ -363,9 +365,9 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
-              Recent Alerts
+              {t('dashboard.recentAlerts', 'Recent Alerts')}
             </CardTitle>
-            <CardDescription>Important notifications and updates</CardDescription>
+            <CardDescription>{t('dashboard.importantNotifications', 'Important notifications and updates')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.alerts ? (
@@ -378,7 +380,7 @@ export function Dashboard() {
               <div className="space-y-4">
                 {alerts.map((alert) => (
                   <div 
-                    key={alert.id}
+                    key={`alert-${alert.id}-${alert.createdAt}`}
                     className={`flex items-start gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-opacity ${
                       alert.isRead ? 'opacity-60' : ''
                     } ${getAlertColorClass(alert.priority)}`}
@@ -406,7 +408,7 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                {error.alerts ? `Error: ${error.alerts}` : 'No recent alerts'}
+                {error.alerts ? `Error: ${error.alerts}` : t('dashboard.noRecentAlerts', 'No recent alerts')}
               </div>
             )}
           </CardContent>
@@ -417,8 +419,8 @@ export function Dashboard() {
       {quickStats && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Quick Statistics</CardTitle>
-            <CardDescription>Overview of key operational metrics</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">{t('dashboard.quickStatistics', 'Quick Statistics')}</CardTitle>
+            <CardDescription>{t('dashboard.keyOperationalMetrics', 'Overview of key operational metrics')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.quickStats ? (
@@ -434,7 +436,7 @@ export function Dashboard() {
                     {quickStats.totalMatches}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Total Matches
+                    {t('dashboard.totalMatches', 'Total Matches')}
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -442,7 +444,7 @@ export function Dashboard() {
                     {quickStats.matchesThisMonth}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    This Month
+                    {t('dashboard.thisMonth', 'This Month')}
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -450,7 +452,7 @@ export function Dashboard() {
                     {quickStats.totalStaff}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Total Staff
+                    {t('dashboard.totalStaff', 'Total Staff')}
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -458,7 +460,7 @@ export function Dashboard() {
                     {quickStats.totalSuppliers}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Suppliers
+                    {t('dashboard.suppliers', 'Suppliers')}
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -466,7 +468,7 @@ export function Dashboard() {
                     {quickStats.pendingPayments}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Pending Payments
+                    {t('dashboard.pendingPayments', 'Pending Payments')}
                   </div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -474,7 +476,7 @@ export function Dashboard() {
                     {quickStats.activeContracts}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">
-                    Active Contracts
+                    {t('dashboard.activeContracts', 'Active Contracts')}
                   </div>
                 </div>
               </div>
@@ -487,8 +489,8 @@ export function Dashboard() {
       {recentActivity.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Recent Activity</CardTitle>
-            <CardDescription>Latest actions and updates in the system</CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">{t('dashboard.recentActivity', 'Recent Activity')}</CardTitle>
+            <CardDescription>{t('dashboard.latestActions', 'Latest actions and updates in the system')}</CardDescription>
           </CardHeader>
           <CardContent>
             {loading.recentActivity ? (

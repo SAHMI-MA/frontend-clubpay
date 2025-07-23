@@ -10,7 +10,6 @@ import {
 } from '@/lib/api/contract-api';
 import { tokenUtils } from '@/lib/api';
 
-// Helper function to handle authentication errors
 const handleAuthError = (error: any) => {
   if (error.message?.includes('Authentication required') || 
       error.message?.includes('401') || 
@@ -115,7 +114,7 @@ export const fetchPlayerContractById = createAsyncThunk(
 
 export const createPlayerContract = createAsyncThunk(
   'contracts/createPlayerContract',
-  async (contractData: CreatePlayerContractDto, { rejectWithValue }) => {
+  async (contractData: CreatePlayerContractDto & { contractFileId?: number }, { rejectWithValue }) => {
     try {
       // Validate authentication before attempting to create
       if (!tokenUtils.hasAuthToken()) {
@@ -194,7 +193,7 @@ export const fetchStaffContractById = createAsyncThunk(
 
 export const createStaffContract = createAsyncThunk(
   'contracts/createStaffContract',
-  async (contractData: CreateStaffContractDto, { rejectWithValue }) => {
+  async (contractData: CreateStaffContractDto & { contractFileId?: number }, { rejectWithValue }) => {
     try {
       // Validate authentication before attempting to create
       if (!tokenUtils.hasAuthToken()) {

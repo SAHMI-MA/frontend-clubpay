@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Moon, Search, Sun, User, Globe } from "lucide-react"
+import { Bell, Moon, Search, Sun, User, Globe, Info, CheckCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -15,6 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useTranslation } from "react-i18next"
+import { useEffect, useState } from "react"
+import { notificationAPI, Notification } from "@/lib/api/notification-api"
 
 interface TopBarProps {
   darkMode: boolean
@@ -26,6 +28,54 @@ interface TopBarProps {
 export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
   const { t } = useTranslation();
   const { language, changeLanguage } = useLanguage();
+
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
+
+  // Fetch unread count on mount and when notifications change
+  useEffect(() => {
+    if (!user) return;
+    notificationAPI.getUnreadCount().then(setUnreadCount).catch(() => setUnreadCount(0));
+  }, [user]);
+
+  // Fetch notifications when dropdown opens
+  useEffect(() => {
+    if (notifDropdownOpen && user) {
+      setLoading(true);
+      notificationAPI.getNotifications(1, 10)
+        .then(res => setNotifications(res.data))
+        .finally(() => setLoading(false));
+    }
+  }, [notifDropdownOpen, user]);
+
+  const handleMarkAsRead = async (id: number) => {
+    await notificationAPI.markAsRead(id);
+    setNotifications(notifications => notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(count => Math.max(0, count - 1));
+  };
+
+  const handleMarkAllAsRead = async () => {
+    setMarkingAll(true);
+    await Promise.all(
+      notifications.filter(n => !n.isRead).map(n => notificationAPI.markAsRead(n.id))
+    );
+    setNotifications(notifications => notifications.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+    setMarkingAll(false);
+  };
+
+  // Icon by type
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case 'warning': return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+      default: return <Info className="h-4 w-4 text-blue-500" />;
+    }
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 w-full">
@@ -81,14 +131,70 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
         </Button>
 
         {/* Notifications */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="relative text-gray-600 dark:text-gray-400"
-        >
-          <Bell className="h-4 w-4" />
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs">3</Badge>
-        </Button>
+        <DropdownMenu open={notifDropdownOpen} onOpenChange={setNotifDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-gray-600 dark:text-gray-400"
+              title={t('common.notifications') || 'Notifications'}
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-96 max-h-96 overflow-y-auto p-0">
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <DropdownMenuLabel>{t('common.notifications') || 'Notifications'}</DropdownMenuLabel>
+              {unreadCount > 0 && (
+                <button
+                  className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                  onClick={handleMarkAllAsRead}
+                  disabled={markingAll}
+                >
+                  {markingAll ? (t('common.loading') || 'Loading...') : (t('common.markAllRead') || 'Mark all as read')}
+                </button>
+              )}
+            </div>
+            <DropdownMenuSeparator />
+            {loading ? (
+              <div className="flex flex-col items-center p-6 text-gray-400">
+                <Info className="h-8 w-8 mb-2 animate-pulse" />
+                <span>{t('common.loading') || 'Loading...'}</span>
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center p-6 text-gray-400">
+                <Bell className="h-8 w-8 mb-2" />
+                <span>{t('common.noNotifications') || 'No notifications'}</span>
+              </div>
+            ) : notifications.map(n => {
+              const title = n.data?.title || n.type;
+              const message = n.data?.message || '';
+              return (
+                <DropdownMenuItem
+                  key={n.id}
+                  onClick={() => !n.isRead && handleMarkAsRead(n.id)}
+                  className={`flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 transition-colors cursor-pointer ${!n.isRead ? 'bg-orange-50 dark:bg-gray-700 font-semibold' : 'bg-white dark:bg-gray-800'}`}
+                >
+                  <span className="mt-1">{getTypeIcon(n.type)}</span>
+                  <span className="flex-1">
+                    <span className="block text-sm">{title}</span>
+                    {message && <span className="block text-xs text-gray-500 dark:text-gray-400">{message}</span>}
+                    <span className="block text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</span>
+                  </span>
+                  {!n.isRead && <span className="text-xs text-orange-500 mt-1">{t('common.unread') || 'Unread'}</span>}
+                </DropdownMenuItem>
+              );
+            })}
+            <div className="px-4 py-2 text-center text-xs text-blue-600 hover:underline cursor-pointer border-t border-gray-100 dark:border-gray-700">
+              {t('common.viewAll') || 'View all notifications'}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User Menu */}
         <DropdownMenu>
