@@ -163,8 +163,8 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
         <div className="flex items-center gap-2">
           <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Gestionnaire Sportif</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Système d'Association</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Système</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Système</p>
           </div>
         </div>
       </SidebarHeader>
@@ -201,10 +201,6 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
           </Collapsible>
         ))}
       </SidebarContent>
-
-      <SidebarFooter className="p-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400">© 2024 Association Sportive</div>
-      </SidebarFooter>
     </Sidebar>
   )
 }

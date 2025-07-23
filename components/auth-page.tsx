@@ -87,15 +87,11 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
               <Shield className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestionnaire Sportif</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Système de gestion d'association</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Système</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Système</p>
         </div>
 
         <Tabs defaultValue="login" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Connexion</TabsTrigger>
-            {/* Registration tab removed */}
-          </TabsList>
 
           {/* Login Tab */}
           <TabsContent value="login">
