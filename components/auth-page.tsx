@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { loginUser, registerUser } from "@/lib/redux/authThunks"
+import { loginUser } from "@/lib/redux/authThunks"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle, CheckCircle } from "lucide-react"
+import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle } from "lucide-react"
 
 interface AuthPageProps {
   onLogin: (userData: { name: string; email: string; role: string }) => void
@@ -20,19 +20,8 @@ interface AuthPageProps {
 
 export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [loginData, setLoginData] = useState({ email: "", password: "" })
-  const [registerData, setRegisterData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "",
-  })
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loginError, setLoginError] = useState("")
-  const [registerError, setRegisterError] = useState("")
-  const [registerSuccess, setRegisterSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
   const dispatch = useAppDispatch();
@@ -76,54 +65,6 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
       console.error("Login error:", error);
       setLoginError(error instanceof Error ? error.message : "Échec de la connexion. Veuillez vérifier vos identifiants.");
     }
-  }
-  
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setRegisterError("")
-    setRegisterSuccess("")
-    
-    try {
-      if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
-        setRegisterError("Veuillez remplir tous les champs obligatoires")
-        return
-      }
-
-      if (registerData.password !== registerData.confirmPassword) {
-        setRegisterError("Les mots de passe ne correspondent pas")
-        return
-      }
-
-      if (registerData.password.length < 6) {
-        setRegisterError("Le mot de passe doit contenir au moins 6 caractères")
-        return
-      }// Dispatch register action
-      await dispatch(registerUser({
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        email: registerData.email,
-        password: registerData.password      })).unwrap().then(() => {
-        setRegisterSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
-        
-        // Reset form on success
-        setRegisterData({ 
-          firstName: "", 
-          lastName: "", 
-          email: "", 
-          password: "", 
-          confirmPassword: "", 
-          role: "" // Keep this for type compatibility, even though not used in UI
-        });
-      }).catch((error) => {
-        console.error("Registration error:", error);
-        setRegisterError(typeof error === 'string' ? error : "Échec de l'inscription. Veuillez réessayer.");
-      })
-      
-    } catch (error) {
-      console.error("Registration error:", error);
-      setRegisterError(error instanceof Error ? error.message : "Échec de l'inscription. Veuillez réessayer.");
-    }    // No need to manually set isLoading to false since it's controlled by the Redux state
   }
 
   return (
