@@ -153,7 +153,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         <Tabs defaultValue="login" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Connexion</TabsTrigger>
-            <TabsTrigger value="register">Créer un compte</TabsTrigger>
+            {/* Registration tab removed */}
           </TabsList>
 
           {/* Login Tab */}
@@ -219,147 +219,10 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
             </Card>
           </TabsContent>
 
-          {/* Register Tab */}
-          <TabsContent value="register">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Créer un compte</CardTitle>
-                <CardDescription>Rejoignez le système de gestion d'association sportive</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleRegister} className="space-y-4">
-                  {registerError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{registerError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {registerSuccess && (
-                    <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-700 dark:text-green-400">
-                        {registerSuccess}
-                      </AlertDescription>
-                    </Alert>
-                  )}                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-first-name">Prénom</Label>
-                      <Input
-                        id="register-first-name"
-                        type="text"
-                        placeholder="Entrez votre prénom"
-                        value={registerData.firstName}
-                        onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-last-name">Nom</Label>
-                      <Input
-                        id="register-last-name"
-                        type="text"
-                        placeholder="Entrez votre nom"
-                        value={registerData.lastName}
-                        onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="Entrez votre email"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  {/* <div className="space-y-2">
-                    <Label htmlFor="register-role">Role</Label>
-                    <Select
-                      value={registerData.role}
-                      onValueChange={(value) => setRegisterData({ ...registerData, role: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="coach">Coach</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="player">Player</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div> */}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Mot de passe</Label>
-                    <div className="relative">
-                      <Input
-                        id="register-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Créez un mot de passe"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password">Confirmez le mot de passe</Label>
-                    <div className="relative">
-                      <Input
-                        id="register-confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirmez votre mot de passe"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-blue-800 hover:bg-blue-900 text-white"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Création du compte..." : "Créer un compte"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Registration Tab removed */}
         </Tabs>
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-500 dark:text-gray-400">© 2024 Système de gestion d'association sportive</p>
-        </div>
+        {/* Footer removed */}
       </div>
     </div>
   )
