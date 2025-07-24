@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { loginUser } from "@/lib/redux/authThunks"
 import { Alert, AlertDescription } from "@/components/ui/alert"
