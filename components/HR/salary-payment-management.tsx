@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { authUtils } from "@/lib/redux/auth-utils";
+import { getApiUrl } from "@/lib/api-config";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -62,11 +64,13 @@ export function SalaryPaymentManagement() {
     baseSalary: 0,
     overtime: 0,
     bonuses: 0,
+    deductions: 0,
     paymentMethod: "Bank Transfer",
     amount: 0,
     paymentDate: null as Date | null,
     periodStart: null as Date | null,
     periodEnd: null as Date | null,
+    bankAccountId: undefined as number | undefined,
   })
   const [departmentsList, setDepartmentsList] = useState<Department[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
@@ -75,6 +79,9 @@ export function SalaryPaymentManagement() {
     payment: null,
   })
 
+  // current user from auth-utils
+  const currentUser = authUtils.getUser();
+  
   const [employees, setEmployees] = useState<Employee[]>([]);
   useEffect(() => {
 
@@ -83,7 +90,7 @@ export function SalaryPaymentManagement() {
         .then((empList) => {
           setEmployees(empList.map((e: any) => ({
             employeeId: e.employeeId || e.id?.toString() || "",
-            name: (e.user?.firstName ? e.user.firstName : "") + (e.user?.lastName ? " " + e.user.lastName : ""),
+            name: e.fullName || "",
             position: e.position ? {
               id: e.position.id,
               title: e.position.title,
@@ -110,6 +117,24 @@ export function SalaryPaymentManagement() {
       .catch((e) => setError("Failed to load salary payments " + e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  // Club bank accounts state
+  const [bankAccounts, setBankAccounts] = useState<{ id: number; bankName: string; accountNumber: string }[]>([]);
+  // Fetch club bank accounts when dialog opens
+  useEffect(() => {
+    if (showNewPaymentDialog || showBulkPaymentDialog) {
+      const token = authUtils.getToken();
+      fetch(getApiUrl('/bank-accounts'), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setBankAccounts(Array.isArray(data) ? data : []))
+        .catch(() => setBankAccounts([]));
+    }
+  }, [showNewPaymentDialog, showBulkPaymentDialog]);
 
   const filteredPayments = payments.filter((payment) => {
     // Use nested employee and string fields from API
@@ -181,8 +206,32 @@ export function SalaryPaymentManagement() {
 
   // Replace handleCreatePayment with API call
   const handleCreatePayment = async () => {
+    // Validate all fields are filled and valid
+    if (!newPayment.employeeId ||
+        !newPayment.payPeriod ||
+        newPayment.baseSalary === null || isNaN(Number(newPayment.baseSalary)) || Number(newPayment.baseSalary) <= 0 ||
+        newPayment.overtime === null || isNaN(Number(newPayment.overtime)) || Number(newPayment.overtime) < 0 ||
+        newPayment.bonuses === null || isNaN(Number(newPayment.bonuses)) || Number(newPayment.bonuses) < 0 ||
+        newPayment.deductions === null || isNaN(Number(newPayment.deductions)) || Number(newPayment.deductions) < 0 ||
+        !newPayment.paymentMethod ||
+        !newPayment.paymentDate || !(newPayment.paymentDate instanceof Date) || isNaN(newPayment.paymentDate.getTime()) ||
+        !newPayment.periodStart || !(newPayment.periodStart instanceof Date) || isNaN(newPayment.periodStart.getTime()) ||
+        !newPayment.periodEnd || !(newPayment.periodEnd instanceof Date) || isNaN(newPayment.periodEnd.getTime())
+    ) {
+      setError("Tous les champs sont obligatoires et doivent être valides.");
+      return;
+    }
     const employee = employees.find((emp) => emp.employeeId === newPayment.employeeId)
-    if (!employee) return
+    if (!employee) {
+      setError("Employé invalide.");
+      return;
+    }
+    // Only send valid date strings, otherwise omit the field
+    const getDateString = (date: Date | null) => {
+      return date instanceof Date && !isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : undefined;
+    };
+    // Get current user from auth-utils
+
     const body: CreateSalaryPaymentBody = {
       employeeId: newPayment.employeeId,
       payPeriod: newPayment.payPeriod,
@@ -191,9 +240,12 @@ export function SalaryPaymentManagement() {
       bonuses: newPayment.bonuses,
       paymentMethod: newPayment.paymentMethod,
       status: "pending",
-      paymentDate: newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : "",
-      periodStart: newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : undefined,
-      periodEnd: newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : undefined,
+      paymentDate: getDateString(newPayment.paymentDate)!,
+      periodStart: getDateString(newPayment.periodStart)!,
+      periodEnd: getDateString(newPayment.periodEnd)!,
+      createdById: currentUser!.id,
+      deductions: 0,
+      bankAccountId: newPayment.paymentMethod === 'Bank Transfer' ? newPayment.bankAccountId : undefined
     }
     try {
       const created = await createSalaryPayment(body)
@@ -210,9 +262,11 @@ export function SalaryPaymentManagement() {
         bonuses: 0,
         paymentMethod: "Bank Transfer",
         amount: 0,
+        deductions: 0,
         paymentDate: null,
         periodStart: null,
         periodEnd: null,
+        bankAccountId: undefined,
       })
     } catch (e: any) {
       setError("Failed to create payment " + e.message)
@@ -223,6 +277,10 @@ export function SalaryPaymentManagement() {
     if (!selectedDepartment) {
       setError("Please select a department")
       return
+    }
+    if (newPayment.paymentMethod === 'Bank Transfer' && !newPayment.bankAccountId) {
+      setError("Veuillez sélectionner un compte bancaire du club pour le virement bancaire.");
+      return;
     }
     // Get filtered employees for bulk payment
     const employeesList = selectedDepartment.employees || [];
@@ -241,6 +299,9 @@ export function SalaryPaymentManagement() {
       paymentDate: newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : "",
       periodStart: newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : undefined,
       periodEnd: newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : undefined,
+      deductions: newPayment.deductions,
+      bankAccountId: newPayment.paymentMethod === 'Bank Transfer' ? newPayment.bankAccountId : undefined,
+      createdById: currentUser!.id
     }
     try {
       const created = await createBulkSalaryPaymentForDepartement(body, selectedDepartment.id)
@@ -254,12 +315,24 @@ export function SalaryPaymentManagement() {
         bonuses: 0,
         paymentMethod: "Bank Transfer",
         amount: 0,
+        deductions: 0,
         paymentDate: null,
         periodStart: null,
         periodEnd: null,
+        bankAccountId: undefined,
       })
     } catch (e: any) {
-      setError("Failed to create bulk payment " + e.message)
+      // Enhanced error logging
+      console.error('Bulk salary payment error:', e);
+      if (e.response) {
+        console.error('Bulk salary payment error response:', e.response);
+        if (e.response.data) {
+          console.error('Bulk salary payment error response data:', e.response.data);
+          setError("Failed to create bulk payment: " + (e.response.data.message || JSON.stringify(e.response.data)));
+          return;
+        }
+      }
+      setError("Failed to create bulk payment: " + e.message);
     } finally {
       setSelectedDepartment(null)
     }
@@ -422,6 +495,15 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="deductions">Déductions</Label>
+                <Input
+                  id="deductions"
+                  type="number"
+                  value={newPayment.deductions}
+                  onChange={(e) => setNewPayment({ ...newPayment, deductions: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="paymentDate">Date de paiement</Label>
                 <Input
                   id="paymentDate"
@@ -447,6 +529,26 @@ export function SalaryPaymentManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              {newPayment.paymentMethod === 'Bank Transfer' && (
+                <div className="space-y-2">
+                  <Label htmlFor="bankAccountId">Compte bancaire du club</Label>
+                  <Select
+                    value={newPayment.bankAccountId ? String(newPayment.bankAccountId) : ''}
+                    onValueChange={id => setNewPayment(f => ({ ...f, bankAccountId: Number(id) }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un compte bancaire" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.map(account => (
+                        <SelectItem key={account.id} value={String(account.id)}>
+                          {account.bankName} - {account.accountNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             {newPayment.employeeId && (
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -458,11 +560,11 @@ export function SalaryPaymentManagement() {
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Déductions :</span>
-                    <p className="font-semibold">{calculatePayment().totalDeductions.toLocaleString()} MAD</p>
+                    <p className="font-semibold">{newPayment.deductions.toLocaleString()} MAD</p>
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Salaire net :</span>
-                    <p className="font-semibold text-green-600">{calculatePayment().netPay.toLocaleString()} MAD</p>
+                    <p className="font-semibold text-green-600">{(calculatePayment().grossPay - newPayment.deductions).toLocaleString()} MAD</p>
                   </div>
                 </div>
               </div>
@@ -560,6 +662,15 @@ export function SalaryPaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="deductions">Déductions</Label>
+                <Input
+                  id="deductions"
+                  type="number"
+                  value={newPayment.deductions}
+                  onChange={(e) => setNewPayment({ ...newPayment, deductions: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="paymentDate">Date de paiement</Label>
                 <Input
                   id="paymentDate"
@@ -585,6 +696,26 @@ export function SalaryPaymentManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              {newPayment.paymentMethod === 'Bank Transfer' && (
+                <div className="space-y-2">
+                  <Label htmlFor="bankAccountId">Compte bancaire du club</Label>
+                  <Select
+                    value={newPayment.bankAccountId ? String(newPayment.bankAccountId) : ''}
+                    onValueChange={id => setNewPayment(f => ({ ...f, bankAccountId: Number(id) }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un compte bancaire" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.map(account => (
+                        <SelectItem key={account.id} value={String(account.id)}>
+                          {account.bankName} - {account.accountNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             {selectedDepartment?.employees && (
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -596,11 +727,11 @@ export function SalaryPaymentManagement() {
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Déductions :</span>
-                    <p className="font-semibold">{"0"} MAD</p>
+                    <p className="font-semibold">{newPayment.deductions.toLocaleString()} MAD</p>
                   </div>
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Salaire net :</span>
-                    <p className="font-semibold text-green-600">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
+                    <p className="font-semibold text-green-600">{(calculateBulkPayment().grossPay - newPayment.deductions).toLocaleString()} MAD</p>
                   </div>
                 </div>
               </div>
@@ -806,6 +937,17 @@ export function SalaryPaymentManagement() {
                     <Label className="text-sm font-medium text-gray-500">Méthode de paiement</Label>
                     <p className="text-lg">{selectedPayment.paymentMethod}</p>
                   </div>
+                  {selectedPayment.paymentMethod === 'Bank Transfer' && selectedPayment.bankAccountId && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Compte bancaire du club</Label>
+                      <p className="text-lg">
+                        {(() => {
+                          const account = bankAccounts.find(a => a.id === selectedPayment.bankAccountId);
+                          return account ? `${account.bankName} - ${account.accountNumber}` : `Compte ID: ${selectedPayment.bankAccountId}`;
+                        })()}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-sm font-medium text-gray-500">Statut</Label>
                     <div className="mt-1">{getStatusBadge(selectedPayment.status)}</div>

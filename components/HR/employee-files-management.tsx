@@ -346,7 +346,7 @@ export function EmployeeFilesManagement() {
                     <SelectContent>
                       {employees.map((employee) => (
                         <SelectItem key={employee.employeeId} value={employee.employeeId}>
-                          {employee.user.firstName} - {employee.user.lastName}
+                          {employee.fullName || 'Nom inconnu'}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -145,7 +145,7 @@ export interface UpdateAcquisitionDto {
   playerId?: number;
   staffId?: number;
   quantity?: number;
-  quotationFileId?: number;
+  quotationFileId: number;
 }
 
 export interface ApprovalDto {

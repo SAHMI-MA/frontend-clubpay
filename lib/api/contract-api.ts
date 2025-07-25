@@ -158,6 +158,7 @@ export interface UpdatePlayerContractDto {
   hasBonus?: boolean;
   signatureBonus?: number;
   description?: string;
+  contractFileId?: number;
 }
 
 export interface CreateStaffContractDto {

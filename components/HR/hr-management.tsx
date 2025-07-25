@@ -98,7 +98,8 @@ export function HRManagement() {
 
   // Employee form state using CreateEmployeeRequest
   const [employeeForm, setEmployeeForm] = useState<CreateEmployeeRequest>({
-    userId: 0,
+    userId: undefined, // userId is optional
+    fullName: "",
     departmentId: 0,
     positionId: 0,
     hireDate: "",
@@ -109,9 +110,6 @@ export function HRManagement() {
     personalEmail: "",
     address: "",
     maritalStatus: "Single",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    emergencyContactRelationship: "",
     currentSalary: ""
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
@@ -257,7 +255,13 @@ export function HRManagement() {
         setDepartments((prev) => prev.map((d) => (d.id === department.id ? department : d)));
       } else {
         department = await hrApi.createDepartment(payload as any);
-        setDepartments((prev) => [...prev, department]);
+        if (!department || department.id === undefined) {
+          // Defensive: reload all departments if backend response is missing id
+          const allDepartments = await hrApi.getDepartments();
+          setDepartments(allDepartments);
+        } else {
+          setDepartments((prev) => [...prev, department]);
+        }
       }
       setShowDepartmentDialog(false)
       setSelectedDepartment(null)
@@ -272,7 +276,8 @@ export function HRManagement() {
   useEffect(() => {
     if (selectedEmployee) {
       setEmployeeForm({
-        userId: selectedEmployee.user?.id ?? 0,
+        userId: selectedEmployee.user?.id ?? undefined, // userId is optional
+        fullName: selectedEmployee.fullName || "",
         departmentId: selectedEmployee.department?.id ?? 0,
         positionId: selectedEmployee.position?.id ?? 0,
         hireDate: selectedEmployee.hireDate || "",
@@ -283,14 +288,12 @@ export function HRManagement() {
         personalEmail: selectedEmployee.personalEmail || "",
         address: selectedEmployee.address || "",
         maritalStatus: selectedEmployee.maritalStatus || "Single",
-        emergencyContactName: selectedEmployee.emergencyContactName || "",
-        emergencyContactPhone: selectedEmployee.emergencyContactPhone || "",
-        emergencyContactRelationship: selectedEmployee.emergencyContactRelationship || "",
         currentSalary: selectedEmployee.currentSalary?.toString() || ""
       })
     } else {
       setEmployeeForm({
-        userId: 0,
+        userId: undefined, // userId is optional
+        fullName: "",
         departmentId: 0,
         positionId: 0,
         hireDate: new Date().toISOString().slice(0, 10),
@@ -301,9 +304,6 @@ export function HRManagement() {
         personalEmail: "",
         address: "",
         maritalStatus: "Single",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-        emergencyContactRelationship: "",
         currentSalary: ""
       })
     }
@@ -325,14 +325,14 @@ export function HRManagement() {
   function handleEmployeeFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { id, value } = e.target;
     if (id === "userId" || id === "departmentId" || id === "positionId") {
-      setEmployeeForm({ ...employeeForm, [id]: value === "" ? 0 : parseInt(value, 10) })
+      setEmployeeForm({ ...employeeForm, [id]: value === "" ? undefined : parseInt(value, 10) })
     } else {
       setEmployeeForm({ ...employeeForm, [id]: value })
     }
   }
   function handleEmployeeSelectChange(id: string, value: string) {
     if (id === "userId" || id === "departmentId" || id === "positionId") {
-      setEmployeeForm({ ...employeeForm, [id]: value === "" ? 0 : parseInt(value, 10) })
+      setEmployeeForm({ ...employeeForm, [id]: value === "" ? undefined : parseInt(value, 10) })
     } else {
       setEmployeeForm({ ...employeeForm, [id]: value })
     }
@@ -342,6 +342,12 @@ export function HRManagement() {
     e.preventDefault()
     setIsSubmittingEmployee(true)
     setEmployeeFormError(null)
+    // Validate fullName is not empty or whitespace
+    if (!employeeForm.fullName || employeeForm.fullName.trim() === "") {
+      setEmployeeFormError("Le nom complet est obligatoire.");
+      setIsSubmittingEmployee(false);
+      return;
+    }
     try {
       if (isEditEmployee) {
         // PATCH: only allowed fields, use CreateEmployeeRequest for type safety
@@ -352,7 +358,10 @@ export function HRManagement() {
         setEmployees((prev) => prev.map((e) => (e.employeeId === employee.employeeId ? employee : e)));
       } else {
         // CREATE: use CreateEmployeeRequest directly
-        const payload: import("@/lib/api/hr-api").CreateEmployeeRequest = { ...employeeForm };
+        const payload: import("@/lib/api/hr-api").CreateEmployeeRequest = {
+          ...employeeForm,
+          userId: employeeForm.userId === undefined ? null : employeeForm.userId
+        };
         const employee = await hrApi.createEmployee(payload);
         setEmployees((prev) => [...prev, employee]);
       }
@@ -420,7 +429,13 @@ export function HRManagement() {
         setPositions((prev) => prev.map((p) => (p.id === position.id ? position : p)))
       } else {
         position = await hrApi.createPosition(payload)
-        setPositions((prev) => [...prev, position])
+        if (!position || position.id === undefined) {
+          // Defensive: reload all positions if backend response is missing id
+          const allPositions = await hrApi.getPositions();
+          setPositions(allPositions);
+        } else {
+          setPositions((prev) => [...prev, position])
+        }
       }
       setShowPositionDialog(false)
       setSelectedPosition(null)
@@ -566,16 +581,22 @@ export function HRManagement() {
                         </TabsList>
                         <TabsContent value="personal">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="fullName">Nom complet</Label>
+                              <Input id="fullName" placeholder="Nom complet" value={employeeForm.fullName} onChange={handleEmployeeFormChange} required />
+                            </div>
                             {!isEditEmployee && (
                               <>
-                                <div className="space-y-2">
-                                  <Label htmlFor="userId">Utilisateur</Label>
-                                  <Combobox
-                                    value={employeeForm.userId.toString()}
-                                    onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
-                                    options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
-                                    placeholder="Sélectionner un utilisateur"
-                                  />
+                                <div className="space-y-2 flex flex-row gap-2 items-end">
+                                  <div className="flex-1">
+                                    <Label htmlFor="userId">Utilisateur (optionnel)</Label>
+                                    <Combobox
+                                      value={employeeForm.userId ? employeeForm.userId.toString() : ""}
+                                      onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
+                                      options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
+                                      disabled={employeeForm.userId === null}
+                                    />
+                                  </div>
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor="hireDate">Date d'embauche</Label>
@@ -616,18 +637,6 @@ export function HRManagement() {
                                   <SelectItem value="Widowed">Veuf(ve)</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="emergencyContactName">Nom du contact d'urgence</Label>
-                              <Input id="emergencyContactName" placeholder="Jean Dupont" value={employeeForm.emergencyContactName} onChange={handleEmployeeFormChange} />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="emergencyContactPhone">Téléphone du contact d'urgence</Label>
-                              <Input id="emergencyContactPhone" placeholder="06 98 76 54 32" value={employeeForm.emergencyContactPhone} onChange={handleEmployeeFormChange} />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="emergencyContactRelationship">Lien avec le contact d'urgence</Label>
-                              <Input id="emergencyContactRelationship" placeholder="Frère" value={employeeForm.emergencyContactRelationship} onChange={handleEmployeeFormChange} />
                             </div>
                           </div>
                         </TabsContent>
@@ -759,22 +768,12 @@ export function HRManagement() {
                   <TableBody>
                     {filteredEmployees.map((employee) => {
                       const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons]
-                      // Show user info if user object is present and has at least firstName, lastName, or email
-                      const user = employee.user;
-                      let userDisplay = "Aucun utilisateur lié";
-                      if (user) {
-                        if (user.firstName || user.lastName) {
-                          userDisplay = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
-                        } else if (user.email) {
-                          userDisplay = user.email;
-                        }
-                      }
                       return (
                         <TableRow key={employee.employeeId}>
                           <TableCell>
                             <div>
                               <div className="font-medium">
-                                {userDisplay}
+                                {employee.fullName || "Nom non renseigné"}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {employee.employeeId}

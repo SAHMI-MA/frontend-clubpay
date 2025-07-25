@@ -24,7 +24,7 @@ import {
 interface TeamListProps {
   teams: Team[]
   onViewDetails: (team: Team) => void
-  onEditTeam: (team: Team) => void
+  onEditTeam?: (team: Team) => void
   isSimplified?: boolean
 }
 
@@ -91,10 +91,12 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => onEditTeam(team)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
+              {onEditTeam && (
+                <Button variant="ghost" size="sm" onClick={() => onEditTeam(team)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
@@ -185,14 +187,16 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onEditTeam(team)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {onEditTeam && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => onEditTeam(team)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

@@ -60,6 +60,12 @@ export interface UpdateLeaveRequestDto {
   approvalDate?: string; // ISO string
 }
 
+export interface LeaveConfig {
+  annual: number;
+  sick: number;
+  other: number;
+}
+
 export const hrLeavesApi = {
   // List all leave requests
   async getLeaves(): Promise<LeaveRequest[]> {
@@ -116,6 +122,33 @@ export const hrLeavesApi = {
   // Reject leave request
   async rejectLeave(id: string, data: UpdateLeaveRequestDto): Promise<LeaveRequest> {
     const res = await fetch(`${BASE_URL}/hr/leaves/${id}/reject`, {
+      method: "PATCH",
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  // Leave config endpoints
+  async getLeaveConfig(): Promise<LeaveConfig | null> {
+    const res = await fetch(`${BASE_URL}/hr/leave-config`, {
+      headers: getAuthHeadersUtil(),
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+  async createLeaveConfig(): Promise<LeaveConfig> {
+    const res = await fetch(`${BASE_URL}/hr/leave-config`, {
+      method: "POST",
+      headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+  async updateLeaveConfig(data: Partial<LeaveConfig>): Promise<LeaveConfig> {
+    const res = await fetch(`${BASE_URL}/hr/leave-config`, {
       method: "PATCH",
       headers: { ...getAuthHeadersUtil(), "Content-Type": "application/json" },
       body: JSON.stringify(data),

@@ -73,6 +73,7 @@ export interface SalaryPayment {
   periodStart?: string;
   periodEnd?: string;
   processedDate?: string;
+  bankAccountId?: number;
 }
 
 export interface CreateSalaryPaymentBody {
@@ -81,11 +82,14 @@ export interface CreateSalaryPaymentBody {
   baseSalary: number;
   overtime: number;
   bonuses: number;
+  deductions: number;
   paymentMethod: string;
   status: "pending" | "processed" | "failed" | "cancelled";
   paymentDate: string;
   periodStart?: string;
   periodEnd?: string;
+  createdById: number;
+  bankAccountId?: number;
 }
 
 export interface CreateBulkSalaryPaymentBody {
@@ -93,10 +97,13 @@ export interface CreateBulkSalaryPaymentBody {
   paymentMethod: string;
   overtime: number;
   bonuses: number;
+  deductions: number;
   status: "pending" | "processed" | "failed" | "cancelled";
   paymentDate: string;
   periodStart?: string;
   periodEnd?: string;
+  bankAccountId?: number;
+  createdById: number;
 }
 
 export async function createBulkSalaryPaymentForDepartement(

@@ -90,7 +90,12 @@ export function RentalSupplierManagement() {
   // File upload handler for quotation file
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      // If file input is cleared, remove fileId and fileName from state
+      setNewAcquisition((prev) => ({ ...prev, quotationFileId: undefined }));
+      setUploadedFileName(null);
+      return;
+    }
 
     // Validate file type by MIME and extension
     const fileType = file.type;
@@ -129,10 +134,19 @@ export function RentalSupplierManagement() {
       }
       const data = await res.json();
       if (data && data.id) {
-        setNewAcquisition((prev) => ({ ...prev, quotationFileId: data.id }));
+        // Force update quotationFileId in state
+        setNewAcquisition((prev) => ({
+          ...prev,
+          quotationFileId: Number(data.id)
+        }));
         setUploadedFileName(file.name);
       } else {
         setUploadError('Échec de l\'upload : Aucun ID de fichier retourné.');
+        setNewAcquisition((prev) => ({
+          ...prev,
+          quotationFileId: undefined
+        }));
+        setUploadedFileName(null);
       }
     } catch (error: any) {
       setUploadError(error?.message || 'Échec du téléversement du fichier.');
@@ -384,30 +398,64 @@ export function RentalSupplierManagement() {
   }
 
   const handleEditAcquisition = (acquisition: Acquisition) => {
-    dispatch(setSelectedAcquisition(acquisition))
-    setIsEditAcquisitionDialogOpen(true)
+    console.log('Selected acquisition for edit:', acquisition);
+    dispatch(setSelectedAcquisition(acquisition));
+    setNewAcquisition(prev => ({
+      ...prev,
+      itemName: acquisition.itemName || '',
+      description: acquisition.description || '',
+      quantity: acquisition.quantity || 1,
+      unitPrice: acquisition.cost && acquisition.quantity ? acquisition.cost / acquisition.quantity : 0,
+      quotationFileId: acquisition.quotationFile ? acquisition.quotationFile.id : undefined,
+    }));
+    setUploadedFileName(acquisition.quotationFile?.fileName || null);
+    setIsEditAcquisitionDialogOpen(true);
   }
 
   const handleUpdateAcquisition = () => {
     if (selectedAcquisition && selectedAcquisition.id) {
-      const updateData: UpdateAcquisitionDto = {
-        acquisitionType: selectedAcquisition.acquisitionType,
-        itemType: selectedAcquisition.itemType,
-        description: selectedAcquisition.description,
-        startDate: selectedAcquisition.startDate,
-        endDate: selectedAcquisition.endDate,
-        cost: selectedAcquisition.cost,
-        supplierId: selectedAcquisition.supplier?.id || 0
+      // Always use the latest uploaded file's ID if present
+      const updateData: UpdateAcquisitionDto & { createdBy: number } = {
+        acquisitionType: newAcquisition.acquisitionType ?? selectedAcquisition.acquisitionType,
+        itemType: newAcquisition.itemType ?? selectedAcquisition.itemType,
+        itemName: newAcquisition.itemName ?? selectedAcquisition.itemName,
+        description: newAcquisition.description ?? selectedAcquisition.description ?? selectedAcquisition.itemName ?? '',
+        startDate: newAcquisition.startDate ?? selectedAcquisition.startDate,
+        endDate: newAcquisition.endDate ?? selectedAcquisition.endDate,
+        cost: newAcquisition.unitPrice !== undefined && newAcquisition.unitPrice !== null
+          ? (newAcquisition.unitPrice * (newAcquisition.quantity || 1))
+          : (selectedAcquisition.cost ?? 0),
+        supplierId: newAcquisition.supplierId ?? selectedAcquisition.supplierId,
+        quantity: newAcquisition.quantity ?? selectedAcquisition.quantity,
+        quotationFileId:
+          typeof newAcquisition.quotationFileId === 'number' && newAcquisition.quotationFileId > 0
+            ? newAcquisition.quotationFileId
+            : (typeof selectedAcquisition.quotationFile?.id === 'number' ? selectedAcquisition.quotationFile.id : 0),
+        createdBy: currentUser?.id || 0,
+      };
+      console.log('Update acquisition payload:', updateData);
+      // Handle assignee fields
+      if (newAcquisition.assigneeType && newAcquisition.assigneeId) {
+        const assigneeId = parseInt(newAcquisition.assigneeId, 10);
+        const assigneeField = getAssigneeIdField(newAcquisition.assigneeType);
+        if (assigneeField) {
+          (updateData as any)[assigneeField] = assigneeId;
+        }
+      } else {
+        // fallback to selectedAcquisition assignee fields
+        if (selectedAcquisition.team?.id) updateData.teamId = selectedAcquisition.team.id;
+        if (selectedAcquisition.player?.id) updateData.playerId = selectedAcquisition.player.id;
+        if (selectedAcquisition.staff?.id) updateData.staffId = selectedAcquisition.staff.id;
       }
-
       dispatch(updateAcquisition({ id: selectedAcquisition.id, data: updateData }))
         .unwrap()
         .then(() => {
-          setIsEditAcquisitionDialogOpen(false)
+          setIsEditAcquisitionDialogOpen(false);
+          resetNewAcquisition();
         })
         .catch((error) => {
-          console.error("Échec de la mise à jour de l'acquisition:", error)
-        })
+          console.error("Échec de la mise à jour de l'acquisition:", error);
+        });
     }
   }
 
@@ -1131,37 +1179,63 @@ export function RentalSupplierManagement() {
           {selectedAcquisition && (
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-quantity">Quantité</Label>
+                <Label htmlFor="itemName">Nom de l'article</Label>
                 <Input
-                  id="edit-quantity"
-                  type="number"
-                  value={selectedAcquisition.quantity || 1}
-                  onChange={(e) => {
-                    if (selectedAcquisition) {
-                      dispatch(setSelectedAcquisition({
-                        ...selectedAcquisition,
-                        quantity: parseInt(e.target.value, 10)
-                      }));
-                    }
-                  }}
+                  id="itemName"
+                  value={newAcquisition.itemName}
+                  onChange={(e) => setNewAcquisition({ ...newAcquisition, itemName: e.target.value })}
+                  placeholder="Entrez le nom de l'article"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
-                  id="edit-description"
-                  value={selectedAcquisition.description || ""}
-                  onChange={(e) => {
-                    if (selectedAcquisition) {
-                      dispatch(setSelectedAcquisition({
-                        ...selectedAcquisition,
-                        description: e.target.value
-                      }));
-                    }
-                  }}
+                  id="description"
+                  value={newAcquisition.description}
+                  onChange={(e) => setNewAcquisition({ ...newAcquisition, description: e.target.value })}
+                  placeholder="Entrez la description de l'article"
                   rows={3}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantité</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={newAcquisition.quantity}
+                    onChange={(e) => setNewAcquisition({ ...newAcquisition, quantity: parseInt(e.target.value, 10) })}
+                    placeholder="Entrez la quantité"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unitPrice">Prix unitaire</Label>
+                  <Input
+                    id="unitPrice"
+                    type="number"
+                    step="0.01"
+                    value={newAcquisition.unitPrice}
+                    onChange={(e) => setNewAcquisition({ ...newAcquisition, unitPrice: parseFloat(e.target.value) })}
+                    placeholder="Entrez le prix unitaire"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quotationFile">Devis</Label>
+                <input
+                  id="quotationFile"
+                  type="file"
+                  accept="application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {uploading && <p className="text-xs text-blue-600">Téléversement...</p>}
+                {uploadedFileName && <p className="text-xs text-green-600">Téléversé : {uploadedFileName}</p>}
+                {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
               </div>
             </div>
           )}

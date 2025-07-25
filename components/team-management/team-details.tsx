@@ -14,7 +14,6 @@ import {
   DollarSign, 
   Building2,
   UserPlus,
-  PlusCircle,
   MapPin,
   Clock,
   Loader2
@@ -25,7 +24,7 @@ import { fetchAllStaff } from "@/lib/redux/staffSlice"
 
 interface TeamDetailsProps {
   team: Team
-  onEditTeam: (team: Team) => void
+  onEditTeam?: (team: Team) => void
 }
 
 export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
@@ -80,14 +79,16 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                 <span>Created: {team.createdAt ? formatDate(team.createdAt) : 'N/A'}</span>
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2"
-              onClick={() => onEditTeam(team)}
-            >
-              <Edit className="h-4 w-4" />
-              Edit Team
-            </Button>
+            {onEditTeam && (
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={() => onEditTeam(team)}
+              >
+                <Edit className="h-4 w-4" />
+                Edit Team
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pb-4">
@@ -139,10 +140,6 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
         <TabsContent value="players" className="space-y-4 mt-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Team Players</h3>
-            <Button size="sm" className="gap-2 flex items-center">
-              <UserPlus className="h-4 w-4" />
-              Add Player
-            </Button>
           </div>
 
           <Card>
@@ -154,7 +151,6 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                     <TableHead>Position</TableHead>
                     <TableHead>Age</TableHead>
                     <TableHead>Contract</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -184,18 +180,11 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-10 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-10 text-gray-500">
                         No players in this team
                       </TableCell>
                     </TableRow>
@@ -209,10 +198,6 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
         <TabsContent value="staff" className="space-y-4 mt-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Team Staff</h3>
-            <Button size="sm" className="gap-2 flex items-center">
-              <PlusCircle className="h-4 w-4" />
-              Add Staff
-            </Button>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -226,7 +211,6 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -235,16 +219,11 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
                         <TableRow key={staffMember.id}>
                           <TableCell>{staffMember.firstName} {staffMember.lastName}</TableCell>
                           <TableCell>{staffMember.role}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-10 text-gray-500">
+                        <TableCell colSpan={2} className="text-center py-10 text-gray-500">
                           No staff assigned to this team
                         </TableCell>
                       </TableRow>
@@ -259,10 +238,6 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
         <TabsContent value="matches" className="space-y-4 mt-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Team Matches</h3>
-            <Button size="sm" className="gap-2 flex items-center">
-              <PlusCircle className="h-4 w-4" />
-              Schedule Match
-            </Button>
           </div>
 
           <Card className="mb-6">

@@ -433,6 +433,7 @@ const contractSlice = createSlice({
       if (state.selectedContract?.id === action.payload.id) {
         state.selectedContract = action.payload;
       }
+      // NOTE: To ensure state is up to date, dispatch(fetchAllContracts()) in your component after updatePlayerContract.fulfilled.
     });
     builder.addCase(updatePlayerContract.rejected, (state, action) => {
       state.loading = false;
@@ -505,6 +506,7 @@ const contractSlice = createSlice({
       if (state.selectedContract?.id === action.payload.id) {
         state.selectedContract = action.payload;
       }
+      // NOTE: To ensure state is up to date, dispatch(fetchAllContracts()) in your component after updateStaffContract.fulfilled.
     });
     builder.addCase(updateStaffContract.rejected, (state, action) => {
       state.loading = false;

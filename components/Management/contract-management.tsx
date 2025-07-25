@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { apiConfig, getApiUrl } from "@/lib/api-config"
+import { apiConfig } from "@/lib/api-config"
 import { authService } from "@/lib/auth-service"
 import { useDispatch, useSelector } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,6 +43,8 @@ import {
   fetchAllContracts,
   createPlayerContract,
   createStaffContract,
+  updatePlayerContract,
+  updateStaffContract,
   // deletePlayerContract and deleteStaffContract removed as they're unused
   terminatePlayerContract,
   terminateStaffContract,
@@ -65,6 +67,8 @@ import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import type { AppDispatch, RootState } from "@/lib/redux/store"
 import type { PlayerContract, StaffContract } from "@/lib/api/contract-api"
 import type { Player, Staff } from "@/lib/types/team-management"
+import dayjs from "dayjs";
+import "dayjs/locale/fr";
 
 // Type guard helper functions
 const isPlayerContract = (contract: PlayerContract | StaffContract): contract is PlayerContract => {
@@ -124,6 +128,13 @@ export function ContractManagement() {
   const [contractToTerminate, setContractToTerminate] = useState<{ id: string; type: "player" | "staff" } | null>(null)
   const [contractToDelete, setContractToDelete] = useState<{ id: string; type: "player" | "staff" } | null>(null)
   const [terminationReason, setTerminationReason] = useState("")
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [contractToEdit, setContractToEdit] = useState<PlayerContract | StaffContract | null>(null);
+  const [editForm, setEditForm] = useState<any>(null);
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editFileUploading, setEditFileUploading] = useState(false);
+  const [editUploadedFileId, setEditUploadedFileId] = useState<number | null>(null);
+  const [editFileUploadError, setEditFileUploadError] = useState<string | null>(null);
 
   // All useEffect hooks here
   useEffect(() => {
@@ -319,7 +330,7 @@ export function ContractManagement() {
         hasBonus: contractForm.hasBonus,
         signatureBonus: contractForm.hasBonus ? Number(contractForm.signatureBonus) : undefined,
         description: contractForm.description,
-        contractFileId: uploadedFileId ?? undefined,
+        contractFileId: uploadedFileId ?? undefined, // <-- Ensure contractFileId is set if file uploaded
       }
 
       if (contractForm.contractType === "player") {
@@ -384,14 +395,14 @@ export function ContractManagement() {
     setFileUploading(true)
     console.log('Téléchargement du fichier:', contractFile);
     const formData = new FormData()
-    formData.append('file', contractFile)
-    // Log FormData contents
+    formData.append('contractFile', contractFile)
     try {
       const token = authService.getToken();
-      const res = await fetch(`${apiConfig.baseUrl}/contracts/file`, {
+      console.log('Token:', token)
+      const res = await fetch(`${apiConfig.baseUrl}/contracts/upload-file`, {
         method: 'POST',
         body: formData,
-        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       })
       console.log('Statut de la réponse de téléchargement de fichier:', res.status)
       const responseText = await res.text();
@@ -465,19 +476,7 @@ export function ContractManagement() {
   const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
 
   return matchesSearch && matchesStatus
-}).map(contract => ({
-  ...contract,
-  contractFile: {
-    id: 7,
-    fileName: "playerContract.pdf",
-    fileType: "application/pdf",
-    fileSize: 14760,
-    url: "/uploads/undefined",
-    createdAt: "2025-07-22T20:28:14.351Z",
-    updatedAt: "2025-07-22T20:28:14.351Z",
-    description: null
-  }
-}))
+});
 
   const filteredStaffContracts = staffContracts.filter((contract) => {
   const staffName = contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : '');
@@ -491,19 +490,7 @@ export function ContractManagement() {
   const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
 
   return matchesSearch && matchesStatus
-}).map(contract => ({
-  ...contract,
-  contractFile: {
-    id: 7,
-    fileName: "playerContract.pdf",
-    fileType: "application/pdf",
-    fileSize: 14760,
-    url: "/uploads/undefined",
-    createdAt: "2025-07-22T20:28:14.351Z",
-    updatedAt: "2025-07-22T20:28:14.351Z",
-    description: null
-  }
-}))
+});
 
   const contractStats = {
     player: {
@@ -904,8 +891,8 @@ export function ContractManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{contract.startDate}</div>
-                          <div className="text-gray-500">à {contract.endDate}</div>
+                          <div>{dayjs(contract.startDate).locale('fr').format('DD/MM/YYYY')}</div>
+                          <div className="text-gray-500">à {dayjs(contract.endDate).locale('fr').format('DD/MM/YYYY')}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(contract.status, contract.terminationDate)}</TableCell>
@@ -962,7 +949,7 @@ export function ContractManagement() {
                                     <div>
                                       <Label className="text-sm font-medium">Période du contrat</Label>
                                       <p className="text-sm text-gray-600">
-                                        {selectedContract.startDate} à {selectedContract.endDate}
+                                        {dayjs(selectedContract.startDate).locale('fr').format('DD/MM/YYYY')} à {dayjs(selectedContract.endDate).locale('fr').format('DD/MM/YYYY')}
                                       </p>
                                     </div>
                                   </div>
@@ -997,7 +984,12 @@ export function ContractManagement() {
                                     {selectedContract.contractFile && selectedContract.contractFile.url ? (
                                       <Button
                                         className="mt-2"
-                                        onClick={() => window.open(getApiUrl(selectedContract.contractFile!.url), '_blank', 'noopener,noreferrer')}
+                                        onClick={() => {
+                                          const fileUrl = selectedContract.contractFile?.url || '';
+                                          const isAbsolute = fileUrl.startsWith('http://') || fileUrl.startsWith('https://');
+                                          const urlToOpen = isAbsolute ? fileUrl : `${apiConfig.baseUrl}${fileUrl}`;
+                                          window.open(urlToOpen, '_blank', 'noopener,noreferrer');
+                                        }}
                                       >
                                         Voir le contrat
                                       </Button>
@@ -1010,23 +1002,15 @@ export function ContractManagement() {
                             </DialogContent>
                           </Dialog>
 
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setContractToEdit(contract);
+                            setEditForm({ ...contract });
+                            setEditUploadedFileId(contract.contractFile?.id || null);
+                            setIsEditDialogOpen(true);
+                          }}>
                             <Edit className="h-4 w-4" />
                           </Button>
 
-                          {contract.status === "active" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 bg-transparent"
-                              onClick={() => {
-                                setContractToTerminate({ id: contract.id.toString(), type: "player" });
-                                setTerminateDialogOpen(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
                           <Button
                             variant="outline"
                             size="sm"
@@ -1158,8 +1142,8 @@ export function ContractManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{contract.startDate}</div>
-                          <div className="text-gray-500">à {contract.endDate}</div>
+                          <div>{dayjs(contract.startDate).locale('fr').format('DD/MM/YYYY')}</div>
+                          <div className="text-gray-500">à {dayjs(contract.endDate).locale('fr').format('DD/MM/YYYY')}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(contract.status, contract.terminationDate)}</TableCell>
@@ -1218,7 +1202,7 @@ export function ContractManagement() {
                                     <div>
                                       <Label className="text-sm font-medium">Période du contrat</Label>
                                       <p className="text-sm text-gray-600">
-                                        {selectedContract.startDate} à {selectedContract.endDate}
+                                        {dayjs(selectedContract.startDate).locale('fr').format('DD/MM/YYYY')} à {dayjs(selectedContract.endDate).locale('fr').format('DD/MM/YYYY')}
                                       </p>
                                     </div>
                                   </div>
@@ -1276,23 +1260,26 @@ export function ContractManagement() {
                             </DialogContent>
                           </Dialog>
 
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setContractToEdit(contract);
+                            setEditForm({ ...contract });
+                            setEditUploadedFileId(contract.contractFile?.id || null);
+                            setIsEditDialogOpen(true);
+                          }}>
                             <Edit className="h-4 w-4" />
                           </Button>
 
-                          {contract.status === "active" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 bg-transparent"
-                              onClick={() => {
-                                setContractToTerminate({ id: contract.id.toString(), type: "staff" });
-                                setTerminateDialogOpen(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 bg-transparent"
+                            onClick={() => {
+                              setContractToDelete({ id: contract.id.toString(), type: "staff" });
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            Supprimer
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1421,6 +1408,153 @@ export function ContractManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
             <Button variant="destructive" onClick={handleDeleteContract}>Supprimer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Contract Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contract</DialogTitle>
+            <DialogDescription>Edit contract details and save changes.</DialogDescription>
+          </DialogHeader>
+          {editForm && (
+            <div className="space-y-4">
+              <Input
+                value={editForm.title}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                placeholder="Title"
+              />
+              <Input
+                type="number"
+                value={editForm.salary}
+                onChange={e => setEditForm({ ...editForm, salary: e.target.value })}
+                placeholder="Salary"
+              />
+              <Input
+                type="date"
+                value={editForm.startDate ? editForm.startDate.slice(0, 10) : ''}
+                onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
+              />
+              <Input
+                type="date"
+                value={editForm.endDate ? editForm.endDate.slice(0, 10) : ''}
+                onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
+              />
+              <Textarea
+                value={editForm.description || ''}
+                onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Description"
+              />
+              {/* File upload for edit */}
+              <div>
+                <Label>Contract File (PDF, DOCX, etc.)</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        setEditFile(e.target.files[0]);
+                        setEditUploadedFileId(null);
+                      } else {
+                        setEditFile(null);
+                        setEditUploadedFileId(null);
+                      }
+                    }}
+                    disabled={editFileUploading}
+                  />
+                  <Button type="button" onClick={async () => {
+                    setEditFileUploadError(null);
+                    if (!editFile) {
+                      setEditFileUploadError('Please select a file to upload.');
+                      return;
+                    }
+                    setEditFileUploading(true);
+                    const formData = new FormData();
+                    formData.append('contractFile', editFile);
+                    try {
+                      const token = authService.getToken();
+                      const res = await fetch(`${apiConfig.baseUrl}/contracts/upload-file`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                      });
+                      const responseText = await res.text();
+                      if (!res.ok) throw new Error(responseText || 'File upload failed');
+                      const fileData = JSON.parse(responseText);
+                      setEditUploadedFileId(fileData.id);
+                    } catch (err: any) {
+                      setEditFileUploadError('File upload failed: ' + (err.message || err));
+                    }
+                    setEditFileUploading(false);
+                  }} disabled={!editFile || editFileUploading || !!editUploadedFileId}>
+                    {editFileUploading ? 'Uploading...' : editUploadedFileId ? 'Uploaded' : 'Upload File'}
+                  </Button>
+                </div>
+                {editFile && !editUploadedFileId && (
+                  <div className="text-xs text-gray-600 mt-1">Selected: {editFile.name}</div>
+                )}
+                {editUploadedFileId && (
+                  <div className="text-xs text-green-600 mt-1">Uploaded</div>
+                )}
+                {editFileUploadError && (
+                  <div className="text-xs text-red-600 mt-1">{editFileUploadError}</div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              if (!contractToEdit) return;
+              let updateData: any;
+              if (isPlayerContract(contractToEdit)) {
+                updateData = {
+                  title: editForm.title,
+                  salary: Number(editForm.salary),
+                  startDate: editForm.startDate,
+                  endDate: editForm.endDate,
+                  hasBonus: editForm.hasBonus,
+                  signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
+                  description: editForm.description,
+                  playerId: editForm.playerId ? Number(editForm.playerId) : undefined,
+                  contractFileId: editUploadedFileId
+                    ? editUploadedFileId
+                    : contractToEdit.contractFile?.id
+                    ? contractToEdit.contractFile.id
+                    : undefined,
+                };
+                await dispatch(updatePlayerContract({ id: contractToEdit.id.toString(), data: updateData }));
+              } else if (isStaffContract(contractToEdit)) {
+                updateData = {
+                  title: editForm.title,
+                  salary: Number(editForm.salary),
+                  startDate: editForm.startDate,
+                  endDate: editForm.endDate,
+                  hasBonus: editForm.hasBonus,
+                  signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
+                  description: editForm.description,
+                  staffId: editForm.staffId ? Number(editForm.staffId) : undefined,
+                  benefits: editForm.benefits,
+                  terms: editForm.terms,
+                  contractFileId: editUploadedFileId
+                    ? editUploadedFileId
+                    : contractToEdit.contractFile?.id
+                    ? contractToEdit.contractFile.id
+                    : undefined,
+                };
+                await dispatch(updateStaffContract({ id: contractToEdit.id.toString(), data: updateData }));
+              }
+              setIsEditDialogOpen(false);
+              setContractToEdit(null);
+              setEditForm(null);
+              setEditFile(null);
+              setEditUploadedFileId(null);
+              setEditFileUploadError(null);
+              // Refresh contract list after update
+              dispatch(fetchAllContracts());
+            }}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

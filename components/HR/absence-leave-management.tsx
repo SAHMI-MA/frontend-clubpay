@@ -30,9 +30,12 @@ import {
   Clock,
   Eye,
   Trash2,
+  HeartPulse,
+  MoreHorizontal,
+  Settings,
 } from "lucide-react"
 import { Employee, hrApi } from "@/lib/api/hr-api"
-import { hrLeavesApi, CreateLeaveRequestDto, UpdateLeaveRequestDto, LeaveStatus, LeaveType } from "@/lib/api/hr-leaves-api"
+import { hrLeavesApi, CreateLeaveRequestDto, UpdateLeaveRequestDto, LeaveStatus, LeaveType, LeaveConfig } from "@/lib/api/hr-leaves-api"
 import { useSelector } from "react-redux"
 import { RootState } from "@/lib/redux/store"
 
@@ -129,6 +132,7 @@ export function AbsenceLeaveManagement() {
     });
   }
   const [actionDialog, setActionDialog] = useState<{ open: boolean; type: 'approve' | 'reject' | null; request: LeaveRequest | null }>({ open: false, type: null, request: null });
+  const [loading, setLoading] = useState(true);
   const [approverComments, setApproverComments] = useState("");
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([])
@@ -147,20 +151,30 @@ export function AbsenceLeaveManagement() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const currentUser = useSelector((state: RootState) => state.auth.user)
+  const [leaveSettings, setLeaveSettings] = useState<LeaveConfig>({
+    annual: 20,
+    sick: 10,
+    other: 5,
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
-  // Fetch leave requests from backend
+
+
+  // Fetch leave requests and employees from backend
   useEffect(() => {
-    hrLeavesApi.getLeaves().then((data: LeaveRequest[]) => setLeaveRequests(data))
-  }, [])
+    setLoading(true);
+    Promise.all([
+      hrLeavesApi.getLeaves(),
+      hrApi.getEmployees()
+    ]).then(([leaves, emps]) => {
+      setLeaveRequests(leaves);
+      setEmployees(emps);
+    }).finally(() => setLoading(false));
+  }, []);
 
-  // Fetch employees from backend
-  useEffect(() => {
-    hrApi.getEmployees().then((data: Employee[]) => {
-      setEmployees(data);
-    });
-  }, [])
-
-  // Compute leave balances whenever leaveRequests or employees change
+  // Compute leave balances whenever leaveRequests or employees or leaveSettings change
   useEffect(() => {
     if (employees.length === 0) return;
     const balances: LeaveBalance[] = employees.map((emp) => {
@@ -168,19 +182,19 @@ export function AbsenceLeaveManagement() {
       const empRequests = leaveRequests.filter(r => r.employeeId === emp.employeeId);
       // Used days for each type
       const annualUsed = empRequests
-        .filter(r => r.leaveType === "annual" && r.status === "approved")
+        .filter(r => r.leaveType === "vacation" && r.status === "approved")
         .reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
-      const sickUsed = empRequests.filter(r => r.leaveType === "sick" && r.status === "approved").reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
+      const sickUsed = empRequests.filter(r => r.leaveType === "sick leave" && r.status === "approved").reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
       const personalUsed = empRequests
         .filter(r => r.leaveType === "personal" && r.status === "approved")
         .reduce((sum, r) => sum + Number(r.daysRequested || 0), 0);
-      // Default totals (can be replaced with backend values if available)
-      const annualTotal = 20;
-      const sickTotal = 10;
-      const personalTotal = 5;
+      // Use backend config for totals
+      const annualTotal = leaveSettings.annual;
+      const sickTotal = leaveSettings.sick;
+      const personalTotal = leaveSettings.other;
       return {
         employeeId: emp.employeeId,
-        employeeName: emp.user.firstName + " " + emp.user.lastName,
+        employeeName: emp.fullName || "Nom inconnu",
         annual: {
           total: annualTotal,
           used: annualUsed,
@@ -199,10 +213,36 @@ export function AbsenceLeaveManagement() {
       };
     });
     setLeaveBalances(balances);
-  }, [leaveRequests, employees]);
+  }, [leaveRequests, employees, leaveSettings.annual, leaveSettings.sick, leaveSettings.other]);
+
+  // Fetch leave config on mount
+  useEffect(() => {
+    let mounted = true;
+    async function fetchConfig() {
+      try {
+        let config = await hrLeavesApi.getLeaveConfig();
+        if (!config) {
+          config = await hrLeavesApi.createLeaveConfig();
+        }
+        if (mounted) setLeaveSettings(config);
+      } catch (err) {
+        // Try to create if not found or error
+        console.error("Error fetching leave config:", err);
+        try {
+          const config = await hrLeavesApi.createLeaveConfig();
+          if (mounted) setLeaveSettings(config);
+        } catch (e) {
+          console.error("Error creating leave config:", e);
+          setSettingsError("Impossible de charger la configuration des congés.");
+        }
+      }
+    }
+    fetchConfig();
+    return () => { mounted = false; };
+  }, []);
 
   const filteredRequests = leaveRequests.filter((request) => {
-    const employeeName = request.employee?.user ? `${request.employee.user.firstName} ${request.employee.user.lastName}` : "";
+    const employeeName = request.employee?.fullName || "Nom inconnu";
     const position = request.employee?.position?.title || "";
     const matchesSearch =
       employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -312,8 +352,8 @@ export function AbsenceLeaveManagement() {
           employee: employeeObj
             ? {
               user: {
-                firstName: employeeObj.user.firstName.split(' ')[0] || '',
-                lastName: employeeObj.user.lastName.split(' ').slice(1).join(' ') || '',
+                firstName: employeeObj?.user?.firstName.split(' ')[0] || '',
+                lastName: employeeObj?.user?.lastName.split(' ').slice(1).join(' ') || '',
               },
               position: employeeObj.position && typeof employeeObj.position === "object"
                 ? { title: employeeObj.position.title || '' }
@@ -407,6 +447,27 @@ export function AbsenceLeaveManagement() {
   const approvedRequests = leaveRequests.filter((r) => r.status === "approved").length;
   const rejectedRequests = leaveRequests.filter((r) => r.status === "rejected").length;
 
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsError(null);
+    try {
+      let updated;
+      try {
+        updated = await hrLeavesApi.updateLeaveConfig(leaveSettings);
+      } catch (err: any) {
+        console.error("Error updating leave config:", err);
+        // If update fails (e.g. 404), try to create
+        updated = await hrLeavesApi.createLeaveConfig();
+      }
+      setLeaveSettings(updated);
+    } catch (err: any) {
+      setSettingsError(err?.message || "Erreur lors de la sauvegarde des paramètres");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -415,104 +476,109 @@ export function AbsenceLeaveManagement() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des absences et congés</h1>
           <p className="text-gray-600 dark:text-gray-400">Gérez les demandes et soldes de congés des employés</p>
         </div>
-        <Dialog open={showNewRequestDialog} onOpenChange={setShowNewRequestDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvelle demande
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Créer une demande de congé</DialogTitle>
-              <DialogDescription>Soumettre une nouvelle demande de congé pour un employé</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="employeeId">Employé</Label>
-                <Select
-                  value={newRequest.employeeId.toString()}
-                  onValueChange={(value) => setNewRequest({ ...newRequest, employeeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un employé" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((employee) => (
-                      <SelectItem key={employee.employeeId} value={employee.employeeId}>
-                        {employee.user.lastName} - {employee.position?.title || "No Position"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="leaveType">Type de congé</Label>
-                <Select
-                  value={newRequest.leaveType}
-                  onValueChange={(value) => setNewRequest({ ...newRequest, leaveType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner le type de congé" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leaveTypeOptions.map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowSettingsDialog(true)} disabled={loading}>
+            <Settings className="w-4 h-4 mr-2" /> Paramètres des congés
+          </Button>
+          <Dialog open={showNewRequestDialog} onOpenChange={setShowNewRequestDialog}>
+            <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nouvelle demande
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Créer une demande de congé</DialogTitle>
+                <DialogDescription>Soumettre une nouvelle demande de congé pour un employé</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Date de début</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={newRequest.startDate}
-                    onChange={(e) => setNewRequest({ ...newRequest, startDate: e.target.value })}
-                  />
+                  <Label htmlFor="employeeId">Employé</Label>
+                  <Select
+                    value={newRequest.employeeId.toString()}
+                    onValueChange={(value) => setNewRequest({ ...newRequest, employeeId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un employé" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map((employee) => (
+                        <SelectItem key={employee.employeeId} value={employee.employeeId}>
+                          {employee.fullName || 'Nom inconnu'} - {employee.position?.title || "No Position"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Date de fin</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={newRequest.endDate}
-                    onChange={(e) => setNewRequest({ ...newRequest, endDate: e.target.value })}
+                  <Label htmlFor="leaveType">Type de congé</Label>
+                  <Select
+                    value={newRequest.leaveType}
+                    onValueChange={(value) => setNewRequest({ ...newRequest, leaveType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le type de congé" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leaveTypeOptions.map((type) => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Date de début</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={newRequest.startDate}
+                      onChange={(e) => setNewRequest({ ...newRequest, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">Date de fin</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={newRequest.endDate}
+                      onChange={(e) => setNewRequest({ ...newRequest, endDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                {newRequest.startDate && newRequest.endDate && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-300">
+                      Nombre total de jours : {calculateDays(newRequest.startDate, newRequest.endDate)}
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Motif</Label>
+                  <Textarea
+                    id="reason"
+                    value={newRequest.reason}
+                    onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
+                    placeholder="Entrez le motif de la demande de congé"
+                    rows={3}
                   />
                 </div>
               </div>
-              {newRequest.startDate && newRequest.endDate && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Nombre total de jours : {calculateDays(newRequest.startDate, newRequest.endDate)}
-                  </p>
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="reason">Motif</Label>
-                <Textarea
-                  id="reason"
-                  value={newRequest.reason}
-                  onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
-                  placeholder="Entrez le motif de la demande de congé"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowNewRequestDialog(false)}>
-                Annuler
-              </Button>
-              <Button
-                onClick={handleCreateRequest}
-                disabled={!newRequest.employeeId || !newRequest.startDate || !newRequest.endDate}
-              >
-                Soumettre la demande
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowNewRequestDialog(false)} disabled={loading}>
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleCreateRequest}
+                  disabled={loading || !newRequest.employeeId || !newRequest.startDate || !newRequest.endDate}
+                >
+                  Soumettre la demande
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -631,21 +697,21 @@ export function AbsenceLeaveManagement() {
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {request.employee?.user
-                                ? `${request.employee.user.firstName} ${request.employee.user.lastName}`
+                              {request.employee?.fullName
+                                ? request.employee.fullName
                                 : (() => {
-                                  const emp = employees.find(e => e.employeeId === request.employeeId);
-                                  return emp ? emp.user.lastName : "";
-                                })()
+                                    const emp = employees.find(e => e.employeeId === request.employeeId);
+                                    return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
+                                  })()
                               }
                             </div>
                             <div className="text-sm text-gray-500">
                               {request.employee?.position?.title
                                 ? request.employee.position.title
                                 : (() => {
-                                  const emp = employees.find(e => e.employeeId === request.employeeId);
-                                  return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
-                                })()
+                                    const emp = employees.find(e => e.employeeId === request.employeeId);
+                                    return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                                  })()
                               }
                             </div>
                           </div>
@@ -661,13 +727,14 @@ export function AbsenceLeaveManagement() {
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedRequest(request)}>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedRequest(request)} disabled={loading}>
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => setConfirmDeleteId(String(request.id))}
+                              disabled={loading}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -688,7 +755,7 @@ export function AbsenceLeaveManagement() {
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+                    <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={loading}>
                       Annuler
                     </Button>
                     <Button
@@ -697,6 +764,7 @@ export function AbsenceLeaveManagement() {
                         if (confirmDeleteId) handleDeleteRequest(Number(confirmDeleteId))
                         setConfirmDeleteId(null)
                       }}
+                      disabled={loading}
                     >
                       Supprimer
                     </Button>
@@ -805,21 +873,21 @@ export function AbsenceLeaveManagement() {
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Employé</Label>
                   <p className="text-lg font-semibold">
-                    {selectedRequest?.employee?.user
-                      ? `${selectedRequest.employee.user.firstName} ${selectedRequest.employee.user.lastName}`
+                    {selectedRequest?.employee?.fullName
+                      ? selectedRequest.employee.fullName
                       : (() => {
-                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
-                        return emp ? emp.user.lastName : "";
-                      })()
+                          const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                          return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
+                        })()
                     }
                   </p>
                   <p className="text-sm text-gray-600">
                     {selectedRequest?.employee?.position?.title
                       ? selectedRequest.employee.position.title
                       : (() => {
-                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
-                        return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
-                      })()
+                          const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                          return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                        })()
                     }
                   </p>
                 </div>
@@ -872,7 +940,7 @@ export function AbsenceLeaveManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+              <Button variant="outline" onClick={() => setSelectedRequest(null)} disabled={loading}>
                 Fermer
               </Button>
               {selectedRequest && selectedRequest.status?.toLowerCase() === "pending" && (
@@ -882,6 +950,7 @@ export function AbsenceLeaveManagement() {
                       setActionDialog({ open: true, type: 'approve', request: selectedRequest });
                     }}
                     className="bg-green-600 hover:bg-green-700"
+                    disabled={loading}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Approuver
@@ -891,6 +960,7 @@ export function AbsenceLeaveManagement() {
                       setActionDialog({ open: true, type: 'reject', request: selectedRequest });
                     }}
                     variant="destructive"
+                    disabled={loading}
                   >
                     <XCircle className="w-4 h-4 mr-2" />
                     Rejeter
@@ -919,7 +989,7 @@ export function AbsenceLeaveManagement() {
                     />
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }}>
+                    <Button variant="outline" onClick={() => { setActionDialog({ open: false, type: null, request: null }); setApproverComments(""); }} disabled={loading}>
                       Annuler
                     </Button>
                     <Button
@@ -932,7 +1002,7 @@ export function AbsenceLeaveManagement() {
                           }
                         }
                       }}
-                      disabled={!approverComments.trim()}
+                      disabled={loading || !approverComments.trim()}
                       className={actionDialog.type === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
                     >
                       {actionDialog.type === 'approve' ? <CheckCircle className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
@@ -945,6 +1015,71 @@ export function AbsenceLeaveManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogTitle asChild={false}>
+            <span className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-500" /> Paramètres des congés
+            </span>
+          </DialogTitle>
+          <DialogDescription>
+            Définissez le nombre de congés autorisés par type pour tous les employés.
+          </DialogDescription>
+          <Card className="shadow-none border-none mt-2">
+            <CardContent>
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                <div>
+                  <label className="mb-1 font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-500" /> Congés annuels autorisés
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={leaveSettings.annual}
+                    onChange={e => setLeaveSettings(s => ({ ...s, annual: parseInt(e.target.value, 10) }))}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">Nombre de jours de congé annuel autorisés par employé.</div>
+                </div>
+                <div>
+                  <label className="mb-1 font-medium flex items-center gap-2">
+                    <HeartPulse className="h-4 w-4 text-pink-500" /> Congés maladie autorisés
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={leaveSettings.sick}
+                    onChange={e => setLeaveSettings(s => ({ ...s, sick: parseInt(e.target.value, 10) }))}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">Nombre de jours de congé maladie autorisés par employé.</div>
+                </div>
+                <div>
+                  <label className="mb-1 font-medium flex items-center gap-2">
+                    <MoreHorizontal className="h-4 w-4 text-yellow-500" /> Autres congés autorisés
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={leaveSettings.other}
+                    onChange={e => setLeaveSettings(s => ({ ...s, other: parseInt(e.target.value, 10) }))}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">Nombre de jours d'autres congés autorisés par employé.</div>
+                </div>
+                {settingsError && <div className="text-red-500 text-sm">{settingsError}</div>}
+                <div className="flex justify-end">
+                  <button type="submit" className="btn btn-primary px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition" disabled={isSavingSettings}>
+                    {isSavingSettings ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

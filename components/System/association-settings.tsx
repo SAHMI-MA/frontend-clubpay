@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building, Camera, History, Save, Search, Settings, Upload, User, Activity, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
+import { Building, Camera, History, Save, Search, Upload, Activity, Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { getApiUrl, apiConfig } from "@/lib/api-config"
+import { authUtils } from '@/lib/redux/auth-utils';
 
 // Types
 interface AssociationSettings {
@@ -245,6 +246,241 @@ class AssociationAPI {
   }
 }
 
+// --- BankAccountManagement Component ---
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
+interface BankAccount {
+  id: number;
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  RIB: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function BankAccountManagement() {
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editAccount, setEditAccount] = useState<BankAccount | null>(null);
+  const [form, setForm] = useState<Omit<BankAccount, 'id' | 'createdAt' | 'updatedAt'>>({
+    accountHolderName: '',
+    bankName: '',
+    accountNumber: '',
+    RIB: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = authUtils.getToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
+
+  // Fetch all accounts
+  const fetchAccounts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(getApiUrl('/bank-accounts'), { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Erreur lors du chargement des comptes bancaires');
+      const data = await res.json();
+      setAccounts(data);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAccounts(); }, []);
+
+  // Handle open create dialog
+  const handleOpenCreate = () => {
+    setEditAccount(null);
+    setForm({ accountHolderName: '', bankName: '', accountNumber: '', RIB: '' });
+    setShowDialog(true);
+  };
+
+  // Handle open edit dialog
+  const handleOpenEdit = (account: BankAccount) => {
+    setEditAccount(account);
+    setForm({
+      accountHolderName: account.accountHolderName,
+      bankName: account.bankName,
+      accountNumber: account.accountNumber,
+      RIB: account.RIB,
+    });
+    setShowDialog(true);
+  };
+
+  // Handle create or update
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      let res;
+      // Only send the correct keys (no id, createdAt, updatedAt)
+      const payload = {
+        accountHolderName: form.accountHolderName,
+        bankName: form.bankName,
+        accountNumber: form.accountNumber,
+        RIB: form.RIB,
+      };
+      if (editAccount) {
+        res = await fetch(getApiUrl(`/bank-accounts/${editAccount.id}`), {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch(getApiUrl('/bank-accounts'), {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+      }
+      if (!res.ok) {
+        let errorMsg = `Erreur lors de la sauvegarde du compte bancaire (status: ${res.status} ${res.statusText})`;
+        let errorBody = '';
+        try {
+          errorBody = await res.text();
+          // Try to parse JSON if possible
+          try {
+            const json = JSON.parse(errorBody);
+            if (json && json.message) {
+              errorMsg += `: ${Array.isArray(json.message) ? json.message.join(', ') : json.message}`;
+            } else {
+              errorMsg += `: ${errorBody}`;
+            }
+          } catch {
+            errorMsg += `: ${errorBody}`;
+          }
+        } catch {}
+        console.error('Bank account save error:', errorMsg, errorBody);
+        setError(errorMsg);
+        throw new Error(errorMsg);
+      }
+      setShowDialog(false);
+      fetchAccounts();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(getApiUrl(`/bank-accounts/${id}`), { method: 'DELETE', headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Erreur lors de la suppression du compte bancaire');
+      fetchAccounts();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <Button className="bg-blue-800 hover:bg-blue-900 text-white" onClick={handleOpenCreate}>
+          Ajouter un compte bancaire
+        </Button>
+      </div>
+      {error && <div className="text-red-500 mb-2">{error}</div>}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Nom du titulaire</TableHead>
+              <TableHead>Banque</TableHead>
+              <TableHead>Numéro de compte</TableHead>
+              <TableHead>RIB</TableHead>
+              <TableHead>Créé le</TableHead>
+              <TableHead>Mis à jour le</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={8}>Chargement...</TableCell></TableRow>
+            ) : accounts.length === 0 ? (
+              <TableRow><TableCell colSpan={8}>Aucun compte bancaire trouvé</TableCell></TableRow>
+            ) : accounts.map(account => (
+              <TableRow key={account.id}>
+                <TableCell>{account.id}</TableCell>
+                <TableCell>{account.accountHolderName}</TableCell>
+                <TableCell>{account.bankName}</TableCell>
+                <TableCell>{account.accountNumber}</TableCell>
+                <TableCell>{account.RIB}</TableCell>
+                <TableCell>{new Date(account.createdAt).toLocaleString('fr-FR')}</TableCell>
+                <TableCell>{new Date(account.updatedAt).toLocaleString('fr-FR')}</TableCell>
+                <TableCell>
+                  <Button size="sm" variant="outline" onClick={() => handleOpenEdit(account)} className="mr-2">Modifier</Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleDelete(account.id)} disabled={deletingId === account.id}>
+                    {deletingId === account.id ? 'Suppression...' : 'Supprimer'}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editAccount ? 'Modifier le compte bancaire' : 'Ajouter un compte bancaire'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nom du titulaire</Label>
+              <Input value={form.accountHolderName} onChange={e => setForm(f => ({ ...f, accountHolderName: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Banque</Label>
+              <Input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Numéro de compte</Label>
+              <Input value={form.accountNumber} onChange={e => setForm(f => ({ ...f, accountNumber: e.target.value }))} />
+            </div>
+            <div>
+              <Label>RIB</Label>
+              <Input value={form.RIB} onChange={e => setForm(f => ({ ...f, RIB: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSave} disabled={saving} className="bg-blue-800 hover:bg-blue-900 text-white">
+              {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Enregistrer
+                    </>
+                  )}
+            </Button>
+            <Button variant="outline" onClick={() => setShowDialog(false)} disabled={saving}>Annuler</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export function AssociationSettings() {
   // API instance
   const api = new AssociationAPI()
@@ -420,7 +656,7 @@ export function AssociationSettings() {
     }, 300); // Debounce search and filter changes
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, currentPage, pageSize, activityType, userId, startDate, endDate, entityType, logsLoading]);
+  }, [searchTerm, currentPage, pageSize, activityType, userId, startDate, endDate, entityType]);
 
 
   // Activity logs loading with improved error handling and state management
@@ -918,7 +1154,7 @@ export function AssociationSettings() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="bankAccounts">Comptes bancaires du club</TabsTrigger>
           <TabsTrigger value="logs">Journaux d'activité</TabsTrigger>
         </TabsList>
 
@@ -1133,26 +1369,18 @@ export function AssociationSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="users" className="space-y-4">
+        <TabsContent value="bankAccounts" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Paramètres des utilisateurs
+                <Building className="h-5 w-5" />
+                Comptes bancaires du club
               </CardTitle>
-              <CardDescription>Configurez les rôles, permissions et accès des utilisateurs</CardDescription>
+              <CardDescription>Gérez les comptes bancaires de l'association</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Paramètres avancés de gestion des utilisateurs et des rôles.
-                </p>
-                <Button className="bg-blue-800 hover:bg-blue-900 text-white">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configurer les permissions
-                </Button>
-              </div>
+              {/* Bank Account Management UI */}
+              <BankAccountManagement />
             </CardContent>
           </Card>
         </TabsContent>

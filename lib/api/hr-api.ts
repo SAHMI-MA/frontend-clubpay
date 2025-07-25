@@ -21,13 +21,14 @@ function buildQuery(params?: Record<string, any>): string {
 // Employee
 export interface Employee {
   employeeId: string;
-  user: {
+  user?: {
     id: number;
     email: string;
     firstName: string;
     lastName: string;
   };
-  currentSalary: string;
+  fullName: string;
+  currentSalary?: string;
   departmentId: number,
   department: {
     id: number;
@@ -40,16 +41,13 @@ export interface Employee {
     title: string;
     level?: string;
   };
-  status: EmployeeStatus;
+  status?: EmployeeStatus;
   hireDate: string;
   phoneNumber: string;
   personalEmail: string;
   address: string;
   dateOfBirth: string;
   maritalStatus: MaritalStatus;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
   nationalId: string;
   createdAt: string;
   updatedAt: string;
@@ -63,28 +61,24 @@ export type EmployeeStatus = "Active" | "Inactive" | "Terminated" | "On Leave" |
 export type MaritalStatus = "Single" | "Married" | "Divorced" | "Widowed";
 
 export interface CreateEmployeeRequest {
-  userId: number;
+  userId?: number | null;
+  fullName: string;
   departmentId: number;
   positionId: number;
   hireDate: string;
   phoneNumber: string;
   personalEmail: string;
-  status: EmployeeStatus;
+  status?: EmployeeStatus;
   address: string;
   dateOfBirth: string;
   maritalStatus: MaritalStatus;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
   nationalId: string;
-  currentSalary: string;
-}
-export type UpdateEmployeeRequest = Partial<Omit<CreateEmployeeRequest, "employeeId" | "userId">> & {
-  departmentId?: number;
-  positionId?: number;
-  maritalStatus?: MaritalStatus;
   currentSalary?: string;
-};
+  bankAccountNumber?: string;
+  bankName?: string;
+  notes?: string;
+}
+export type UpdateEmployeeRequest = Partial<Omit<CreateEmployeeRequest, "employeeId">>;
 export interface UpdateEmployeeStatusRequest {
   status: EmployeeStatus;
 }
