@@ -1,21 +1,7 @@
 "use client"
 
 import {
-  BarChart3,
-  Building2,
-  Calendar,
-  CreditCard,
-  FileText,
-  Home,
-  Settings,
   Shield,
-  Trophy,
-  Users,
-  Warehouse,
-  UserCheck,
-  Truck,
-  UserCog,
-  DollarSign,
   ChevronDown,
 } from "lucide-react"
 
@@ -31,124 +17,11 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { authUtils } from "@/lib/redux/auth-utils"
+import { Permissions } from "@/lib/auth-service"
+import { associationAPI, AssociationSettings, navigationGroups } from "@/lib/api/association-api"
+import { useEffect, useState } from "react"
 
-const navigationGroups = [
-  {
-    title: "Aperçu",
-    items: [
-      {
-        title: "Tableau de bord",
-        icon: Home,
-        id: "dashboard",
-      },
-    ],
-  },
-  {
-    title: "Gestion",
-    items: [
-      {
-        title: "Gestion des utilisateurs",
-        icon: Users,
-        id: "users",
-      },
-      {
-        title: "Clubs & Équipes",
-        icon: Building2,
-        id: "clubs",
-      },
-      {
-        title: "Gestion des joueurs",
-        icon: Users,
-        id: "players",
-      },
-      {
-        title: "Gestion du staff",
-        icon: UserCheck,
-        id: "staff",
-      },
-    ],
-  },
-  {
-    title: "Ressources humaines",
-    items: [
-      {
-        title: "Gestion RH",
-        icon: UserCog,
-        id: "hr",
-      },
-      {
-        title: "Dossiers employés",
-        icon: FileText,
-        id: "employee-files",
-      },
-      {
-        title: "Absences & Congés",
-        icon: Calendar,
-        id: "absence-leave",
-      },
-      {
-        title: "Paiements des salaires",
-        icon: DollarSign,
-        id: "salary-payments",
-      },
-    ],
-  },
-  {
-    title: "Service d'achat",
-    items: [
-      {
-        title: "Locations & Acquisitions",
-        icon: Warehouse,
-        id: "rentals",
-      },
-      {
-        title: "Gestion des fournisseurs",
-        icon: Truck,
-        id: "suppliers",
-      },
-      {
-        title: "Financier",
-        icon: CreditCard,
-        id: "financial",
-      },
-    ],
-  },
-  {
-    title: "Sport",
-    items: [
-      {
-        title: "Contrats & Primes",
-        icon: FileText,
-        id: "contracts",
-      },
-      {
-        title: "Objectifs & Récompenses",
-        icon: Trophy,
-        id: "objectives",
-      },
-      {
-        title: "Gestion des matchs",
-        icon: Calendar,
-        id: "matches",
-      },
-    ],
-  },
-  {
-    title: "Système",
-    items: [
-      {
-        title: "Analytique",
-        icon: BarChart3,
-        id: "analytics",
-      },
-      {
-        title: "Paramètres & Journaux",
-        icon: Settings,
-        id: "settings",
-      },
-    ],
-  },
-]
 
 interface AppSidebarProps {
   currentPage: string
@@ -156,14 +29,69 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
+  const user = authUtils.getUser()
+  const [associationSettings, setAssociationSettings] = useState<AssociationSettings | null>(null)
+  const [baseUrl, setBaseUrl] = useState<string>("")
+  const getAssociationSettings = async () => {
+    try {
+      const settings = await associationAPI.getSettings()
+      const baseUrl = associationAPI.baseURL
+      setAssociationSettings(settings)
+      setBaseUrl(baseUrl)
+    } catch (error) {
+      console.error("Failed to fetch association settings:", error)
+      setAssociationSettings(null)
+    }
+  }
+  useEffect(() => {
+    getAssociationSettings()
+  }, [])
+
+
+  const userPermissions = new Set<string>()
+  if (user && Array.isArray(user.roles)) {
+    user.roles.forEach(role => {
+      if (Array.isArray(role.permissions)) {
+        role.permissions.forEach((perm: Permissions) => {
+          if (perm && perm.page) {
+            userPermissions.add(perm.page)
+            userPermissions.add(`${perm.page}.view`)
+          }
+        })
+      }
+    })
+  }
+
+  // Helper to check if user can view a page
+  const canView = (pageId: string) => {
+    // Check for either exact match or .view permission
+    return userPermissions.has(pageId) || userPermissions.has(`${pageId}.view`)
+  }
+
+  // Filter navigation groups and items based on permissions
+  const filteredGroups = navigationGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => canView(item.id)),
+    }))
+    .filter(group => group.items.length > 0)
   return (
     <Sidebar className="border-r border-gray-200 dark:border-gray-700">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
+            {
+            associationSettings != null && associationSettings.logoUrl != null ?
+            <img
+              src={`${baseUrl}${associationSettings.logoUrl}`}
+              alt="Association Logo"
+              className="h-16 w-16 rounded-full object-cover"
+              style={{ aspectRatio: "1 / 1" }}
+            />
+            : <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
+            }
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Système</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Système</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{associationSettings?.name}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{associationSettings?.tagline}</p>
           </div>
         </div>
       </SidebarHeader>
@@ -203,3 +131,4 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
     </Sidebar>
   )
 }
+

@@ -23,13 +23,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2 } from "lucide-react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
-import { 
+import {
   fetchAllUsers,
-  createUser, 
-  updateUser, 
-  deleteUser, 
-  assignRoleToUser, 
-  removeRoleFromUser 
+  createUser,
+  updateUser,
+  deleteUser,
+  assignRoleToUser,
+  removeRoleFromUser
 } from "@/lib/redux/userSlice"
 import {
   fetchAllRoles,
@@ -40,16 +40,44 @@ import {
   removePermissionFromRole
 } from "@/lib/redux/roleSlice"
 import { fetchAllPermissions } from "@/lib/redux/permissionSlice"
-import { CreateUserDto, UpdateUserDto, CreateRoleDto, UpdateRoleDto, User, Role} from "@/lib/services"
+
+import type { CreateRoleDto, CreateUserDto, Role, UpdateRoleDto, UpdateUserDto, User } from "@/lib/services"
+
+/**
+ * Export a list of users to CSV (ID, First Name, Last Name, Email, Roles)
+ * @param users Array of User objects
+ */
+export function exportUsersToCSV(users: User[]) {
+  const header = ['ID', 'First Name', 'Last Name', 'Email', 'Roles'];
+  const rows = users.map(user => [
+    user.id,
+    user.firstName,
+    user.lastName,
+    user.email,
+    (user.roles?.map(r => r.name).join('; ') || '')
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'users.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export function UserManagement() {
   const dispatch = useAppDispatch()
-  
+
   // Redux state
   const { users, loading: usersLoading, error: usersError } = useAppSelector((state) => state.users)
   const { roles, loading: rolesLoading, error: rolesError } = useAppSelector((state) => state.roles)
   const { permissions, loading: permissionsLoading } = useAppSelector((state) => state.permissions)
-  
+
   // Local state
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedRole, setSelectedRole] = useState("all")
@@ -77,7 +105,7 @@ export function UserManagement() {
   const [itemToDelete, setItemToDelete] = useState<{ type: 'user' | 'role', id: number } | null>(null)
   const [roleToAssign, setRoleToAssign] = useState<number | null>(null)
   const [userForRoleAssignment, setUserForRoleAssignment] = useState<number | null>(null)
-  
+
   // Load data on component mount
   useEffect(() => {
     dispatch(fetchAllUsers())
@@ -100,11 +128,11 @@ export function UserManagement() {
     const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesRole =
-      selectedRole === "all" || 
+      selectedRole === "all" ||
       (user.roles && user.roles.some((role) => role.name.toLowerCase() === selectedRole.toLowerCase()))
-    
+
     return matchesSearch && matchesRole
   })
 
@@ -171,14 +199,14 @@ export function UserManagement() {
 
   const handleUpdateUser = async () => {
     if (!editingUser) return
-    
+
     const userData: UpdateUserDto = {
       firstName: editingUser.firstName,
       lastName: editingUser.lastName,
       email: editingUser.email,
       isActive: editingUser.isActive,
     }
-    
+
     try {
       await dispatch(updateUser({ id: editingUser.id, userData })).unwrap()
       toast.success("Utilisateur mis à jour avec succès")
@@ -202,18 +230,18 @@ export function UserManagement() {
         name: newRole.name,
         description: newRole.description,
       }
-      
+
       const createdRole = await dispatch(createRole(roleData)).unwrap()
-      
+
       // Then add permissions if any
-      const permissionPromises = newRole.permissions.map(permissionId => 
+      const permissionPromises = newRole.permissions.map(permissionId =>
         dispatch(addPermissionToRole({ roleId: createdRole.id, permissionId }))
       )
-      
+
       if (permissionPromises.length > 0) {
         await Promise.all(permissionPromises)
       }
-      
+
       toast.success("Rôle créé avec succès")
       setIsRoleDialogOpen(false)
       setNewRole({
@@ -228,16 +256,16 @@ export function UserManagement() {
 
   const handleEditRole = (role: Role) => {
     // Convert Role with Permission[] to Role with number[] for editing
-    setEditingRole({ 
+    setEditingRole({
       ...role,
-      permissions: role.permissions?.map(p => p.id) || [] 
+      permissions: role.permissions?.map(p => p.id) || []
     })
     setIsEditRoleDialogOpen(true)
   }
 
   const handleEditRolePermissionChange = (permissionId: number, checked: boolean) => {
     if (!editingRole) return
-    
+
     if (checked) {
       setEditingRole((prev) => ({
         ...prev!,
@@ -253,47 +281,47 @@ export function UserManagement() {
 
   const handleUpdateRole = async () => {
     if (!editingRole) return
-    
+
     try {
       const roleData: UpdateRoleDto = {
         name: editingRole.name,
         description: editingRole.description,
       }
-      
+
       // Update basic role info
       await dispatch(updateRole({ id: editingRole.id, roleData })).unwrap()
-      
+
       // Get current permissions (number[])
       const currentPermissions = editingRole.permissions || []
-      
+
       // Find the original role to compare permissions
       const originalRole = roles.find(r => r.id === editingRole.id)
-      
+
       // Convert Permission[] to number[] for comparison
       const originalPermissionIds = originalRole?.permissions?.map(p => p.id) || []
-      
+
       // Determine which permissions to add and which to remove
       const permissionsToAdd = currentPermissions.filter(
         pId => !originalPermissionIds.includes(pId)
       )
-      
+
       const permissionsToRemove = originalPermissionIds.filter(
         pId => !currentPermissions.includes(pId)
       )
-      
+
       // Add new permissions
       const addPromises = permissionsToAdd.map(permissionId =>
         dispatch(addPermissionToRole({ roleId: editingRole.id, permissionId }))
       )
-      
+
       // Remove permissions
       const removePromises = permissionsToRemove.map(permissionId =>
         dispatch(removePermissionFromRole({ roleId: editingRole.id, permissionId }))
       )
-      
+
       // Wait for all permission operations to complete
       await Promise.all([...addPromises, ...removePromises])
-      
+
       toast.success("Rôle mis à jour avec succès")
       setIsEditRoleDialogOpen(false)
       setEditingRole(null)
@@ -310,13 +338,13 @@ export function UserManagement() {
   // Role assignment operations
   const handleAssignRole = async () => {
     if (!userForRoleAssignment || !roleToAssign) return
-    
+
     try {
-      await dispatch(assignRoleToUser({ 
-        userId: userForRoleAssignment, 
-        roleId: roleToAssign 
+      await dispatch(assignRoleToUser({
+        userId: userForRoleAssignment,
+        roleId: roleToAssign
       })).unwrap()
-      
+
       toast.success("Rôle affecté avec succès")
       setIsAssignRoleDialogOpen(false)
       setUserForRoleAssignment(null)
@@ -330,13 +358,13 @@ export function UserManagement() {
     try {
       // Show loading toast
       toast.loading("Suppression du rôle...")
-      
+
       // Dispatch the action to remove the role
       await dispatch(removeRoleFromUser({ userId, roleId })).unwrap()
-      
+
       // Show success toast
       toast.success("Rôle supprimé avec succès")
-      
+
       // Refresh the users list to ensure UI is updated
       dispatch(fetchAllUsers())
     } catch (error) {
@@ -347,21 +375,21 @@ export function UserManagement() {
 
   const confirmDelete = async () => {
     if (!itemToDelete) return
-    
+
     try {
       // Show loading toast
       toast.loading(`Suppression de ${itemToDelete.type}...`)
-      
+
       if (itemToDelete.type === "user") {
         await dispatch(deleteUser(itemToDelete.id)).unwrap()
         toast.success("Utilisateur supprimé avec succès")
-        
+
         // Refresh users list
         dispatch(fetchAllUsers())
       } else if (itemToDelete.type === "role") {
         await dispatch(deleteRole(itemToDelete.id)).unwrap()
         toast.success("Rôle supprimé avec succès")
-        
+
         // Refresh roles list
         dispatch(fetchAllRoles())
       }
@@ -376,6 +404,15 @@ export function UserManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Users CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportUsersToCSV(filteredUsers)}
+        >
+          Exporter les utilisateurs (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des utilisateurs</h1>
@@ -425,59 +462,59 @@ export function UserManagement() {
                         <Label htmlFor="firstName" className="text-right">
                           Prénom
                         </Label>
-                        <Input 
-                          id="firstName" 
-                          placeholder="Prénom" 
-                          className="col-span-3" 
+                        <Input
+                          id="firstName"
+                          placeholder="Prénom"
+                          className="col-span-3"
                           value={newUser.firstName}
-                          onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
+                          onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="lastName" className="text-right">
                           Nom
                         </Label>
-                        <Input 
-                          id="lastName" 
-                          placeholder="Nom" 
-                          className="col-span-3" 
+                        <Input
+                          id="lastName"
+                          placeholder="Nom"
+                          className="col-span-3"
                           value={newUser.lastName}
-                          onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
+                          onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="email" className="text-right">
                           Email
                         </Label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="email@exemple.com" 
-                          className="col-span-3" 
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="email@exemple.com"
+                          className="col-span-3"
                           value={newUser.email}
-                          onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="password" className="text-right">
                           Mot de passe
                         </Label>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          placeholder="Mot de passe" 
-                          className="col-span-3" 
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Mot de passe"
+                          className="col-span-3"
                           value={newUser.password}
-                          onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="isActive" className="text-right">
                           Statut
                         </Label>
-                        <Select 
+                        <Select
                           value={newUser.isActive ? "active" : "inactive"}
-                          onValueChange={(value) => setNewUser({...newUser, isActive: value === "active"})}
+                          onValueChange={(value) => setNewUser({ ...newUser, isActive: value === "active" })}
                         >
                           <SelectTrigger className="col-span-3">
                             <SelectValue placeholder="Sélectionner le statut" />
@@ -490,8 +527,8 @@ export function UserManagement() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-blue-800 hover:bg-blue-900"
                         onClick={handleCreateUser}
                         disabled={usersLoading}
@@ -566,8 +603,8 @@ export function UserManagement() {
                       <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
                         Annuler
                       </Button>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-blue-800 hover:bg-blue-900"
                         onClick={handleUpdateUser}
                         disabled={usersLoading}
@@ -642,10 +679,13 @@ export function UserManagement() {
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-4 w-4 p-0 ml-1 hover:bg-transparent hover:text-red-500"
-                                        onClick={() => handleRemoveRoleFromUser(user.id, role.id)}
+                                        className="h-8 w-8 p-2 hover:bg-transparent hover:text-red-500" // Increased size
+                                        onClick={() => {
+                                          console.log("Button clicked!");
+                                          handleRemoveRoleFromUser(user.id, role.id);
+                                        }}
                                       >
-                                        <Trash2 className="h-3 w-3" />
+                                        <Trash2 className="h-4 w-4" /> {/* Icon size smaller than button */}
                                       </Button>
                                     </div>
                                   </Badge>
@@ -769,8 +809,8 @@ export function UserManagement() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-blue-800 hover:bg-blue-900"
                         onClick={handleCreateRole}
                         disabled={rolesLoading}
@@ -847,8 +887,8 @@ export function UserManagement() {
                       <Button variant="outline" onClick={() => setIsEditRoleDialogOpen(false)}>
                         Annuler
                       </Button>
-                      <Button 
-                        onClick={handleUpdateRole} 
+                      <Button
+                        onClick={handleUpdateRole}
                         className="bg-blue-800 hover:bg-blue-900"
                         disabled={rolesLoading}
                       >
@@ -979,8 +1019,8 @@ export function UserManagement() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-blue-800 hover:bg-blue-900"
                         onClick={handleAssignRole}
                         disabled={usersLoading || !userForRoleAssignment || !roleToAssign}
@@ -1087,8 +1127,8 @@ export function UserManagement() {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
               disabled={usersLoading || rolesLoading}
             >

@@ -77,6 +77,74 @@ export const tokenUtils = {
 export const api = {
 
   /**
+   * Upload a file to the server
+   * @param endpoint - The API endpoint for file upload
+   * @param file - The file to upload
+   * @returns Promise with the response data
+   */
+  async uploadFile<T>(endpoint: string, file: File): Promise<T> {
+    const url = getApiUrl(endpoint);
+    const authToken = getAuthToken();
+    
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Create headers with authorization
+      const headers: HeadersInit = {};
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      } else {
+        throw new Error('Authentication required for file upload');
+      }
+      
+      console.log(`Uploading file to ${url}`, {
+        filename: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+      
+      // Send request
+      // Important: When using FormData, don't set Content-Type header
+      // The browser will automatically set it with the proper boundary
+      const response = await fetch(url, {
+        method: 'POST',
+        headers, // Only contains Authorization header
+        body: formData,
+        // credentials: 'include' // Include if cookies/sessions are used
+      });
+      
+      // Handle response
+      if (!response.ok) {
+        console.error(`File upload error: ${response.status} ${response.statusText} for ${url}`);
+        
+        try {
+          const responseText = await response.text();
+          console.error('Response content:', responseText);
+          
+          try {
+            const errorData = JSON.parse(responseText);
+            throw new Error(errorData.message || `File upload error: ${response.status} ${response.statusText}`);
+          } catch {
+            throw new Error(`File upload error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}`);
+          }
+        } catch {
+          throw new Error(`File upload error: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error('File upload failed:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Fetch data from the API
    * @param endpoint - The API endpoint
    * @param options - Fetch options
@@ -164,7 +232,16 @@ export const api = {
         }
       }
 
-      return response.json();
+      const data = await response.json();
+      
+      // Additional validation for GET requests to array endpoints
+      const isGetRequest = !options || !options.method || options.method === 'GET';
+      if (endpoint === '/category-club' && isGetRequest && !Array.isArray(data)) {
+        console.error('[API] Expected array response for GET /category-club but got:', data);
+        throw new Error('Invalid response format: Expected array');
+      }
+      
+      return data;
     } catch (error: any) {
       console.error('API request failed:', error);
       console.error('Error name:', error.name);
@@ -244,6 +321,7 @@ export const api = {
     });
   },  
   
+
   /**
    * PATCH request
    * @param endpoint - The API endpoint
@@ -284,21 +362,25 @@ export const api = {
         headers
       };
       
-      console.log(`Deleting ${url}`);
+      console.log(`[API] DELETE ${url}`);
+      console.log('[API] DELETE request options:', requestOptions);
       const response = await fetch(url, requestOptions);
+      console.log('[API] DELETE response status:', response.status, response.statusText);
+      console.log('[API] DELETE response headers:', Array.from(response.headers.entries()));
       
       if (!response.ok) {
-        console.error(`API error: ${response.status} ${response.statusText} for ${url}`);
+        console.error(`[API] DELETE error: ${response.status} ${response.statusText} for ${url}`);
         
         // Try to get error message from response
         const responseText = await response.text();
-        console.error('Response content:', responseText);
+        console.error('[API] DELETE response content:', responseText);
         
         if (responseText) {
           try {
             const errorData = JSON.parse(responseText);
             throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
-          } catch {
+          } catch (err) {
+            console.error('[API] DELETE error parsing JSON:', err);
             throw new Error(`API error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}`);
           }
         } else {
@@ -308,19 +390,22 @@ export const api = {
       
       // For DELETE operations, the response is often empty (204 No Content)
       if (response.status === 204 || response.headers.get('content-length') === '0') {
-        console.log(`Delete successful with empty response (status: ${response.status})`);
+        console.log('[API] Delete successful with empty response (status:', response.status, ')');
         return;
       }
       
       // Check if there's content to parse
       const contentType = response.headers.get('content-type');
+      console.log('[API] DELETE response content-type:', contentType);
       
       // Only try to parse JSON if the content type is appropriate
       if (contentType && contentType.includes('application/json')) {
         try {
-          return await response.json();
+          const json = await response.json();
+          console.log('[API] DELETE response JSON:', json);
+          return json;
         } catch (err) {
-          console.warn('Response indicated JSON but parsing failed:', err);
+          console.warn('[API] DELETE response indicated JSON but parsing failed:', err);
           return;
         }
       }
@@ -328,7 +413,7 @@ export const api = {
       // Return void for non-JSON or empty responses
       return;
     } catch (error) {
-      console.error('API delete request failed:', error);
+      console.error('[API] DELETE request failed:', error);
       throw error;
     }
   },

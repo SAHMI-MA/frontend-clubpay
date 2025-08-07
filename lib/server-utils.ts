@@ -77,7 +77,7 @@ export async function getAssociationMetadata() {
   const settings = await getAssociationSettings()
   
   if (settings) {
-    const title = settings.name ? `${settings.name} - Sports Manager` : "Sports Manager"
+    const title = settings.name ? `${settings.name}` : "Sports Manager"
     const description = settings.description || 
                        (settings.tagline ? `${settings.tagline} - Comprehensive sports association management system` : "Comprehensive sports association management system")
     

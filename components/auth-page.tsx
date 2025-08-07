@@ -37,7 +37,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
       onLogin({
         name: fullName,
         email: user.email,
-        role: user.role || "User",
+        role: user.roles?.name || "User",
       });
     }
   }, [isAuthenticated, user, onLogin]);

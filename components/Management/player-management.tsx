@@ -279,7 +279,7 @@ export function PlayerManagement() {
       {/* Player Details Dialog */}
       {selectedPlayer && activeTab === "details" && (
         <Dialog open={true} onOpenChange={(open) => !open && setActiveTab("list")}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Détails du joueur</DialogTitle>
               <DialogDescription>

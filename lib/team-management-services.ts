@@ -13,7 +13,8 @@ import {
   CreatePlayerDto, 
   UpdatePlayerDto,
   CreateContractDto,
-  UpdateContractDto
+  UpdateContractDto,
+  Image
 } from './types/team-management';
 
 /**
@@ -210,5 +211,19 @@ export const objectiveService = {
    */
   getPlayerObjectives(playerId: number): Promise<ObjectiveProgress[]> {
     return api.get<ObjectiveProgress[]>(`players/${playerId}/objectives`);
+  }
+};
+
+/**
+ * Image API service
+ */
+export const imageService = {
+  /**
+   * Upload an image
+   * @param file - The image file to upload
+   * @returns Uploaded image information
+   */
+  uploadImage(file: File): Promise<Image> {
+    return api.uploadFile<Image>('images/upload', file);
   }
 };

@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import userReducer from './userSlice';
+import categoryReducer from './categorySlice';
 import roleReducer from './roleSlice';
 import permissionReducer from './permissionSlice';
 import teamReducer from './teamSlice';
@@ -18,6 +19,7 @@ import dashboardReducer from './dashboardSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    categories: categoryReducer,
     users: userReducer,
     roles: roleReducer,
     permissions: permissionReducer,

@@ -6,12 +6,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Edit, Search, Trash2, Eye, Building2, Users, DollarSign } from "lucide-react"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { deleteTeam } from "@/lib/redux/teamSlice"
 import { toast } from "sonner"
+import { TeamAvatar } from "./team-avatar"
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,6 @@ interface TeamListProps {
 export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = false }: TeamListProps) {
   const dispatch = useAppDispatch()
   const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
 
@@ -54,14 +53,10 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
     }
   }
 
-  // Get unique categories for the filter
-  const categories = Array.from(new Set(teams.map(team => team.category)))
-
-  // Filter teams based on search term and category
+  // Filter teams based on search term only
   const filteredTeams = teams.filter(team => {
     const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || team.category === categoryFilter
-    return matchesSearch && matchesCategory
+    return matchesSearch
   })
 
   if (isSimplified) {
@@ -71,32 +66,79 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
           <Card key={team.id} className="overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{team.name}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="outline" className="mr-2">{team.category}</Badge>
-                    <span>Budget: ${team.budget.toLocaleString()}</span>
-                  </CardDescription>
+                <div className="flex items-center gap-3">
+                  <TeamAvatar team={team} size="md" />
+                  <div>
+                    <CardTitle className="text-base">{team.name}</CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs font-mono">
+                        {team.code}
+                      </Badge>
+                      {team.category && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {team.category.name}
+                          </Badge>
+                          {team.category.code && (
+                            <span className="text-xs text-gray-500 font-mono">
+                              {team.category.code}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <Badge>{team.players?.length || 0} Players</Badge>
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                  {team.numberOfPlayers || 0} Joueurs
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="pb-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                {team.description || "No description available"}
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {team.description || "Aucune description disponible"}
+                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'MAD',
+                        minimumFractionDigits: 0
+                      }).format(Number(team.budget))}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <span>{team.numberOfStaff || 0} Staff</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
             <CardFooter className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" onClick={() => onViewDetails(team)}>
                 <Eye className="h-4 w-4 mr-2" />
-                View Details
+                Voir détails
               </Button>
-              {onEditTeam && (
-                <Button variant="ghost" size="sm" onClick={() => onEditTeam(team)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
+              <div className="flex gap-1">
+                {onEditTeam && (
+                  <Button variant="ghost" size="sm" onClick={() => onEditTeam(team)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => handleDeleteClick(team)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
                 </Button>
-              )}
+              </div>
             </CardFooter>
           </Card>
         ))}
@@ -122,25 +164,15 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                 className="pl-10"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Team Name</TableHead>
+                  <TableHead>Team</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead>Players</TableHead>
                   <TableHead>Budget</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -149,7 +181,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
               <TableBody>
                 {filteredTeams.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-10 text-gray-500">
                       No teams found
                     </TableCell>
                   </TableRow>
@@ -157,24 +189,51 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                   filteredTeams.map((team) => (
                     <TableRow key={team.id}>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-blue-800" />
-                          {team.name}
+                        <div className="flex items-center gap-3">
+                          <TeamAvatar team={team} size="sm" />
+                          <div>
+                            <p className="font-medium">{team.name}</p>
+                            <p className="text-sm text-gray-500 font-mono">{team.code}</p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{team.category}</Badge>
+                        {team.category ? (
+                          <div className="space-y-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {team.category.name}
+                            </Badge>
+                            {team.category.code && (
+                              <p className="text-xs text-gray-500 font-mono">
+                                {team.category.code}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Aucune catégorie</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-gray-600 max-w-xs truncate" title={team.description}>
+                          {team.description || "Aucune description"}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-green-800" />
-                          {team.players?.length || 0}
+                          <span className="font-medium">{team.numberOfPlayers || 0}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-green-800" />
-                          {team.budget.toLocaleString()}
+                          <span className="font-medium">
+                            {new Intl.NumberFormat('fr-FR', {
+                              style: 'currency',
+                              currency: 'MAD',
+                              minimumFractionDigits: 0
+                            }).format(Number(team.budget))}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

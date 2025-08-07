@@ -21,6 +21,7 @@ import {
 import { fetchTeamById } from "@/lib/redux/teamSlice"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllStaff } from "@/lib/redux/staffSlice"
+import { TeamAvatar } from "./team-avatar"
 
 interface TeamDetailsProps {
   team: Team
@@ -69,15 +70,19 @@ export function TeamDetails({ team, onEditTeam }: TeamDetailsProps) {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
-            <div>
-              <div className="flex items-center gap-2">
-                <Building2 className="h-6 w-6 text-blue-800" />
-                <CardTitle className="text-2xl">{team.name}</CardTitle>
+            <div className="flex items-center gap-4">
+              <TeamAvatar team={team} size="xl" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-2xl">{team.name}</CardTitle>
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {team.code}
+                  </Badge>
+                </div>
+                <CardDescription className="mt-1">
+                  <span>Created: {team.createdAt ? formatDate(team.createdAt) : 'N/A'}</span>
+                </CardDescription>
               </div>
-              <CardDescription className="mt-1">
-                <Badge className="mr-2">{team.category}</Badge>
-                <span>Created: {team.createdAt ? formatDate(team.createdAt) : 'N/A'}</span>
-              </CardDescription>
             </div>
             {onEditTeam && (
               <Button 

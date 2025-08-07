@@ -192,7 +192,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-cyan-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Équipes totales</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Masse salariale</CardTitle>
             <Building2 className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
@@ -201,9 +201,9 @@ export function Dashboard() {
             ) : metrics ? (
               <>
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {metrics.totalTeamsCount}
+                  {metrics.salaryMass}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Toutes divisions confondues</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">la somme des rémunérations</p>
               </>
             ) : (
               <div className="text-2xl font-bold text-gray-400">--</div>

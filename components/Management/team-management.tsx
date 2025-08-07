@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { fetchAllTeams } from "@/lib/redux/teamSlice"
+import { fetchAllTeams, deleteTeam } from "@/lib/redux/teamSlice"
 import { Team} from "@/lib/types/team-management"
 import { toast } from "sonner"
 import {
@@ -14,6 +14,7 @@ import {
   Loader2,
   PlusCircle,
   Briefcase,
+  Tags,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +27,7 @@ import {
 import { TeamDetails } from "../team-management/team-details"
 import { TeamForm } from "../team-management/team-form"
 import { TeamList } from "../team-management/team-list"
+import { CategoryManagement } from "../team-management/category-management"
 
 export function TeamManagement() {
   const dispatch = useAppDispatch()
@@ -38,10 +40,26 @@ export function TeamManagement() {
 
   // Fetch teams on component mount
   useEffect(() => {
-    dispatch(fetchAllTeams())
-  }, [dispatch])
+    const fetchData = async () => {
+      toast.promise(
+        Promise.all([
+          dispatch(fetchAllTeams()).unwrap()
+        ]),
+        {
+          loading: "Loading team data...",
+          success: "Data loaded successfully",
+          error: (error) => {
+            console.error('Error fetching data:', error);
+            return `Failed to load data: ${error.message || 'Unknown error'}`;
+          }
+        }
+      );
+    };
+    
+    fetchData();
+  }, [dispatch]);
 
-  // Handle errors
+  // Handle team errors
   useEffect(() => {
     if (error) {
       toast.error(error)
@@ -50,12 +68,6 @@ export function TeamManagement() {
 
   // Ensure dropdowns filter out invalid values
   const validTeams = teams.filter(team => team && team.id && team.name)
-
-  // Ensure teams have a fallback category
-  const teamsWithFallbackCategory = validTeams.map(team => ({
-    ...team,
-    category: team.category || "Uncategorized",
-  }));
 
   const handleViewTeamDetails = (team: Team) => {
     if (!team || !team.id) {
@@ -87,17 +99,31 @@ export function TeamManagement() {
     toast.success("Équipe mise à jour avec succès")
   }
 
-  const totalTeams = teamsWithFallbackCategory.length
+  const handleDeleteTeam = async (team: Team) => {
+    try {
+      await dispatch(deleteTeam(team.id)).unwrap()
+      toast.success(`Équipe "${team.name}" supprimée avec succès`)
+      setIsEditDialogOpen(false) // Close edit dialog if open
+    } catch (error) {
+      toast.error(
+        typeof error === "string" 
+          ? error 
+          : "Échec de la suppression de l'équipe. Veuillez réessayer."
+      )
+    }
+  }
+
+  const totalTeams = validTeams.length
 
   // Use numberOfStaff from each team to calculate total
-  const totalStaff = teamsWithFallbackCategory.reduce((acc, team) => 
+  const totalStaff = validTeams.reduce((acc, team) => 
     acc + (team.numberOfStaff || 0), 0)
 
   // User numberOfPlayers from each team to calculate total
-  const totalPlayersCount = teamsWithFallbackCategory.reduce((acc, team) => 
+  const totalPlayersCount = validTeams.reduce((acc, team) => 
     acc + (team.numberOfPlayers || 0), 0)
 
-  const totalBudget = teamsWithFallbackCategory.reduce((acc, team) => {
+  const totalBudget = validTeams.reduce((acc, team) => {
     let budget = 0;
     if (typeof team.budget === 'number' && !isNaN(team.budget)) {
       budget = team.budget;
@@ -160,12 +186,13 @@ export function TeamManagement() {
             isEditing={true}
             onSuccess={handleEditSuccess}
             onCancel={() => setIsEditDialogOpen(false)}
+            onDelete={handleDeleteTeam}
           />
         </DialogContent>
       </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Tableau de bord
@@ -173,6 +200,10 @@ export function TeamManagement() {
           <TabsTrigger value="list" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Équipes
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <Tags className="h-4 w-4" />
+            Catégories
           </TabsTrigger>
           <TabsTrigger value="details" disabled={!selectedTeam} className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -235,7 +266,7 @@ export function TeamManagement() {
             </div>
           ) : (
             <TeamList 
-              teams={teamsWithFallbackCategory} 
+              teams={validTeams} 
               onViewDetails={handleViewTeamDetails} 
               onEditTeam={handleEditTeamClick}
               isSimplified={true}
@@ -251,12 +282,17 @@ export function TeamManagement() {
             </div>
           ) : (
             <TeamList 
-              teams={teamsWithFallbackCategory} 
+              teams={validTeams} 
               onViewDetails={handleViewTeamDetails} 
               onEditTeam={handleEditTeamClick}
               isSimplified={false}
             />
           )}
+        </TabsContent>
+
+        {/* Categories Tab */}
+        <TabsContent value="categories">
+          <CategoryManagement />
         </TabsContent>
 
         {/* Team Details Tab */}

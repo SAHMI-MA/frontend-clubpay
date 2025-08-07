@@ -1,4 +1,24 @@
 // Association Settings API
+import {
+  BarChart3,
+  Building2,
+  Calendar,
+  CreditCard,
+  FileText,
+  Home,
+  Settings,
+  Trophy,
+  Users,
+  Warehouse,
+  UserCheck,
+  Truck,
+  UserCog,
+  DollarSign,
+  Tags,
+  Package,
+  ClipboardList,
+} from "lucide-react"
+
 export interface AssociationSettings {
   id: number
   name: string
@@ -28,7 +48,7 @@ export interface UpdateAssociationSettingsDto {
 import { apiConfig } from '@/lib/api-config'
 
 class AssociationAPIService {
-  private baseURL = apiConfig.baseUrl
+  public baseURL = apiConfig.baseUrl
   private token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
 
   private getHeaders() {
@@ -43,7 +63,7 @@ class AssociationAPIService {
       headers: this.getHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch settings')
-    return response.json()
+     return response.json()
   }
 
   async updateSettings(settings: UpdateAssociationSettingsDto): Promise<AssociationSettings> {
@@ -80,3 +100,131 @@ class AssociationAPIService {
 }
 
 export const associationAPI = new AssociationAPIService()
+
+export const navigationGroups = [
+  {
+    title: "Aperçu",
+    items: [
+      {
+        title: "Tableau de bord",
+        icon: Home,
+        id: "dashboard",
+      },
+    ],
+  },
+  {
+    title: "Gestion",
+    items: [
+      {
+        title: "Gestion des utilisateurs",
+        icon: Users,
+        id: "users",
+      },
+      {
+        title: "Clubs & Équipes",
+        icon: Building2,
+        id: "clubs",
+      },
+      {
+        title: "Gestion des joueurs",
+        icon: Users,
+        id: "players",
+      },
+      {
+        title: "Gestion du staff",
+        icon: UserCheck,
+        id: "staff",
+      },
+    ],
+  },
+  {
+    title: "Ressources humaines",
+    items: [
+      {
+        title: "Gestion RH",
+        icon: UserCog,
+        id: "hr",
+      },
+      {
+        title: "Dossiers employés",
+        icon: FileText,
+        id: "employee-files",
+      },
+      {
+        title: "Absences & Congés",
+        icon: Calendar,
+        id: "absence-leave",
+      },
+      {
+        title: "Paiements des salaires",
+        icon: DollarSign,
+        id: "salary-payments",
+      },
+    ],
+  },
+  {
+    title: "Service d'achat",
+    items: [
+      {
+        title: "Stock Management",
+        icon: Package,
+        id: "stock-management",
+      },
+      {
+        title: "BDC Interne",
+        icon: ClipboardList,
+        id: "allocation-management",
+      },
+      {
+        title: "BDC Externe",
+        icon: Warehouse,
+        id: "rental",
+      },
+      {
+        title: "Gestion des fournisseurs",
+        icon: Truck,
+        id: "suppliers",
+      },
+      {
+        title: "Financier",
+        icon: CreditCard,
+        id: "financial",
+      },
+    ],
+  },
+  {
+    title: "Sport",
+    items: [
+      {
+        title: "Contrats & Primes",
+        icon: FileText,
+        id: "contracts",
+      },
+      {
+        title: "Objectifs & Récompenses",
+        icon: Trophy,
+        id: "objectives",
+      },
+      {
+        title: "Gestion des matchs",
+        icon: Calendar,
+        id: "matches",
+      },
+    ],
+  },
+  {
+    title: "Système",
+    items: [
+      {
+        title: "Analytique",
+        icon: BarChart3,
+        id: "analytics",
+      },
+      {
+        title: "Paramètres & Journaux",
+        icon: Settings,
+        id: "settings",
+      },
+    ],
+  },
+]

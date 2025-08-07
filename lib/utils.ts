@@ -71,36 +71,36 @@ export function extractPositionsFromFormations(formations: Array<{ positions: Ar
 }
 
 /**
- * Get position display name with full description
+ * Get position display name with full description in French
  */
 export function getPositionDisplayName(position: string): string {
   const positionMap: Record<string, string> = {
     // Current tactical positions
-    "GK": "GK - Goalkeeper",
-    "LB": "LB - Left Back",
-    "CB": "CB - Center Back",
-    "RB": "RB - Right Back",
-    "LWB": "LWB - Left Wing Back",
-    "RWB": "RWB - Right Wing Back",
-    "CDM": "CDM - Defensive Midfielder",
-    "CM": "CM - Center Midfielder",
-    "CAM": "CAM - Attacking Midfielder",
-    "LM": "LM - Left Midfielder",
-    "RM": "RM - Right Midfielder",
-    "LW": "LW - Left Winger",
-    "RW": "RW - Right Winger",
-    "ST": "ST - Striker",
-    "Coach": "Coach",
-    "Assistant Coach": "Assistant Coach",
-    "Physiotherapist": "Physiotherapist",
+    "GK": "GK - Gardien de but",
+    "LB": "LB - Arrière gauche",
+    "CB": "CB - Défenseur central",
+    "RB": "RB - Arrière droit",
+    "LWB": "LWB - Arrière gauche offensif",
+    "RWB": "RWB - Arrière droit offensif",
+    "CDM": "CDM - Milieu défensif",
+    "CM": "CM - Milieu de terrain",
+    "CAM": "CAM - Milieu offensif",
+    "LM": "LM - Milieu gauche",
+    "RM": "RM - Milieu droit",
+    "LW": "LW - Ailier gauche",
+    "RW": "RW - Ailier droit",
+    "ST": "ST - Attaquant",
+    "Coach": "Entraîneur",
+    "Assistant Coach": "Entraîneur adjoint",
+    "Physiotherapist": "Kinésithérapeute",
     "Manager": "Manager",
     
     // Backward compatibility for old position values
-    "Goalkeeper": "GK - Goalkeeper",
-    "Defender": "CB - Center Back", // Default defenders to center back
-    "Midfielder": "CM - Center Midfielder", // Default midfielders to center mid
-    "Forward": "ST - Striker", // Default forwards to striker
-    "Assistant": "Assistant Coach"
+    "Goalkeeper": "GK - Gardien de but",
+    "Defender": "CB - Défenseur central", // Default defenders to center back
+    "Midfielder": "CM - Milieu de terrain", // Default midfielders to center mid
+    "Forward": "ST - Attaquant", // Default forwards to striker
+    "Assistant": "Entraîneur adjoint"
   };
   
   return positionMap[position] || position;

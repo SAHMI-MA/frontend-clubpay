@@ -8,7 +8,7 @@ export interface DashboardMetrics {
   revenueGrowth: number
   activePlayersCount: number
   newPlayersThisWeek: number
-  totalTeamsCount: number
+  salaryMass: number
   monthlyExpenses: number
   expensesGrowth: number
 }

@@ -13,6 +13,7 @@ import { useAppDispatch } from "@/lib/redux/hooks";
 import { deletePlayer, fetchAllPlayers } from "@/lib/redux/playerSlice";
 import { toast } from "sonner";
 import { getPositionDisplayName } from "@/lib/utils";
+import { PlayerAvatar } from "./player-avatar";
 import {
   Dialog,
   DialogContent,
@@ -75,11 +76,11 @@ export function PlayerList({
 
     try {
       await dispatch(deletePlayer(playerToDelete.id)).unwrap();
-      toast.success("Player deleted successfully");
+      toast.success("Joueur supprimé avec succès");
       // Refresh the list
       dispatch(fetchAllPlayers());
     } catch (_error) {
-      toast.error("Failed to delete player " + _error);
+      toast.error("Échec de la suppression du joueur " + _error);
     } finally {
       setIsDeleteDialogOpen(false);
       setPlayerToDelete(null);
@@ -107,10 +108,10 @@ export function PlayerList({
     
     // Otherwise fall back to finding by teamId
     const teamId = player.teamId;
-    if (teamId === undefined || teamId === null || !teams) return "No Team";
+    if (teamId === undefined || teamId === null || !teams) return "Aucune équipe";
     
     const team = teams.find((t) => t.id === teamId);
-    return team ? team.name : "Unknown Team";
+    return team ? team.name : "Équipe inconnue";
   };
 
   return (
@@ -120,7 +121,7 @@ export function PlayerList({
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <UserCircle className="h-5 w-5 text-blue-800" />
-              Player Roster
+              Liste des joueurs
             </CardTitle>
             {!isReadOnly && onAddNew && (
               <Button 
@@ -128,7 +129,7 @@ export function PlayerList({
                 className="bg-blue-800 hover:bg-blue-900 text-white"
                 size="sm"
               >
-                Register New Player
+                Enregistrer un nouveau joueur
               </Button>
             )}
           </CardHeader>
@@ -140,7 +141,7 @@ export function PlayerList({
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search players..."
+                    placeholder="Rechercher des joueurs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8"
@@ -149,10 +150,10 @@ export function PlayerList({
               </div>
               <Select value={positionFilter} onValueChange={setPositionFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by position" />
+                  <SelectValue placeholder="Filtrer par poste" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Positions</SelectItem>
+                  <SelectItem value="all">Tous les postes</SelectItem>
                   {positions.map(position => (
                     <SelectItem key={position} value={position}>{getPositionDisplayName(position)}</SelectItem>
                   ))}
@@ -166,10 +167,12 @@ export function PlayerList({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    {!isSimplified && <TableHead>Age</TableHead>}
-                    <TableHead>Position</TableHead>
-                    {!teamId && <TableHead>Team</TableHead>}
+                    <TableHead>Nom</TableHead>
+                    <TableHead>N°</TableHead>
+                    {!isSimplified && <TableHead>Âge</TableHead>}
+                    <TableHead>Poste</TableHead>
+                    <TableHead>Statut</TableHead>
+                    {!teamId && <TableHead>Équipe</TableHead>}
                     {!isSimplified && !isReadOnly && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -177,22 +180,15 @@ export function PlayerList({
                   {filteredPlayers.map((player) => (
                     <TableRow key={player.id}>
                       <TableCell className="font-medium flex items-center gap-3">
-                        {player.playerImage ? (
-                          <img 
-                            src={player.playerImage}
-                            alt={player.firstName}
-                            className="h-8 w-8 rounded-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = "/placeholder-player.png";
-                            }}
-                          />
-                        ) : (
-                          <User className="h-8 w-8 p-1 bg-gray-100 rounded-full" />
-                        )}
+                        <PlayerAvatar player={player} size="sm" />
                         <span>
                           {player.firstName} {player.lastName}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {player.playerNumber || '--'}
+                        </Badge>
                       </TableCell>
                       {!isSimplified && (
                         <TableCell>
@@ -201,6 +197,21 @@ export function PlayerList({
                       )}
                       <TableCell>
                         <Badge variant="outline">{getPositionDisplayName(player.position)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            player.playerStatus === 'ACTIVE' ? 'default' :
+                            player.playerStatus === 'INJURED' ? 'destructive' :
+                            player.playerStatus === 'SUSPENDED' ? 'secondary' :
+                            'outline'
+                          }
+                        >
+                          {player.playerStatus === 'ACTIVE' ? 'Actif' :
+                           player.playerStatus === 'INJURED' ? 'Blessé' :
+                           player.playerStatus === 'SUSPENDED' ? 'Suspendu' :
+                           player.playerStatus === 'RETIRED' ? 'Retraité' : 'Actif'}
+                        </Badge>
                       </TableCell>
                       {!teamId && (
                         <TableCell>
@@ -247,14 +258,14 @@ export function PlayerList({
           ) : (
             <div className="py-12 text-center border rounded-md">
               <User className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-              <p className="text-muted-foreground">No players found</p>
+              <p className="text-muted-foreground">Aucun joueur trouvé</p>
               {!isReadOnly && onAddNew && (
                 <Button
                   variant="link"
                   onClick={onAddNew}
                   className="mt-2"
                 >
-                  Register new player
+                  Enregistrer un nouveau joueur
                 </Button>
               )}
             </div>
@@ -266,10 +277,10 @@ export function PlayerList({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Player Deletion</DialogTitle>
+            <DialogTitle>Confirmer la suppression du joueur</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {playerToDelete?.firstName} {playerToDelete?.lastName}?
-              This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer {playerToDelete?.firstName} {playerToDelete?.lastName} ?
+              Cette action ne peut pas être annulée.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -277,14 +288,14 @@ export function PlayerList({
               variant="outline" 
               onClick={() => setIsDeleteDialogOpen(false)}
             >
-              Cancel
+              Annuler
             </Button>
             <Button 
               variant="destructive" 
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -67,6 +67,27 @@ export interface UpdatePermissionDto {
   page?: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  code: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCategoryDto {
+  name: string;
+  code: string;
+  description?: string;
+}
+
+export interface UpdateCategoryDto {
+  name?: string;
+  code?: string;
+  description?: string;
+}
+
 export interface UserHistory {
   id: number;
   dateTime: string;
@@ -285,5 +306,54 @@ export const historyService = {
    */
   getUserHistory(userId: number): Promise<UserHistory[]> {
     return api.get<UserHistory[]>(`history/user/${userId}`);
+  }
+};
+
+/**
+ * Category API service
+ */
+export const categoryService = {
+  /**
+   * Get all categories
+   * @returns List of categories
+   */
+  getAllCategories(): Promise<Category[]> {
+    return api.get<Category[]>('categories');
+  },
+
+  /**
+   * Get category by ID
+   * @param id - Category ID
+   * @returns Category details
+   */
+  getCategoryById(id: number): Promise<Category> {
+    return api.get<Category>(`categories/${id}`);
+  },
+
+  /**
+   * Create a new category
+   * @param categoryData - Category data
+   * @returns Created category
+   */
+  createCategory(categoryData: CreateCategoryDto): Promise<Category> {
+    return api.post<Category>('categories', categoryData);
+  },
+
+  /**
+   * Update a category
+   * @param id - Category ID
+   * @param categoryData - Updated category data
+   * @returns Updated category
+   */
+  updateCategory(id: number, categoryData: UpdateCategoryDto): Promise<Category> {
+    return api.patch<Category>(`categories/${id}`, categoryData);
+  },
+
+  /**
+   * Delete a category
+   * @param id - Category ID
+   */
+  deleteCategory(id: number): Promise<void> {
+    return api.delete<void>(`categories/${id}`);
   }
 };

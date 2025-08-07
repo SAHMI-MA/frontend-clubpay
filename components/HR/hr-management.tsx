@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -44,7 +44,6 @@ import {
   UserX,
 } from "lucide-react"
 import { hrApi, Employee, Department, Position, CreateEmployeeRequest } from "@/lib/api/hr-api"
-import { Combobox } from "@/components/ui/combobox"
 import { userService, User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -96,21 +95,25 @@ export function HRManagement() {
   const [departmentFormError, setDepartmentFormError] = useState<string | null>(null)
   const isEditDepartment = Boolean(selectedDepartment)
 
-  // Employee form state using CreateEmployeeRequest
-  const [employeeForm, setEmployeeForm] = useState<CreateEmployeeRequest>({
-    userId: undefined, // userId is optional
+  // Employee form state - comprehensive to support both create and update
+  const [employeeForm, setEmployeeForm] = useState({
+    userId: undefined as number | undefined, // userId is optional
     fullName: "",
     departmentId: 0,
     positionId: 0,
     hireDate: "",
     dateOfBirth: "",
     nationalId: "",
-    status: "Active",
+    status: "Active" as any,
     phoneNumber: "",
     personalEmail: "",
     address: "",
-    maritalStatus: "Single",
-    currentSalary: ""
+    maritalStatus: "Single" as any,
+    currentSalary: "",
+    // Bank information fields
+    bankAccountNumber: "",
+    bankName: "",
+    notes: ""
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
   const [employeeFormError, setEmployeeFormError] = useState<string | null>(null)
@@ -140,6 +143,14 @@ export function HRManagement() {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
   const [isDeletingEmployee, setIsDeletingEmployee] = useState(false)
   const [deleteEmployeeError, setDeleteEmployeeError] = useState<string | null>(null)
+
+  // Debug: Monitor employees state changes
+  useEffect(() => {
+    console.log('Employees state changed, current count:', employees.length)
+    if (employees.length > 0) {
+      console.log('Sample employee:', employees[0])
+    }
+  }, [employees])
 
   // Add state for department and position delete dialogs
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
@@ -188,6 +199,11 @@ export function HRManagement() {
 
     return matchesSearch && matchesStatus && matchesDepartment
   })
+  
+  // Debug log for filtering
+  console.log('Current employees count:', employees.length)
+  console.log('Filtered employees count:', filteredEmployees.length)
+  console.log('Current filters - search:', searchTerm, 'status:', statusFilter, 'department:', departmentFilter)
 
   // Calculate statistics
   const employeeStats = {
@@ -255,17 +271,21 @@ export function HRManagement() {
         setDepartments((prev) => prev.map((d) => (d.id === department.id ? department : d)));
       } else {
         department = await hrApi.createDepartment(payload as any);
-        if (!department || department.id === undefined) {
-          // Defensive: reload all departments if backend response is missing id
-          const allDepartments = await hrApi.getDepartments();
-          setDepartments(allDepartments);
-        } else {
-          setDepartments((prev) => [...prev, department]);
-        }
+        console.log('Created department response:', department) // Debug log
+        
+        // Always reload departments after creation to ensure we have the latest data
+        const allDepartments = await hrApi.getDepartments();
+        setDepartments(allDepartments);
       }
       setShowDepartmentDialog(false)
       setSelectedDepartment(null)
     } catch (err: any) {
+      console.error('Department creation/update error:', err)
+      console.error('Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        response: err?.response
+      })
       setDepartmentFormError(err?.message || "Failed to save department")
     } finally {
       setIsSubmittingDepartment(false)
@@ -288,7 +308,11 @@ export function HRManagement() {
         personalEmail: selectedEmployee.personalEmail || "",
         address: selectedEmployee.address || "",
         maritalStatus: selectedEmployee.maritalStatus || "Single",
-        currentSalary: selectedEmployee.currentSalary?.toString() || ""
+        currentSalary: selectedEmployee.currentSalary?.toString() || "",
+        // Bank information fields
+        bankAccountNumber: selectedEmployee.bankAccountNumber || "",
+        bankName: selectedEmployee.bankName || "",
+        notes: selectedEmployee.notes || ""
       })
     } else {
       setEmployeeForm({
@@ -304,7 +328,11 @@ export function HRManagement() {
         personalEmail: "",
         address: "",
         maritalStatus: "Single",
-        currentSalary: ""
+        currentSalary: "",
+        // Bank information fields
+        bankAccountNumber: "",
+        bankName: "",
+        notes: ""
       })
     }
   }, [selectedEmployee, showEmployeeDialog])
@@ -331,8 +359,12 @@ export function HRManagement() {
     }
   }
   function handleEmployeeSelectChange(id: string, value: string) {
-    if (id === "userId" || id === "departmentId" || id === "positionId") {
-      setEmployeeForm({ ...employeeForm, [id]: value === "" ? undefined : parseInt(value, 10) })
+    if (id === "userId") {
+      const numValue = value === "no-user" ? undefined : parseInt(value, 10);
+      setEmployeeForm({ ...employeeForm, [id]: numValue })
+    } else if (id === "departmentId" || id === "positionId") {
+      const numValue = value === "" ? undefined : parseInt(value, 10);
+      setEmployeeForm({ ...employeeForm, [id]: numValue })
     } else {
       setEmployeeForm({ ...employeeForm, [id]: value })
     }
@@ -350,24 +382,79 @@ export function HRManagement() {
     }
     try {
       if (isEditEmployee) {
-        // PATCH: only allowed fields, use CreateEmployeeRequest for type safety
-        // Remove userId, hireDate, dateOfBirth, nationalId from payload
-        const { ...updatePayload } = employeeForm;
+        // UPDATE: only include fields that the backend UpdateEmployeeDto supports
+        const updatePayload = {
+          fullName: employeeForm.fullName, // Add fullName to update payload
+          userId: employeeForm.userId,
+          departmentId: employeeForm.departmentId,
+          positionId: employeeForm.positionId,
+          status: employeeForm.status,
+          phoneNumber: employeeForm.phoneNumber,
+          personalEmail: employeeForm.personalEmail,
+          address: employeeForm.address,
+          maritalStatus: employeeForm.maritalStatus,
+          currentSalary: employeeForm.currentSalary,
+          // Bank information fields
+          bankAccountNumber: employeeForm.bankAccountNumber,
+          bankName: employeeForm.bankName,
+          notes: employeeForm.notes,
+        };
         // Use employee.employeeId for update, not selectedEmployee.id
         const employee = await hrApi.updateEmployee(selectedEmployee.employeeId, updatePayload);
-        setEmployees((prev) => prev.map((e) => (e.employeeId === employee.employeeId ? employee : e)));
+        console.log('Updated employee response:', employee) // Debug log
+        console.log('Update payload sent:', updatePayload) // Debug log
+        
+        // Let's also check what we get from the fresh API call
+        const allEmployees = await hrApi.getEmployees();
+        const freshEmployee = allEmployees.find(e => e.employeeId === selectedEmployee.employeeId);
+        console.log('Fresh employees from API:', freshEmployee) // Debug log
+        console.log('Current employees state before update:', employees.find(e => e.employeeId === selectedEmployee.employeeId)) // Debug log
+        setEmployees(allEmployees);
+        console.log('Employees state updated, new count:', allEmployees.length) // Debug log
+        
+        // Force a re-render by updating a timestamp
+        console.log('Update completed at:', new Date().toISOString()) // Debug log
       } else {
-        // CREATE: use CreateEmployeeRequest directly
+        // CREATE: only include fields that CreateEmployeeRequest accepts
         const payload: import("@/lib/api/hr-api").CreateEmployeeRequest = {
-          ...employeeForm,
-          userId: employeeForm.userId === undefined ? null : employeeForm.userId
+          userId: employeeForm.userId === undefined ? null : employeeForm.userId,
+          fullName: employeeForm.fullName,
+          departmentId: employeeForm.departmentId,
+          positionId: employeeForm.positionId,
+          hireDate: employeeForm.hireDate,
+          dateOfBirth: employeeForm.dateOfBirth,
+          nationalId: employeeForm.nationalId,
+          status: employeeForm.status,
+          phoneNumber: employeeForm.phoneNumber,
+          personalEmail: employeeForm.personalEmail,
+          address: employeeForm.address,
+          maritalStatus: employeeForm.maritalStatus,
+          currentSalary: employeeForm.currentSalary,
+          // Bank information fields
+          bankAccountNumber: employeeForm.bankAccountNumber,
+          bankName: employeeForm.bankName,
+          notes: employeeForm.notes,
         };
         const employee = await hrApi.createEmployee(payload);
-        setEmployees((prev) => [...prev, employee]);
+        console.log('Created employee response:', employee) // Debug log
+        
+        // Always reload employees and positions after creation to ensure we have the latest data
+        const [allEmployees, allPositions] = await Promise.all([
+          hrApi.getEmployees(),
+          hrApi.getPositions()
+        ]);
+        setEmployees(allEmployees);
+        setPositions(allPositions);
       }
       setShowEmployeeDialog(false);
       setSelectedEmployee(null);
     } catch (err: any) {
+      console.error('Employee creation/update error:', err)
+      console.error('Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        response: err?.response
+      })
       setEmployeeFormError(err?.message || "Failed to save employee");
     } finally {
       setIsSubmittingEmployee(false);
@@ -429,17 +516,21 @@ export function HRManagement() {
         setPositions((prev) => prev.map((p) => (p.id === position.id ? position : p)))
       } else {
         position = await hrApi.createPosition(payload)
-        if (!position || position.id === undefined) {
-          // Defensive: reload all positions if backend response is missing id
-          const allPositions = await hrApi.getPositions();
-          setPositions(allPositions);
-        } else {
-          setPositions((prev) => [...prev, position])
-        }
+        console.log('Created position response:', position) // Debug log
+        
+        // Always reload positions after creation to ensure we have the latest data
+        const allPositions = await hrApi.getPositions();
+        setPositions(allPositions);
       }
       setShowPositionDialog(false)
       setSelectedPosition(null)
     } catch (err: any) {
+      console.error('Position creation/update error:', err)
+      console.error('Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        response: err?.response
+      })
       setPositionFormError(err?.message || "Failed to save position")
     } finally {
       setIsSubmittingPosition(false)
@@ -585,19 +676,30 @@ export function HRManagement() {
                               <Label htmlFor="fullName">Nom complet</Label>
                               <Input id="fullName" placeholder="Nom complet" value={employeeForm.fullName} onChange={handleEmployeeFormChange} required />
                             </div>
+                            <div className="space-y-2 flex flex-row gap-2 items-end">
+                              <div className="flex-1">
+                                <Label htmlFor="userId">Utilisateur (optionnel)</Label>
+                                <Select
+                                  value={employeeForm.userId ? employeeForm.userId.toString() : "no-user"}
+                                  onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
+                                  disabled={employeeForm.userId === null}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un utilisateur" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="no-user">Aucun utilisateur</SelectItem>
+                                    {users.map((u) => (
+                                      <SelectItem key={u.id} value={u.id.toString()}>
+                                        {u.firstName || ""} {u.lastName || ""} ({u.email || "Aucun email"})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
                             {!isEditEmployee && (
-                              <>
-                                <div className="space-y-2 flex flex-row gap-2 items-end">
-                                  <div className="flex-1">
-                                    <Label htmlFor="userId">Utilisateur (optionnel)</Label>
-                                    <Combobox
-                                      value={employeeForm.userId ? employeeForm.userId.toString() : ""}
-                                      onValueChange={(v: string) => handleEmployeeSelectChange("userId", v)}
-                                      options={users.map((u) => ({ value: u.id.toString(), label: `${u.firstName || ""} ${u.lastName || ""}` }))}
-                                      disabled={employeeForm.userId === null}
-                                    />
-                                  </div>
-                                </div>
+                              <React.Fragment key="create-only-fields">
                                 <div className="space-y-2">
                                   <Label htmlFor="hireDate">Date d'embauche</Label>
                                   <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
@@ -610,7 +712,7 @@ export function HRManagement() {
                                   <Label htmlFor="nationalId">CIN</Label>
                                   <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
                                 </div>
-                              </>
+                              </React.Fragment>
                             )}
                             <div className="space-y-2">
                               <Label htmlFor="phoneNumber">Téléphone</Label>
@@ -638,13 +740,21 @@ export function HRManagement() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="bankAccountNumber">Numéro de compte bancaire</Label>
+                              <Input id="bankAccountNumber" placeholder="Numéro de compte" value={employeeForm.bankAccountNumber} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="bankName">Nom de la banque</Label>
+                              <Input id="bankName" placeholder="Nom de la banque" value={employeeForm.bankName} onChange={handleEmployeeFormChange} />
+                            </div>
                           </div>
                         </TabsContent>
                         <TabsContent value="job">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                             <div className="space-y-2">
                               <Label htmlFor="departmentId">Département</Label>
-                              <Select value={employeeForm.departmentId.toString()} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
+                              <Select value={employeeForm.departmentId ? employeeForm.departmentId.toString() : ""} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner un département" />
                                 </SelectTrigger>
@@ -659,7 +769,7 @@ export function HRManagement() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="positionId">Poste</Label>
-                              <Select value={employeeForm.positionId.toString()} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
+                              <Select value={employeeForm.positionId ? employeeForm.positionId.toString() : ""} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner un poste" />
                                 </SelectTrigger>
@@ -692,6 +802,10 @@ export function HRManagement() {
                             <div className="space-y-2">
                               <Label htmlFor="currentSalary">Salaire actuel (MAD)</Label>
                               <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Entrez le salaire actuel" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label htmlFor="notes">Notes</Label>
+                              <Textarea id="notes" placeholder="Notes supplémentaires sur l'employé" value={employeeForm.notes} onChange={handleEmployeeFormChange} />
                             </div>
                           </div>
                         </TabsContent>
@@ -767,9 +881,9 @@ export function HRManagement() {
                   </TableHeader>
                   <TableBody>
                     {filteredEmployees.map((employee) => {
-                      const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons]
+                      const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons] || AlertCircle
                       return (
-                        <TableRow key={employee.employeeId}>
+                        <TableRow key={`${employee.employeeId}-${employee.updatedAt}-${employee.currentSalary}`}>
                           <TableCell>
                             <div>
                               <div className="font-medium">
@@ -793,7 +907,7 @@ export function HRManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={statusColors[employee.status as keyof typeof statusColors]}>
+                            <Badge className={statusColors[employee.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}>
                               <StatusIcon className="h-3 w-3 mr-1" />
                               {employee.status}
                             </Badge>
@@ -955,14 +1069,14 @@ export function HRManagement() {
                         <div className="pt-2 border-t">
                           <div className="text-sm font-medium">Employés:</div>
                           <div className="mt-1 space-y-1">
-                            {(department.employees?.slice(0, 3) ?? []).map((emp: any) => {
+                            {(department.employees?.slice(0, 3) ?? []).map((emp: any, index: number) => {
                               const user = emp.user;
                               const position = emp.position;
                               const userDisplay = user
                                 ? `${user.firstName || ""} ${user.lastName || ""} (${user.email || "Aucun email"})`
                                 : "Aucun utilisateur lié";
                               return (
-                                <div key={emp.id} className="text-xs text-gray-700 dark:text-gray-300">
+                                <div key={emp.employeeId || `emp-${index}`} className="text-xs text-gray-700 dark:text-gray-300">
                                   {userDisplay} - {position?.title ?? "Aucun poste"}
                                 </div>
                               );

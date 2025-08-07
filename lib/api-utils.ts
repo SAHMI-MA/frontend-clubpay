@@ -75,7 +75,11 @@ export const loginWithDemoCredentials = async (): Promise<void> => {
       email: 'demo@example.com',
       firstName: 'Demo',
       lastName: 'User',
-      role: 'admin'
+      roles: {
+        id: 1,
+        name: 'admin',
+        permissions: []
+      }
     };
     authService.storeUser(demoUser);
     

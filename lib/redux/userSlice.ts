@@ -77,17 +77,27 @@ export const removeRoleFromUser = createAsyncThunk(
   'users/removeRole',
   async ({ userId, roleId }: { userId: number; roleId: number }, { rejectWithValue }) => {
     try {
+      console.log(`Attempting to remove role ${roleId} from user ${userId}`);
+      
       // Make the API call to remove the role
-      const updatedUser = await userService.removeRoleFromUser(userId, roleId);
+      const response = await userService.removeRoleFromUser(userId, roleId);
+      console.log('Delete response:', response);
       
       // If the API doesn't return the updated user, fetch it manually
-      if (!updatedUser || !updatedUser.id) {
-        return await userService.getUserById(userId);
+      if (!response || !response) {
+        console.log('No data in response, fetching user manually');
+        const user = await userService.getUserById(userId);
+        if (!user) {
+          throw new Error('Failed to fetch user after role removal');
+        }
+        return user;
       }
       
-      return updatedUser;
+      return response;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to remove role');
+      console.error('Error removing role:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to remove role';
+      return rejectWithValue(errorMessage);
     }
   }
 );

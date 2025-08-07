@@ -5,7 +5,19 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role?: string;
+  roles: Roles;
+}
+
+export interface Roles {
+  id: number;
+  name: string;
+  permissions: Permissions[];
+}
+
+export interface Permissions {
+  id: number;
+  page: string;
+  name: string;
 }
 
 export interface AuthResponse {

@@ -136,8 +136,8 @@ export interface CreateTransactionFromSalaryPaymentDto {
   salaryPaymentId: number;
   createdById: number;
   customDescription?: string;
-  transactionType: TransactionType; // Allow specifying whether this is an income or expense transaction
-  transactionCategory?: TransactionCategory; // Optional category override
+  transactionType?: TransactionType; // Optional - defaults to EXPENSE if not provided
+  transactionCategory?: TransactionCategory; // Optional - defaults to SALARY if not provided
 }
 
 export interface CreateRentalDto {

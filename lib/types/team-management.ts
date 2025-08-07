@@ -1,14 +1,36 @@
 // Team Management Types
 
+export interface Image {
+  id: number;
+  url: string;
+  filename?: string;
+  contentType?: string;
+  size?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface Team {
   id: number;
   name: string;
-  category: string;
+  code: string;        // Team code
   budget: number;
+  category?: {
+    id: number;
+    name: string;
+    code?: string;     // Category code
+    description?: string;
+  };
+  categoryId?: number;
+  clubImage?: {       // Image object from API
+    id: number;
+    url: string;
+    filename?: string;
+  };
+  clubImageId?: number;
   players?: Player[];
   matches?: Match[];
   staff?: Staff[];
-  logoUrl?: string;
   description?: string;
   numberOfPlayers?: number;
   numberOfStaff?: number;
@@ -25,7 +47,13 @@ export interface Player {
   position: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
-  playerImage?: string;
+  playerStatus?: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status
+  playerImage?: {       // Image object from API
+    id: number;
+    url: string;
+    filename?: string;
+  };
+  playerImageId?: number;
   teamId?: number | null; // Allow null for consistency
   team?: Team;
   contract?: Contract;
@@ -116,18 +144,18 @@ export interface ObjectiveProgress {
 // DTO interfaces for API requests
 export interface CreateTeamDto {
   name: string;
-  category: string;
+  code: string;     // Required by backend - unique team code
   budget: number;
+  categoryId?: number;
   description?: string;
-  logoUrl?: string;
 }
 
 export interface UpdateTeamDto {
   name?: string;
-  category?: string;
+  code?: string;     // Team code can be updated
   budget?: number;
+  categoryId?: number;
   description?: string;
-  logoUrl?: string;
 }
 
 export interface CreatePlayerDto {
@@ -137,8 +165,9 @@ export interface CreatePlayerDto {
   position: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
+  playerStatus?: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status
   teamId?: number | null; // Allow both undefined and null for clarity
-  playerImage?: string;
+  ImageId?: number | null;
 }
 
 export interface UpdatePlayerDto {
@@ -148,8 +177,9 @@ export interface UpdatePlayerDto {
   position?: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
+  playerStatus?: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status
   teamId?: number | null; // Allow both undefined and null for clarity
-  playerImage?: string;
+  ImageId?: number | null;
 }
 
 export interface CreateContractDto {
@@ -195,7 +225,12 @@ export interface Staff {
   qualification?: string;
   experience?: string;
   rib?: string; // NEW: Bank account information
-  staffImage?: string | null;
+  staffImage?: {       // Image object from API
+    id: number;
+    url: string;
+    filename?: string;
+  };
+  staffImageId?: number;
   salary?: number; // NEW: Staff salary
   contractStartDate?: string; // NEW: Contract start date
   contractEndDate?: string; // NEW: Contract end date
@@ -215,7 +250,7 @@ export interface CreateStaffDto {
   qualification?: string;
   experience?: string;
   rib?: string; // NEW: Bank account information
-  staffImage?: string;
+  staffImageId?: number;
   salary?: number; // NEW: Staff salary
   contractStartDate?: string; // NEW: Contract start date
   contractEndDate?: string; // NEW: Contract end date
@@ -232,9 +267,27 @@ export interface UpdateStaffDto {
   qualification?: string;
   experience?: string;
   rib?: string; // NEW: Bank account information
-  staffImage?: string;
+  staffImageId?: number;
   salary?: number; // NEW: Staff salary
   contractStartDate?: string; // NEW: Contract start date
   contractEndDate?: string; // NEW: Contract end date
   teamId?: number; // We still use teamId when updating staff
+}
+
+export interface CreateTeamDto {
+  name: string;
+  code: string;
+  budget: number;
+  description?: string;
+  categoryId?: number;
+  clubImageId?: number;
+}
+
+export interface UpdateTeamDto {
+  name?: string;
+  code?: string;
+  budget?: number;
+  description?: string;
+  categoryId?: number;
+  clubImageId?: number;
 }
