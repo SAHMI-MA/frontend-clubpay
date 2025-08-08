@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, Download, Upload, Filter, RefreshCw, MapPin, DollarSign, Activity } from 'lucide-react'
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, Download, Upload, RefreshCw, MapPin, DollarSign, Activity } from 'lucide-react'
 import { useStockManagement } from "@/hooks/use-stock-management"
 import { 
   Article, 
@@ -59,7 +59,7 @@ export function StockManagement() {
   // Local state for UI
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedLocation, setSelectedLocation] = useState("all")
+  const [selectedLocation] = useState("all")
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false)
   const [isEditArticleOpen, setIsEditArticleOpen] = useState(false)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
@@ -245,20 +245,46 @@ export function StockManagement() {
     }
   }
 
-  const categoryData = Object.values(ArticleCategory).map(category => ({
-    name: category,
-    value: (articles || []).filter(a => a.category === category).length,
-    color: categoryColors[category],
-  }))
+  const categoryData = Object.values(ArticleCategory)
+    .map(category => ({
+      name: category,
+      value: (articles || []).filter(a => a.category === category).length,
+      color: categoryColors[category],
+    }))
+    .filter(item => item.value > 0) // Only show categories with articles
 
-  const stockTrendData = [
-    { month: 'Jan', value: 85000 },
-    { month: 'Feb', value: 92000 },
-    { month: 'Mar', value: 78000 },
-    { month: 'Apr', value: 95000 },
-    { month: 'May', value: 88000 },
-    { month: 'Jun', value: 102000 },
-  ]
+  // Generate real stock trend data from movements
+  const stockTrendData = React.useMemo(() => {
+    const months = [];
+    const currentDate = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('fr-FR', { month: 'short' });
+      
+      // Calculate stock value for that month based on movements
+      const monthMovements = (movements || []).filter(movement => {
+        const movementDate = new Date(movement.movementDate);
+        return movementDate.getMonth() === date.getMonth() && 
+               movementDate.getFullYear() === date.getFullYear();
+      });
+      
+      // Calculate total value from movements for that month
+      const monthValue = monthMovements.reduce((total, movement) => {
+        return total + (Number(movement.totalValue) || 0);
+      }, 0);
+      
+      // If no movements, use current stock value divided by 12 as baseline
+      const baselineValue = monthValue || (totalStockValue / 12);
+      
+      months.push({
+        month: monthName,
+        value: Math.round(baselineValue)
+      });
+    }
+    
+    return months;
+  }, [movements, totalStockValue])
 
   return (
     <div className="space-y-6">
@@ -340,7 +366,7 @@ export function StockManagement() {
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">${totalStockValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">MAD {totalStockValue.toLocaleString()}</div>
             <p className="text-xs text-green-600 mt-1">+5.2% par rapport au mois dernier</p>
           </CardContent>
         </Card>
@@ -628,7 +654,7 @@ export function StockManagement() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, "Valeur Stock"]} />
+                    <Tooltip formatter={(value) => [`MAD ${Number(value).toLocaleString()}`, "Valeur Stock"]} />
                     <Line type="monotone" dataKey="value" stroke="#1E3A8A" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -648,7 +674,7 @@ export function StockManagement() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      label={({ name, percent }) => percent && percent > 0 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"

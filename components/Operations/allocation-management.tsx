@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Plus, 
   Search, 
@@ -47,7 +46,6 @@ import { useStockManagement } from "@/hooks/use-stock-management"
 import { 
   Allocation, 
   CreateAllocationDto,
-  CreateAllocationItemDto,
   Article
 } from "@/lib/api/stock-api"
 
@@ -68,18 +66,6 @@ interface AllocationFormState {
   expectedReturnDate?: string;
 }
 
-enum AllocationType {
-  CLUB = "Club",
-  PLAYER = "Player", 
-  STAFF = "Staff",
-  EMPLOYEE = "Employee"
-}
-
-enum AllocationDuration {
-  TEMPORARY = "Temporary",
-  PERMANENT = "Permanent"
-}
-
 export function AllocationManagement() {
   // Use our custom hooks for data management
   const {
@@ -94,7 +80,7 @@ export function AllocationManagement() {
     refreshData
   } = useAllocationManagement()
 
-  const { articles } = useStockManagement()
+  const { articles, refreshData: refreshArticles } = useStockManagement()
   const { downloadDocument } = useInternalPurchaseOrders()
 
   // Local state for UI
@@ -132,16 +118,22 @@ export function AllocationManagement() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pending":
+      case "En Attente":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
       case "Approved":
+      case "Approuvé":
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       case "In Use":
+      case "En Utilisation":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
       case "Returned":
+      case "Retourné":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
       case "Rejected":
+      case "Rejeté":
         return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
       case "Cancelled":
+      case "Annulé":
         return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
@@ -152,9 +144,12 @@ export function AllocationManagement() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "Club": return Building2
-      case "Player": return User
-      case "Staff": return UserCheck
-      case "Employee": return Users
+      case "Player":
+      case "Joueur": return User
+      case "Staff":
+      case "Personnel": return UserCheck
+      case "Employee":
+      case "Employé": return Users
       default: return Users
     }
   }
@@ -171,7 +166,7 @@ export function AllocationManagement() {
   // Handle reject allocation
   const handleRejectAllocation = async (id: number) => {
     try {
-      await rejectAllocation(id, "Rejected by user")
+      await rejectAllocation(id, "Rejeté par l'utilisateur")
     } catch (error) {
       console.error('Failed to reject allocation:', error)
     }
@@ -180,7 +175,7 @@ export function AllocationManagement() {
   // Handle return allocation
   const handleReturnAllocation = async (id: number) => {
     try {
-      await returnAllocation(id, "Returned by user")
+      await returnAllocation(id, "Retourné par l'utilisateur")
     } catch (error) {
       console.error('Failed to return allocation:', error)
     }
@@ -189,12 +184,64 @@ export function AllocationManagement() {
   // Handle create allocation
   const handleCreateAllocation = async () => {
     try {
+      // Validate form data
+      if (newAllocation.items.length === 0) {
+        alert('Aucun article sélectionné pour l\'allocation')
+        return
+      }
+      
+      if (!newAllocation.entityId) {
+        alert('Aucune entité sélectionnée pour l\'allocation')
+        return
+      }
+      
+      if (newAllocation.duration === 'temporary' && !newAllocation.expectedReturnDate) {
+        alert('La date de retour prévue est requise pour les allocations temporaires')
+        return
+      }
+
+      // Validate that all selected articles still exist and have sufficient stock
+      const invalidItems = newAllocation.items.filter(item => {
+        const article = articles?.find(a => a.id === item.articleId)
+        if (!article) {
+          console.error(`Article with ID ${item.articleId} not found`)
+          return true
+        }
+        if (article.currentStock < item.quantity) {
+          console.error(`Article ${article.name} has insufficient stock. Required: ${item.quantity}, Available: ${article.currentStock}`)
+          return true
+        }
+        return false
+      })
+
+      if (invalidItems.length > 0) {
+        const missingArticles = invalidItems.filter(item => !articles?.find(a => a.id === item.articleId))
+        const insufficientStock = invalidItems.filter(item => {
+          const article = articles?.find(a => a.id === item.articleId)
+          return article && article.currentStock < item.quantity
+        })
+
+        let errorMessage = 'Échec de la validation :\n'
+        if (missingArticles.length > 0) {
+          errorMessage += `- Articles non trouvés : ${missingArticles.map(item => `ID ${item.articleId}`).join(', ')}\n`
+        }
+        if (insufficientStock.length > 0) {
+          errorMessage += `- Stock insuffisant pour : ${insufficientStock.map(item => {
+            const article = articles?.find(a => a.id === item.articleId)
+            return `${article?.name} (besoin ${item.quantity}, disponible ${article?.currentStock})`
+          }).join(', ')}`
+        }
+        
+        alert(errorMessage)
+        return
+      }
+
       // Transform the form state to CreateAllocationDto
       const createDto: CreateAllocationDto = {
-        allocationType: newAllocation.type === 'team' ? 'Team' :
-                       newAllocation.type === 'player' ? 'Player' :
-                       newAllocation.type === 'staff' ? 'Staff' : 'Employee',
-        allocationDuration: newAllocation.duration === 'temporary' ? 'Temporary' : 'Permanent',
+        allocationType: newAllocation.type === 'team' ? 'Club' :
+                       newAllocation.type === 'player' ? 'Joueur' :
+                       newAllocation.type === 'staff' ? 'Personnel' : 'Employé',
+        allocationDuration: newAllocation.duration === 'temporary' ? 'Temporaire' : 'Permanent',
         items: newAllocation.items.map(item => ({
           articleId: item.articleId,
           quantity: item.quantity
@@ -203,16 +250,36 @@ export function AllocationManagement() {
         playerId: newAllocation.type === 'player' ? newAllocation.entityId : undefined,
         staffId: newAllocation.type === 'staff' ? newAllocation.entityId : undefined,
         employeeId: newAllocation.type === 'employee' ? newAllocation.entityId.toString() : undefined,
-        notes: newAllocation.remarks,
-        expectedReturnDate: newAllocation.expectedReturnDate,
+        notes: newAllocation.remarks || undefined,
+        expectedReturnDate: newAllocation.expectedReturnDate ? new Date(newAllocation.expectedReturnDate).toISOString() : undefined,
         allocatedById: 1 // This should come from auth context
       }
+
+      console.log('Creating allocation with data:', createDto)
+      console.log('Available articles in dropdown:', articles?.map(a => ({
+        id: a.id, 
+        name: a.name, 
+        code: a.code,
+        currentStock: a.currentStock
+      })))
+      console.log('Selected items to allocate:', newAllocation.items.map(item => {
+        const article = articles?.find(a => a.id === item.articleId)
+        return {
+          articleId: item.articleId,
+          quantity: item.quantity,
+          articleName: article?.name,
+          articleExists: !!article,
+          availableStock: article?.currentStock
+        }
+      }))
 
       await createAllocation(createDto)
       resetForm()
       setIsCreateDialogOpen(false)
     } catch (error) {
       console.error('Failed to create allocation:', error)
+      // Show user-friendly error message
+      alert(`Échec de la création de l'allocation : ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
     }
   }
 
@@ -290,12 +357,25 @@ export function AllocationManagement() {
   }
 
   // Helper data using real API data
-  const entitiesByType = (entities || []).filter(entity => 
-    newAllocation.type === "team" ? entity.type === "Team" :
-    newAllocation.type === "player" ? entity.type === "Player" :
-    newAllocation.type === "staff" ? entity.type === "Staff" :
-    entity.type === "Employee"
-  )
+  const entitiesByType = (entities || []).filter(entity => {
+    // Map the form type values to the actual entity types
+    const typeMapping = {
+      "team": "Club",
+      "player": "Joueur", 
+      "staff": "Personnel",
+      "employee": "Employé"
+    };
+    
+    const expectedType = typeMapping[newAllocation.type];
+    console.log(`🔍 Entity filtering for type "${newAllocation.type}":`, {
+      expectedType,
+      totalEntities: entities?.length || 0,
+      entityTypes: entities?.map(e => e.type) || [],
+      filteredEntities: entities?.filter(e => e.type === expectedType).length || 0
+    });
+    
+    return entity.type === expectedType;
+  })
 
   // Handle download document
   const handleDownloadDocument = async (allocationId: number) => {
@@ -318,7 +398,7 @@ export function AllocationManagement() {
       {loading && (
         <div className="flex items-center justify-center p-8">
           <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-          <span>Loading allocation data...</span>
+          <span>Chargement des données d'allocation...</span>
         </div>
       )}
 
@@ -328,7 +408,7 @@ export function AllocationManagement() {
           <CardContent className="p-6">
             <div className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">Error loading data: {error}</span>
+              <span className="font-medium">Erreur lors du chargement des données : {error}</span>
             </div>
             <Button 
               onClick={refreshData} 
@@ -337,7 +417,7 @@ export function AllocationManagement() {
               className="mt-3"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
+              Réessayer
             </Button>
           </CardContent>
         </Card>
@@ -426,7 +506,7 @@ export function AllocationManagement() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search allocations..."
+                    placeholder="Rechercher des allocations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9"
@@ -434,28 +514,28 @@ export function AllocationManagement() {
                 </div>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                   <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder="Filtrer par statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Approved">Approved</SelectItem>
-                    <SelectItem value="In Use">In Use</SelectItem>
-                    <SelectItem value="Returned">Returned</SelectItem>
-                    <SelectItem value="Rejected">Rejected</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">Tous les Statuts</SelectItem>
+                    <SelectItem value="Pending">En Attente</SelectItem>
+                    <SelectItem value="Approved">Approuvé</SelectItem>
+                    <SelectItem value="In Use">En Utilisation</SelectItem>
+                    <SelectItem value="Returned">Retourné</SelectItem>
+                    <SelectItem value="Rejected">Rejeté</SelectItem>
+                    <SelectItem value="Cancelled">Annulé</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={selectedType} onValueChange={setSelectedType}>
                   <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Filter by type" />
+                    <SelectValue placeholder="Filtrer par type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="all">Tous les Types</SelectItem>
                     <SelectItem value="Club">Club</SelectItem>
-                    <SelectItem value="Player">Player</SelectItem>
-                    <SelectItem value="Staff">Staff</SelectItem>
-                    <SelectItem value="Employee">Employee</SelectItem>
+                    <SelectItem value="Player">Joueur</SelectItem>
+                    <SelectItem value="Staff">Personnel</SelectItem>
+                    <SelectItem value="Employee">Employé</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -467,9 +547,9 @@ export function AllocationManagement() {
                     <TableHead>Allocation #</TableHead>
                     <TableHead>Article</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Entité</TableHead>
+                    <TableHead>Quantité</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -566,15 +646,159 @@ export function AllocationManagement() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Allocation Analytics</CardTitle>
-              <CardDescription>Statistics and insights about allocations</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400">Analytics charts and reports will be displayed here.</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Allocation Distribution by Type */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Répartition par Type</CardTitle>
+                <CardDescription>Distribution des allocations par type d'entité</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {['Club', 'Joueur', 'Personnel', 'Employé'].map(type => {
+                    const count = (allocations || []).filter(a => a.allocationType === type).length;
+                    const percentage = totalAllocations > 0 ? Math.round((count / totalAllocations) * 100) : 0;
+                    return (
+                      <div key={type} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {React.createElement(getTypeIcon(type), { className: "h-4 w-4 text-gray-500" })}
+                          <span className="text-sm font-medium">{type}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-gray-500 w-12">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Répartition par Statut</CardTitle>
+                <CardDescription>Distribution des allocations par statut</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { status: 'En Attente', color: 'bg-yellow-500' },
+                    { status: 'Approuvé', color: 'bg-green-500' },
+                    { status: 'En Utilisation', color: 'bg-blue-500' },
+                    { status: 'Retourné', color: 'bg-gray-500' },
+                    { status: 'Rejeté', color: 'bg-red-500' }
+                  ].map(({ status, color }) => {
+                    const count = (allocations || []).filter(a => a.status === status).length;
+                    const percentage = totalAllocations > 0 ? Math.round((count / totalAllocations) * 100) : 0;
+                    return (
+                      <div key={status} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${color}`}></div>
+                          <span className="text-sm font-medium">{status}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${color}`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-gray-500 w-12">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Activité Récente</CardTitle>
+                <CardDescription>Dernières allocations créées</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {(allocations || [])
+                    .sort((a, b) => new Date(b.allocationDate).getTime() - new Date(a.allocationDate).getTime())
+                    .slice(0, 5)
+                    .map(allocation => (
+                      <div key={allocation.id} className="flex items-center justify-between p-2 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          {React.createElement(getTypeIcon(allocation.allocationType), { className: "h-4 w-4 text-gray-400" })}
+                          <div>
+                            <div className="text-sm font-medium">{allocation.allocationNumber}</div>
+                            <div className="text-xs text-gray-500">{allocation.allocationType}</div>
+                          </div>
+                        </div>
+                        <Badge className={getStatusColor(allocation.status)}>
+                          {allocation.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  {(allocations || []).length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Aucune allocation trouvée</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Trends */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tendances Mensuelles</CardTitle>
+                <CardDescription>Évolution des allocations au fil du temps</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Simple trend visualization */}
+                  <div className="flex items-end gap-1 h-32">
+                    {[...Array(12)].map((_, index) => {
+                      const monthAllocations = (allocations || []).filter(a => {
+                        const allocDate = new Date(a.allocationDate);
+                        const currentDate = new Date();
+                        const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - (11 - index), 1);
+                        return allocDate.getMonth() === targetMonth.getMonth() && 
+                               allocDate.getFullYear() === targetMonth.getFullYear();
+                      }).length;
+                      const maxHeight = Math.max(...[...Array(12)].map((_, i) => {
+                        const date = new Date();
+                        const month = new Date(date.getFullYear(), date.getMonth() - (11 - i), 1);
+                        return (allocations || []).filter(a => {
+                          const allocDate = new Date(a.allocationDate);
+                          return allocDate.getMonth() === month.getMonth() && 
+                                 allocDate.getFullYear() === month.getFullYear();
+                        }).length;
+                      }));
+                      const height = maxHeight > 0 ? (monthAllocations / maxHeight) * 100 : 0;
+                      return (
+                        <div 
+                          key={index} 
+                          className="bg-blue-500 rounded-t flex-1 min-h-[4px]"
+                          style={{ height: `${Math.max(height, 4)}%` }}
+                          title={`${monthAllocations} allocations`}
+                        ></div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-center text-sm text-gray-500">
+                    Derniers 12 mois
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -604,11 +828,32 @@ export function AllocationManagement() {
           </div>
 
           {/* Step Content */}
-          <div className="min-h-[300px]">
+          <div className="min-h-[300px] max-h-[400px] overflow-y-auto">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Sélectionner Articles</h3>
-                <p className="text-sm text-gray-600">Choisissez les articles que vous voulez allouer</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Sélectionner Articles</h3>
+                    <p className="text-sm text-gray-600">Choisissez les articles que vous voulez allouer</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      refreshArticles()
+                      console.log('🔍 Debug - Current articles state:', articles?.map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        code: a.code,
+                        currentStock: a.currentStock
+                      })))
+                    }}
+                    className="gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Actualiser Articles
+                  </Button>
+                </div>
                 
                 {/* Article Selection */}
                 <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
@@ -856,77 +1101,86 @@ export function AllocationManagement() {
                 <p className="text-sm text-gray-600">Vérifiez les détails de l'allocation avant de soumettre</p>
                 
                 <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Articles:</span>
-                    <span>{newAllocation.items.length} article(s) sélectionné(s)</span>
+                  {/* Summary Info */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Articles:</span>
+                      <span>{newAllocation.items.length} article(s)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Quantité totale:</span>
+                      <span>{newAllocation.items.reduce((sum, item) => sum + item.quantity, 0)} unité(s)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Destinataire:</span>
+                      <span className="truncate">{(entities || []).find(e => e.id === newAllocation.entityId)?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Type:</span>
+                      <span>{
+                        newAllocation.type === 'team' ? 'Équipe' :
+                        newAllocation.type === 'player' ? 'Joueur' :
+                        newAllocation.type === 'staff' ? 'Staff' : 'Employé'
+                      }</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Durée:</span>
+                      <span>{newAllocation.duration === 'temporary' ? "Temporaire" : "Permanente"}</span>
+                    </div>
+                    {newAllocation.expectedReturnDate && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Date de Retour:</span>
+                        <span>{newAllocation.expectedReturnDate}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Articles List */}
+                  <Separator />
+                  
+                  {/* Articles List - Compact */}
                   <div className="space-y-2">
                     <span className="font-medium text-sm">Détail des articles:</span>
-                    {newAllocation.items.map((item, index) => (
-                      <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded border">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium">{item.article?.name || `Article ID: ${item.articleId}`}</p>
-                            <p className="text-sm text-gray-500">{item.article?.code}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">Quantité: {item.quantity}</p>
-                            <p className="text-sm text-gray-500">{item.article?.unit || 'unité'}</p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {newAllocation.items.map((item, index) => (
+                        <div key={index} className="bg-white dark:bg-gray-800 p-2 rounded border text-sm">
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{item.article?.name || `Article ID: ${item.articleId}`}</p>
+                              <p className="text-xs text-gray-500">{item.article?.code}</p>
+                            </div>
+                            <div className="text-right ml-2">
+                              <p className="font-medium">Qté: {item.quantity}</p>
+                              <p className="text-xs text-gray-500">{item.article?.unit || 'unité'}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                   
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="font-medium">Destinataire:</span>
-                    <span>{(entities || []).find(e => e.id === newAllocation.entityId)?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Type:</span>
-                    <span>{
-                      newAllocation.type === 'team' ? 'Équipe' :
-                      newAllocation.type === 'player' ? 'Joueur' :
-                      newAllocation.type === 'staff' ? 'Staff' : 'Employé'
-                    }</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="font-medium">Quantité totale:</span>
-                    <span>{newAllocation.items.reduce((sum, item) => sum + item.quantity, 0)} unité(s)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Durée:</span>
-                    <span>{newAllocation.duration === 'temporary' ? "Temporaire" : "Permanente"}</span>
-                  </div>
-                  {newAllocation.expectedReturnDate && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Date de Retour:</span>
-                      <span>{newAllocation.expectedReturnDate}</span>
-                    </div>
-                  )}
                   {newAllocation.remarks && (
                     <>
                       <Separator />
                       <div>
-                        <span className="font-medium">Notes:</span>
-                        <p className="text-sm text-gray-600 mt-1">{newAllocation.remarks}</p>
+                        <span className="font-medium text-sm">Notes:</span>
+                        <p className="text-sm text-gray-600 mt-1 bg-white dark:bg-gray-800 p-2 rounded max-h-16 overflow-y-auto">
+                          {newAllocation.remarks}
+                        </p>
                       </div>
                     </>
                   )}
                 </div>
 
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-blue-500" />
-                    <span className="font-medium text-blue-800 dark:text-blue-400">Important</span>
+                    <AlertCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium text-blue-800 dark:text-blue-400 text-sm">Important</span>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        Cette allocation sera soumise pour approbation. Le stock sera réservé une fois approuvé.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    Cette allocation sera soumise pour approbation. Le stock sera réservé une fois approuvé.
-                  </p>
                 </div>
               </div>
             )}
@@ -971,20 +1225,20 @@ export function AllocationManagement() {
       <Dialog open={!!viewingAllocation} onOpenChange={() => setViewingAllocation(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Allocation Details</DialogTitle>
+            <DialogTitle>Détails de l'Allocation</DialogTitle>
             <DialogDescription>
-              View complete allocation information
+              Voir les informations complètes de l'allocation
             </DialogDescription>
           </DialogHeader>
           {viewingAllocation && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Allocation Number</Label>
+                  <Label className="text-sm font-medium text-gray-500">Numéro d'Allocation</Label>
                   <p className="text-lg font-semibold">{viewingAllocation.allocationNumber}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Status</Label>
+                  <Label className="text-sm font-medium text-gray-500">Statut</Label>
                   <Badge className={getStatusColor(viewingAllocation.status)}>
                     {viewingAllocation.status}
                   </Badge>

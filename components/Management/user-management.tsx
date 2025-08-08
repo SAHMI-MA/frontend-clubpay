@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2 } from "lucide-react"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2, Check, ChevronsUpDown, X } from "lucide-react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
 import {
@@ -68,6 +69,134 @@ export function exportUsersToCSV(users: User[]) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+interface Permission {
+  id: number;
+  name: string;
+  description?: string;
+  page: string;
+}
+
+interface SearchablePermissionsSelectorProps {
+  permissions: Permission[];
+  selectedPermissions: number[];
+  onPermissionChange: (permissionId: number, checked: boolean) => void;
+  loading?: boolean;
+  placeholder?: string;
+}
+
+function SearchablePermissionsSelector({
+  permissions,
+  selectedPermissions,
+  onPermissionChange,
+  loading = false,
+  placeholder = "Sélectionner des permissions..."
+}: SearchablePermissionsSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  const filteredPermissions = permissions.filter(permission =>
+    permission.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+    permission.description?.toLowerCase().includes(searchValue.toLowerCase()) ||
+    permission.page.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const selectedPermissionNames = permissions
+    .filter(p => selectedPermissions.includes(p.id))
+    .map(p => p.name);
+
+  const handleRemovePermission = (permissionId: number) => {
+    onPermissionChange(permissionId, false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-4">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-800" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            {selectedPermissions.length === 0
+              ? placeholder
+              : `${selectedPermissions.length} permission(s) sélectionnée(s)`}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Rechercher des permissions..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
+            <CommandList>
+              <CommandEmpty>Aucune permission trouvée.</CommandEmpty>
+              <CommandGroup>
+                {filteredPermissions.map((permission) => (
+                  <CommandItem
+                    key={permission.id}
+                    value={permission.name}
+                    onSelect={() => {
+                      const isSelected = selectedPermissions.includes(permission.id);
+                      onPermissionChange(permission.id, !isSelected);
+                    }}
+                  >
+                    <Check
+                      className={`mr-2 h-4 w-4 ${
+                        selectedPermissions.includes(permission.id)
+                          ? "opacity-100"
+                          : "opacity-0"
+                      }`}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium">{permission.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {permission.description || `Pour la page ${permission.page}`}
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      
+      {/* Selected permissions badges */}
+      {selectedPermissions.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {selectedPermissionNames.map((name, index) => {
+            const permission = permissions.find(p => p.name === name);
+            return (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {name}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 h-auto p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => permission && handleRemovePermission(permission.id)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function UserManagement() {
@@ -780,31 +909,14 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-start gap-4">
                         <Label className="text-right mt-2">Permissions</Label>
-                        <div className="col-span-3 space-y-3">
-                          {permissionsLoading ? (
-                            <div className="flex justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin text-blue-800" />
-                            </div>
-                          ) : (
-                            permissions.map((permission) => (
-                              <div key={permission.id} className="flex items-start space-x-3">
-                                <Checkbox
-                                  id={`permission-${permission.id}`}
-                                  checked={newRole.permissions.includes(permission.id)}
-                                  onCheckedChange={(checked) => handlePermissionChange(permission.id, checked as boolean)}
-                                />
-                                <div className="grid gap-1.5 leading-none">
-                                  <Label
-                                    htmlFor={`permission-${permission.id}`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
-                                    {permission.name}
-                                  </Label>
-                                  <p className="text-xs text-muted-foreground">{permission.description || `Pour la page ${permission.page}`}</p>
-                                </div>
-                              </div>
-                            ))
-                          )}
+                        <div className="col-span-3">
+                          <SearchablePermissionsSelector
+                            permissions={permissions}
+                            selectedPermissions={newRole.permissions}
+                            onPermissionChange={handlePermissionChange}
+                            loading={permissionsLoading}
+                            placeholder="Sélectionner des permissions pour ce rôle..."
+                          />
                         </div>
                       </div>
                     </div>
@@ -853,33 +965,14 @@ export function UserManagement() {
                       </div>
                       <div className="grid grid-cols-4 items-start gap-4">
                         <Label className="text-right mt-2">Permissions</Label>
-                        <div className="col-span-3 space-y-3">
-                          {permissionsLoading ? (
-                            <div className="flex justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin text-blue-800" />
-                            </div>
-                          ) : (
-                            permissions.map((permission) => (
-                              <div key={permission.id} className="flex items-start space-x-3">
-                                <Checkbox
-                                  id={`edit-permission-${permission.id}`}
-                                  checked={(editingRole?.permissions as number[] || []).includes(permission.id)}
-                                  onCheckedChange={(checked) =>
-                                    handleEditRolePermissionChange(permission.id, checked as boolean)
-                                  }
-                                />
-                                <div className="grid gap-1.5 leading-none">
-                                  <Label
-                                    htmlFor={`edit-permission-${permission.id}`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
-                                    {permission.name}
-                                  </Label>
-                                  <p className="text-xs text-muted-foreground">{permission.description || `Pour la page ${permission.page}`}</p>
-                                </div>
-                              </div>
-                            ))
-                          )}
+                        <div className="col-span-3">
+                          <SearchablePermissionsSelector
+                            permissions={permissions}
+                            selectedPermissions={(editingRole?.permissions as number[] || [])}
+                            onPermissionChange={handleEditRolePermissionChange}
+                            loading={permissionsLoading}
+                            placeholder="Sélectionner des permissions pour ce rôle..."
+                          />
                         </div>
                       </div>
                     </div>

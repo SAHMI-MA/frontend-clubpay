@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { AlertCircle, Loader2, Trash2, Upload, X } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { TeamAvatar } from "./team-avatar";
 import { imageService } from "@/lib/team-management-services";
 
 interface TeamFormProps {

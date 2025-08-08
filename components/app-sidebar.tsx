@@ -97,7 +97,7 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        {navigationGroups.map((group) => (
+        {filteredGroups.map((group) => (
           <Collapsible key={group.title} defaultOpen className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild>

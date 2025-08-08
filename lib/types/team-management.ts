@@ -291,3 +291,50 @@ export interface UpdateTeamDto {
   categoryId?: number;
   clubImageId?: number;
 }
+
+// Employee interface for HR management
+export interface Employee {
+  employeeId: string; // Primary key - string format like "HR001"
+  fullName: string;
+  department?: {
+    id: number;
+    name: string;
+  };
+  position?: {
+    id: number;
+    title: string;
+  };
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+  };
+  employeeStatus?: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE' | 'SUSPENDED';
+  hireDate?: string;
+  terminationDate?: string;
+  currentSalary?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateEmployeeDto {
+  employeeId: string;
+  fullName: string;
+  departmentId?: number;
+  positionId?: number;
+  userId?: number;
+  employeeStatus?: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE' | 'SUSPENDED';
+  hireDate?: string;
+  currentSalary?: string;
+}
+
+export interface UpdateEmployeeDto {
+  fullName?: string;
+  departmentId?: number;
+  positionId?: number;
+  userId?: number;
+  employeeStatus?: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE' | 'SUSPENDED';
+  hireDate?: string;
+  terminationDate?: string;
+  currentSalary?: string;
+}

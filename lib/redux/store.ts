@@ -7,7 +7,9 @@ import permissionReducer from './permissionSlice';
 import teamReducer from './teamSlice';
 import playerReducer from './playerSlice';
 import staffReducer from './staffSlice';
+import employeeReducer from './employeeSlice';
 import supplierReducer from './supplierSlice';
+import suppliesReducer from './suppliesSlice';
 import acquisitionReducer from './acquisitionSlice';
 import financialReducer from './financialSlice';
 import contractReducer from './contractSlice';
@@ -26,7 +28,9 @@ export const store = configureStore({
     teams: teamReducer,
     players: playerReducer,
     staff: staffReducer,
+    employees: employeeReducer,
     suppliers: supplierReducer,
+    supplies: suppliesReducer,
     acquisitions: acquisitionReducer,
     financial: financialReducer,
     contracts: contractReducer,

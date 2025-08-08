@@ -24,6 +24,7 @@ import { HRManagement } from "./HR/hr-management"
 import { AbsenceLeaveManagement } from "./HR/absence-leave-management"
 import { EmployeeFilesManagement } from "./HR/employee-files-management"
 import { SalaryPaymentManagement } from "./HR/salary-payment-management"
+import { ClubSalaryPaymentsManagement } from "./Management/club-salary-payments-management"
 import { StockManagement } from "./Operations/stock-management"
 import { AllocationManagement } from "./Operations/allocation-management"
 
@@ -72,6 +73,8 @@ export function SportsManagementApp() {
         return <AbsenceLeaveManagement />
       case "salary-payments":
         return <SalaryPaymentManagement />
+      case "club-salary-payments":
+        return <ClubSalaryPaymentsManagement />
       case "stock-management":
         return <StockManagement />
       case "allocation-management":
