@@ -15,8 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Users, UserMinus, RotateCcw, Save } from "lucide-react"
-import { useDispatch, useSelector } from "react-redux"
-import { AppDispatch, RootState } from "@/lib/redux/store"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
 import { 
   addPlayerToMatch,
@@ -26,16 +25,7 @@ import {
   Match, 
   CreateMatchParticipationDto 
 } from "@/lib/types/match-management"
-
-interface Player {
-  id: number
-  firstName: string
-  lastName: string
-  position: string
-  playerNumber?: number | null
-  playerImage?: string
-  status?: "available" | "injured" | "suspended"
-}
+import { Player } from "@/lib/types/team-management"
 
 interface FormationPosition {
   x: number // percentage from left (0-100)
@@ -132,11 +122,11 @@ const formations: Formation[] = [
 ]
 
 export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps) {
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
   
   // Redux state
-  const { participations} = useSelector((state: RootState) => state.matches)
-  const { players: availablePlayers } = useSelector((state: RootState) => state.players)
+  const { participations} = useAppSelector((state) => state.matches)
+  const { players: availablePlayers } = useAppSelector((state) => state.players)
   
   // Local state
   const [selectedFormation, setSelectedFormation] = useState("4-4-2")

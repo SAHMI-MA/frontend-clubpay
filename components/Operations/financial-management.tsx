@@ -115,16 +115,14 @@ import { apiConfig } from "@/lib/api-config"
 export function FinancialManagement() {
   const [customPOFile, setCustomPOFile] = useState<File | null>(null);
   const [customPOId, setCustomPOId] = useState<number | null>(null);
-  const [customPOType, setCustomPOType] = useState<"INTERNAL" | "EXTERNAL" | "">("");
   const [isUploadingCustomPO, setIsUploadingCustomPO] = useState(false);
   const [uploadCustomPOError, setUploadCustomPOError] = useState<string | null>(null);
 
 
 
-  // State for purchase order file and type (for acquisition transaction)
+  // State for purchase order file (for acquisition transaction)
   const [purchaseOrderFile, setPurchaseOrderFile] = useState<File | null>(null);
   const [purchaseOrderId, setPurchaseOrderId] = useState<number | null>(null);
-  const [purchaseOrderType, setPurchaseOrderType] = useState<"INTERNAL" | "EXTERNAL" | "">("");
   const [isUploadingPO, setIsUploadingPO] = useState(false);
   const [uploadPOError, setUploadPOError] = useState<string | null>(null);
 
@@ -201,7 +199,6 @@ export function FinancialManagement() {
       if (typeof window !== 'undefined') {
         authToken = localStorage.getItem('auth_token') || '';
       }
-      // Dynamically import getApiUrl to avoid SSR issues
       const { getApiUrl } = await import('@/lib/api-config');
       const uploadUrl = getApiUrl('acquisitions/upload-file');
       const response = await fetch(uploadUrl, {
@@ -914,8 +911,7 @@ export function FinancialManagement() {
         date: customTransactionForm.date,
         description: customTransactionForm.description,
         createdById: userId as number, // We've already checked that userId is not null above
-        purchaseOrderId: customPOId || undefined,
-        purchaseOrderType: customPOType || undefined
+        purchaseOrderId: customPOId || undefined
       }
       
       console.log("Creating custom transaction with data:", transactionData)
@@ -942,7 +938,6 @@ export function FinancialManagement() {
       })
       setCustomPOFile(null);
       setCustomPOId(null);
-      setCustomPOType("");
       setIsCustomTransactionDialogOpen(false)
       
       // Refresh transactions
@@ -1044,8 +1039,7 @@ export function FinancialManagement() {
         acquisitionId: selectedAcquisitionId,
         createdById: userId, // Using authenticated user's ID
         customDescription: transactionDescription || undefined,
-        purchaseOrderId: purchaseOrderId || undefined,
-        purchaseOrderType: purchaseOrderType || undefined
+        purchaseOrderId: purchaseOrderId || undefined
       };
 
       console.log("Creating transaction with data:", transactionData)
@@ -1066,7 +1060,6 @@ export function FinancialManagement() {
       setTransactionDescription("")
       setPurchaseOrderFile(null)
       setPurchaseOrderId(null)
-      setPurchaseOrderType("")
 
       // Refresh transactions and acquisitions
       dispatch(fetchTransactions())
@@ -2090,22 +2083,6 @@ export function FinancialManagement() {
                     <div className="text-red-600 text-xs mt-1">{uploadPOError}</div>
                   )}
                 </div>
-                {/* Purchase Order Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="purchaseOrderType">Purchase Order Type (optional)</Label>
-                  <Select
-                    value={purchaseOrderType}
-                    onValueChange={v => setPurchaseOrderType(v as "INTERNAL" | "EXTERNAL")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="INTERNAL">Internal</SelectItem>
-                      <SelectItem value="EXTERNAL">External</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="acquisition">Approved Acquisition</Label>
                   <Select 
@@ -2118,7 +2095,7 @@ export function FinancialManagement() {
                     <SelectContent>
                       {approvedAcquisitions.map((acq) => (
                         <SelectItem key={acq.id} value={acq.id.toString()}>
-                          {acq.description} - ${acq.cost} ({acq.itemType})
+                          {acq.acquisitionName || acq.description} - {acq.totalCost.toLocaleString()} MAD ({acq.acquisitionType})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -2168,7 +2145,6 @@ export function FinancialManagement() {
         </DialogContent>
       </Dialog>
       
-      {/* Create Salary Payment Dialog */}
       <Dialog open={isCreateSalaryPaymentDialogOpen} onOpenChange={setIsCreateSalaryPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
@@ -2654,21 +2630,6 @@ export function FinancialManagement() {
                 </Button>
                 {uploadCustomPOError && <div className="text-red-500 text-sm mt-1">{uploadCustomPOError}</div>}
                 {customPOId && <div className="text-green-600 text-sm mt-1">File uploaded (ID: {customPOId})</div>}
-              </div>
-            </div>
-            {/* Purchase Order Type */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Purchase Order Type</Label>
-              <div className="col-span-3">
-                <Select value={customPOType} onValueChange={v => setCustomPOType(v as "INTERNAL" | "EXTERNAL" | "")} disabled={isUploadingCustomPO || customTransactionForm.type === TransactionType.INCOME}> 
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INTERNAL">Internal</SelectItem>
-                    <SelectItem value="EXTERNAL">External</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </div>

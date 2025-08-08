@@ -161,6 +161,18 @@ export function SupplierManagement() {
 
   const handleUpdateSupplier = () => {
     if (selectedSupplier && selectedSupplier.id) {
+      // Validate and convert rating
+      let validRating = 3; // Default rating
+      if (selectedSupplier.rating !== undefined && selectedSupplier.rating !== null) {
+        const ratingValue = typeof selectedSupplier.rating === 'string' 
+          ? parseFloat(selectedSupplier.rating) 
+          : selectedSupplier.rating;
+        
+        if (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+          validRating = ratingValue;
+        }
+      }
+
       const updateData: UpdateSupplierDto = {
         name: selectedSupplier.name,
         contactPerson: selectedSupplier.contactPerson,
@@ -169,7 +181,7 @@ export function SupplierManagement() {
         address: selectedSupplier.address,
         category: selectedSupplier.category,
         isActive: selectedSupplier.isActive,
-        rating: selectedSupplier.rating
+        rating: validRating
       }
 
       dispatch(updateSupplier({ id: selectedSupplier.id, data: updateData }))
@@ -724,21 +736,31 @@ export function SupplierManagement() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-supplier-rating">Note</Label>
+                  <Label htmlFor="edit-supplier-rating">Note (1-5)</Label>
                   <Input
                     id="edit-supplier-rating"
                     type="number"
-                    min="0"
+                    min="1"
                     max="5"
                     step="0.1"
-                    value={selectedSupplier.rating || 0}
+                    value={selectedSupplier.rating || 3}
                     onChange={(e) => {
-                      const rating = Number.parseFloat(e.target.value);
-                      if (!isNaN(rating)) {
-                        handleInputChange({ target: { value: rating.toString() } } as React.ChangeEvent<HTMLInputElement>, 'rating');
+                      const rating = parseFloat(e.target.value);
+                      if (!isNaN(rating) && rating >= 1 && rating <= 5) {
+                        if (selectedSupplier) {
+                          dispatch(setSelectedSupplier({
+                            ...selectedSupplier,
+                            rating: rating
+                          }));
+                        }
                       }
                     }}
+                    placeholder="3.0"
                   />
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-500">{getRatingStars(selectedSupplier.rating)}</span>
+                    <span className="text-xs text-gray-500">({selectedSupplier.rating || 3}/5)</span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-supplier-status">Statut</Label>

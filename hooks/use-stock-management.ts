@@ -1,4 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAppSelector, useAppDispatch } from '@/lib/redux/hooks';
+import { fetchAllTeams } from '@/lib/redux/teamSlice';
+import { fetchAllPlayers } from '@/lib/redux/playerSlice';
+import { fetchAllStaff } from '@/lib/redux/staffSlice';
+import { hrApi } from '@/lib/api/hr-api';
 import { 
   stockApi, 
   allocationApi, 
@@ -215,10 +220,64 @@ export function useStockManagement() {
 
 // Hook for Allocation Management
 export function useAllocationManagement() {
+  const dispatch = useAppDispatch();
+  
+  // Get data from Redux slices
+  const teams = useAppSelector(state => state.teams.teams);
+  const players = useAppSelector(state => state.players.players);
+  const staff = useAppSelector(state => state.staff.staff);
+  const teamsLoading = useAppSelector(state => state.teams.loading);
+  const playersLoading = useAppSelector(state => state.players.loading);
+  const staffLoading = useAppSelector(state => state.staff.loading);
+  
   const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [entities, setEntities] = useState<Array<{ id: number; name: string; type: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: number; name: string; type: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Compute entities from Redux slices
+  const entities = useCallback(() => {
+    const allEntities: Array<{ id: number; name: string; type: string }> = [];
+
+    // Add teams from Redux
+    teams.forEach(team => {
+      allEntities.push({
+        id: team.id,
+        name: team.name || `Team ${team.id}`,
+        type: 'Club'
+      });
+    });
+
+    // Add players from Redux
+    players.forEach(player => {
+      allEntities.push({
+        id: player.id,
+        name: `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+        type: 'Player'
+      });
+    });
+
+    // Add staff from Redux
+    staff.forEach(staffMember => {
+      allEntities.push({
+        id: staffMember.id,
+        name: `${staffMember.firstName || ''} ${staffMember.lastName || ''}`.trim() || staffMember.role || `Staff ${staffMember.id}`,
+        type: 'Staff'
+      });
+    });
+
+    // Add employees from local state (fetched from HR API)
+    allEntities.push(...employees);
+
+    console.log('🚀 Entities computed from Redux slices:');
+    console.log('- Teams:', teams.length, 'loaded');
+    console.log('- Players:', players.length, 'loaded');
+    console.log('- Staff:', staff.length, 'loaded');
+    console.log('- Employees:', employees.length, 'loaded');
+    console.log('- Total entities:', allEntities.length);
+
+    return allEntities;
+  }, [teams, players, staff, employees]);
 
   // Fetch allocations with filters
   const fetchAllocations = useCallback(async (filters?: {
@@ -244,19 +303,41 @@ export function useAllocationManagement() {
     }
   }, []);
 
-  // Fetch entities for allocation
-  const fetchEntities = useCallback(async () => {
+  // Fetch employees from HR API
+  const fetchEmployees = useCallback(async () => {
     try {
-      const allEntities = await entityApi.getAllEntities();
-      // Ensure we always set an array, even if the response is unexpected
-      setEntities(Array.isArray(allEntities) ? allEntities : []);
+      const employeesData = await hrApi.getEmployees();
+      const formattedEmployees = employeesData.map(emp => ({
+        id: parseInt(emp.employeeId) || 0,
+        name: emp.fullName || `${emp.user?.firstName || ''} ${emp.user?.lastName || ''}`.trim() || `Employee ${emp.employeeId}`,
+        type: 'Employee'
+      }));
+      setEmployees(formattedEmployees);
     } catch (err: any) {
-      console.error('Failed to fetch entities:', err);
-      // On error, ensure entities is still an array - this endpoint might not be implemented yet
-      setEntities([]);
-      // Don't set global error state for missing entities endpoint
+      console.warn('Failed to fetch employees:', err);
+      setEmployees([]);
     }
   }, []);
+
+  // Fetch all entity data from Redux slices
+  const fetchEntitiesFromSlices = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Dispatch Redux actions to fetch data
+      await Promise.all([
+        dispatch(fetchAllTeams()).unwrap(),
+        dispatch(fetchAllPlayers()).unwrap(),
+        dispatch(fetchAllStaff()).unwrap(),
+      ]);
+      // Also fetch employees from HR API
+      await fetchEmployees();
+    } catch (err: any) {
+      console.error('Failed to fetch entities from slices:', err);
+      // Individual slice errors are handled by Redux, so we don't set global error here
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, fetchEmployees]);
 
   // Create allocation
   const createAllocation = useCallback(async (data: CreateAllocationDto) => {
@@ -347,13 +428,13 @@ export function useAllocationManagement() {
   // Initial data fetch
   useEffect(() => {
     fetchAllocations();
-    fetchEntities();
-  }, [fetchAllocations, fetchEntities]);
+    fetchEntitiesFromSlices();
+  }, [fetchAllocations, fetchEntitiesFromSlices]);
 
   return {
     allocations,
-    entities,
-    loading,
+    entities: entities(),
+    loading: loading || teamsLoading || playersLoading || staffLoading,
     error,
     fetchAllocations,
     createAllocation,
@@ -363,7 +444,7 @@ export function useAllocationManagement() {
     deleteAllocation,
     refreshData: () => {
       fetchAllocations();
-      fetchEntities();
+      fetchEntitiesFromSlices();
     }
   };
 }

@@ -16,8 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Users, UserPlus, UserMinus, Save } from "lucide-react"
-import { useDispatch, useSelector } from "react-redux"
-import { AppDispatch, RootState } from "@/lib/redux/store"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
 import { 
   addPlayerToMatch,
@@ -26,16 +25,7 @@ import {
   Match, 
   CreateMatchParticipationDto 
 } from "@/lib/types/match-management"
-
-interface Player {
-  id: number
-  firstName: string
-  lastName: string
-  position: string
-  playerNumber?: number | null
-  playerImage?: string
-  status?: "available" | "injured" | "suspended"
-}
+import { Player } from "@/lib/types/team-management"
 
 interface FieldFormationProps {
   match: Match
@@ -112,11 +102,11 @@ const formations = {
 }
 
 export function FieldFormation({ match, isOpen, onClose }: FieldFormationProps) {
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
   
   // Redux state
-  const { loading } = useSelector((state: RootState) => state.matches)
-  const { players: availablePlayers } = useSelector((state: RootState) => state.players)
+  const { loading } = useAppSelector((state) => state.matches)
+  const { players: availablePlayers } = useAppSelector((state) => state.players)
   
   // Local state
   const [selectedFormation, setSelectedFormation] = useState<keyof typeof formations>("4-4-2")
@@ -312,9 +302,9 @@ export function FieldFormation({ match, isOpen, onClose }: FieldFormationProps) 
                       className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-blue-100 rounded-lg cursor-move transition-all duration-200 border border-gray-200 hover:border-blue-300 hover:shadow-md"
                     >
                     <div className="flex items-center space-x-3">
-                      {player.playerImage && (
+                      {player.playerImage?.url && (
                         <img 
-                          src={player.playerImage} 
+                          src={player.playerImage.url} 
                           alt={getPlayerDisplayName(player)}
                           className="w-8 h-8 rounded-full object-cover"
                         />

@@ -484,21 +484,114 @@ export const allocationApi = {
 export const entityApi = {
   async getAllEntities(): Promise<Array<{ id: number; name: string; type: string }>> {
     try {
-      const res = await fetch(`${BASE_URL}/stock/entities`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) {
-        // If endpoint doesn't exist (404) or other error, return empty array
-        if (res.status === 404) {
-          console.warn('Entities endpoint not found - this feature may not be implemented yet');
-          return [];
+      const allEntities: Array<{ id: number; name: string; type: string }> = [];
+
+      // Try to fetch teams from team management API
+      try {
+        const teamsRes = await fetch(`${BASE_URL}/teams`, {
+          headers: getAuthHeaders(),
+        });
+        if (teamsRes.ok) {
+          const teams = await teamsRes.json();
+          if (Array.isArray(teams)) {
+            teams.forEach(team => {
+              allEntities.push({
+                id: team.id,
+                name: team.name || `Team ${team.id}`,
+                type: 'Team'
+              });
+            });
+          }
         }
-        throw await res.json();
+      } catch (error) {
+        console.warn('Failed to fetch teams:', error);
       }
-      return res.json();
+
+      // Try to fetch players from team management API
+      try {
+        const playersRes = await fetch(`${BASE_URL}/players`, {
+          headers: getAuthHeaders(),
+        });
+        if (playersRes.ok) {
+          const players = await playersRes.json();
+          if (Array.isArray(players)) {
+            players.forEach(player => {
+              allEntities.push({
+                id: player.id,
+                name: `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+                type: 'Player'
+              });
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch players:', error);
+      }
+
+      // Try to fetch employees from HR API
+      try {
+        const employeesRes = await fetch(`${BASE_URL}/hr/employees`, {
+          headers: getAuthHeaders(),
+        });
+        if (employeesRes.ok) {
+          const employees = await employeesRes.json();
+          if (Array.isArray(employees)) {
+            employees.forEach(emp => {
+              allEntities.push({
+                id: parseInt(emp.employeeId) || 0,
+                name: emp.fullName || `${emp.user?.firstName || ''} ${emp.user?.lastName || ''}`.trim() || `Employee ${emp.employeeId}`,
+                type: 'Employee'
+              });
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch employees:', error);
+      }
+
+      // Add mock staff data until staff endpoint is available
+      // TODO: Replace with real API call when staff endpoint is available
+      const mockStaff = [
+        { id: 3001, name: "Mohammed Brahim - Entraîneur Principal", type: "Staff" },
+        { id: 3002, name: "Abdellah Zeroual - Entraîneur Adjoint", type: "Staff" },
+        { id: 3003, name: "Fatima Bouazza - Préparateur Physique", type: "Staff" },
+        { id: 3004, name: "Driss Benali - Gardien de But", type: "Staff" },
+        { id: 3005, name: "Nadia Alami - Kinésithérapeute", type: "Staff" },
+        { id: 3006, name: "Khalid Bennani - Analyste Vidéo", type: "Staff" },
+      ];
+
+      allEntities.push(...mockStaff);
+
+      console.log('Loaded entities:', allEntities.length, 'entities');
+      console.log('Teams:', allEntities.filter(e => e.type === 'Team').length);
+      console.log('Players:', allEntities.filter(e => e.type === 'Player').length);
+      console.log('Employees:', allEntities.filter(e => e.type === 'Employee').length);
+      console.log('Staff:', allEntities.filter(e => e.type === 'Staff').length);
+      
+      return allEntities;
+
     } catch (error) {
-      console.warn('Entities API not available:', error);
-      return []; // Return empty array as fallback
+      console.error('Failed to fetch entities:', error);
+      
+      // Return at least mock data if everything fails
+      return [
+        // Mock Teams
+        { id: 1001, name: "Équipe Senior", type: "Team" },
+        { id: 1002, name: "Équipe Junior", type: "Team" },
+        { id: 1003, name: "Équipe Féminine", type: "Team" },
+        
+        // Mock Players
+        { id: 2001, name: "Ahmed El Mansouri", type: "Player" },
+        { id: 2002, name: "Youssef Benali", type: "Player" },
+        { id: 2003, name: "Karim Alami", type: "Player" },
+        
+        // Mock Staff
+        { id: 3001, name: "Mohammed Brahim - Entraîneur", type: "Staff" },
+        { id: 3002, name: "Abdellah Zeroual - Adjoint", type: "Staff" },
+        
+        // Mock Employees
+        { id: 4001, name: "Admin User", type: "Employee" },
+      ];
     }
   }
 };

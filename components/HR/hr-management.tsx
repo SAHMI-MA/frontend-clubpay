@@ -43,7 +43,7 @@ import {
   Clock,
   UserX,
 } from "lucide-react"
-import { hrApi, Employee, Department, Position, CreateEmployeeRequest } from "@/lib/api/hr-api"
+import { hrApi, Employee, Department, Position } from "@/lib/api/hr-api"
 import { userService, User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 

@@ -14,7 +14,6 @@ import {
   Truck,
   UserCog,
   DollarSign,
-  Tags,
   Package,
   ClipboardList,
 } from "lucide-react"
@@ -155,26 +154,26 @@ export const navigationGroups = [
         icon: Calendar,
         id: "absence-leave",
       },
+    ],
+  },
+  {
+    title: "Gestion de la comptabilité",
+    items: [
       {
-        title: "Paiements des salaires",
+        title: "Salaires Employés",
         icon: DollarSign,
         id: "salary-payments",
+      },
+      {
+        title: "Salaires Club",
+        icon: UserCog,
+        id: "club-salary-payments",
       },
     ],
   },
   {
     title: "Service d'achat",
     items: [
-      {
-        title: "Stock Management",
-        icon: Package,
-        id: "stock-management",
-      },
-      {
-        title: "BDC Interne",
-        icon: ClipboardList,
-        id: "allocation-management",
-      },
       {
         title: "BDC Externe",
         icon: Warehouse,
@@ -184,13 +183,28 @@ export const navigationGroups = [
         title: "Gestion des fournisseurs",
         icon: Truck,
         id: "suppliers",
+      }
+    ],
+  },
+  {
+    title: "Moyens généraux & patrimoine",
+    items: [
+      {
+        title: "Gestion de Stocks",
+        icon: Package,
+        id: "stock-management",
       },
       {
-        title: "Financier",
+        title: "BDC Interne",
+        icon: ClipboardList,
+        id: "allocation-management",
+      },
+      {
+        title: "Bon de récéption",
         icon: CreditCard,
         id: "financial",
       },
-    ],
+    ]
   },
   {
     title: "Sport",

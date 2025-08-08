@@ -18,7 +18,6 @@ import {
   Edit,
   FileSignature,
   Calendar,
-  DollarSign,
   Download,
   FileText
 } from "lucide-react";

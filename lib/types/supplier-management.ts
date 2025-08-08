@@ -73,6 +73,7 @@ export enum AssigneeType {
   TEAM = "TEAM",
   PLAYER = "PLAYER",
   STAFF = "STAFF",
+  EMPLOYEE = "EMPLOYEE",
 }
 
 export interface AcquisitionFile {
@@ -86,20 +87,30 @@ export interface AcquisitionFile {
   description: string;
 }
 
+export interface AcquisitionSupply {
+  id: number;
+  quantity: number;
+  unitPrice: number;
+  totalCost: number;
+  supply: Supply;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Acquisition {
   id: number;
   acquisitionType: AcquisitionType;
-  itemType: ItemType;
-  itemName: string;
+  acquisitionName: string;
   description: string;
   startDate?: string;
   endDate?: string;
-  cost: number;
+  totalCost: number;
   supplier?: { id: number; name: string };
   team?: { id: number; name: string } | null;
   player?: { id: number; firstName: string; lastName: string } | null;
   staff?: { id: number; firstName: string; lastName: string } | null;
-  supplies?: { id: number; name: string } | null;
+  employee?: { employeeId: string; fullName: string } | null;
+  acquisitionSupplies: AcquisitionSupply[];
   approvalStatus: ApprovalStatus;
   approvalDate?: string | null;
   approvalComments?: string;
@@ -109,43 +120,53 @@ export interface Acquisition {
   teamId?: number;
   playerId?: number;
   staffId?: number;
-  quantity?: number;
+  employeeId?: string;
   createdBy: User;
   approver?: User | null;
   quotationFile?: AcquisitionFile | null;
 }
 
+export interface CreateAcquisitionSupplyDto {
+  supplyId: number;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface UpdateAcquisitionSupplyDto {
+  supplyId?: number;
+  quantity?: number;
+  unitPrice?: number;
+}
+
 export interface CreateAcquisitionDto {
   acquisitionType: AcquisitionType;
-  itemType: ItemType;
-  itemName: string;
+  acquisitionName: string;
   description: string;
   startDate?: string;
   endDate?: string;
-  cost: number;
-  supplierId: number;
+  supplies: CreateAcquisitionSupplyDto[];
+  supplierId?: number;
   teamId?: number;
   playerId?: number;
   staffId?: number;
-  quantity?: number;
+  employeeId?: string;
   createdBy: number;
   quotationFileId?: number;
 }
 
 export interface UpdateAcquisitionDto {
   acquisitionType?: AcquisitionType;
-  itemType?: ItemType;
-  itemName?: string;
+  acquisitionName?: string;
   description?: string;
   startDate?: string;
   endDate?: string;
-  cost?: number;
+  supplies?: UpdateAcquisitionSupplyDto[];
   supplierId?: number;
   teamId?: number;
   playerId?: number;
   staffId?: number;
-  quantity?: number;
-  quotationFileId: number;
+  employeeId?: string;
+  quotationFileId?: number;
 }
 
 export interface ApprovalDto {
@@ -169,8 +190,8 @@ export interface Supply {
   itemType: ItemType;
   quantity: number;
   condition: SupplyCondition;
-  supplier?: string; // NEW: Supplier name as string
-  acquisitions?: any[]; // NEW: Array of acquisitions
+  supplier?: { id: number; name: string }; // Supplier object with id and name
+  acquisitionSupplies?: any[]; // Array of acquisition supplies
   createdAt?: string;
   updatedAt?: string;
 }

@@ -65,7 +65,7 @@ export function StaffManagement() {
     qualification: "",
     experience: "",
     rib: "", // Bank account information
-    staffImage: "",
+    staffImageId: undefined, // Staff image ID
     salary: undefined, // Staff salary
     contractStartDate: "", // Contract start date
     contractEndDate: "", // Contract end date
@@ -144,7 +144,7 @@ export function StaffManagement() {
         qualification: newStaff.qualification,
         experience: newStaff.experience,
         rib: newStaff.rib,
-        staffImage: newStaff.staffImage,
+        staffImageId: newStaff.staffImageId,
         salary: newStaff.salary,
         contractStartDate: newStaff.contractStartDate,
         contractEndDate: newStaff.contractEndDate,
@@ -546,8 +546,8 @@ export function StaffManagement() {
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
-                                {staff.staffImage ? (
-                                  <AvatarImage src={staff.staffImage} alt={`${staff.firstName} ${staff.lastName}`} />
+                                {staff.staffImage?.url ? (
+                                  <AvatarImage src={staff.staffImage.url} alt={`${staff.firstName} ${staff.lastName}`} />
                                 ) : null}
                                 <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                                   {getInitials(staff.firstName, staff.lastName)}
@@ -692,9 +692,9 @@ export function StaffManagement() {
                       <div key={staff.id} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            {staff.staffImage ? (
+                            {staff.staffImage?.url ? (
                               <AvatarImage
-                                src={staff.staffImage}
+                                src={staff.staffImage.url}
                                 alt={`${staff.firstName} ${staff.lastName}`}
                               />
                             ) : null}
@@ -738,8 +738,8 @@ export function StaffManagement() {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  {selectedStaff.staffImage ? (
-                    <AvatarImage src={selectedStaff.staffImage} alt={`${selectedStaff.firstName} ${selectedStaff.lastName}`} />
+                  {selectedStaff.staffImage?.url ? (
+                    <AvatarImage src={selectedStaff.staffImage.url} alt={`${selectedStaff.firstName} ${selectedStaff.lastName}`} />
                   ) : null}
                   <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg">
                     {getInitials(selectedStaff.firstName, selectedStaff.lastName)}
