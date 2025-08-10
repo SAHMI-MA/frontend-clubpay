@@ -47,6 +47,90 @@ import { hrApi, Employee, Department, Position } from "@/lib/api/hr-api"
 import { userService, User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
+/**
+ * Export a list of employees to CSV
+ * @param employees Array of Employee objects
+ */
+export function exportEmployeesToCSV(employees: Employee[]) {
+  const header = ['ID', 'Full Name', 'Department', 'Position', 'Status', 'Hire Date', 'Current Salary (MAD)', 'Phone', 'Email'];
+  const rows = employees.map(employee => [
+    employee.employeeId,
+    employee.fullName,
+    employee.department?.name || '',
+    employee.position?.title || '',
+    employee.status || '',
+    employee.hireDate || '',
+    employee.currentSalary || '',
+    employee.phoneNumber || '',
+    employee.personalEmail || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'employees.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of departments to CSV
+ * @param departments Array of Department objects
+ */
+export function exportDepartmentsToCSV(departments: Department[]) {
+  const header = ['ID', 'Name', 'Description', 'Employees Count'];
+  const rows = departments.map(dept => [
+    dept.id,
+    dept.name,
+    dept.description || '',
+    dept.employees?.length || 0
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'departments.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of positions to CSV
+ * @param positions Array of Position objects
+ */
+export function exportPositionsToCSV(positions: Position[]) {
+  const header = ['ID', 'Title', 'Description', 'Department', 'Employees Count'];
+  const rows = positions.map(position => [
+    position.id,
+    position.title,
+    position.description || '',
+    position.department?.name || '',
+    position.employees?.length || 0
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'positions.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // statusColors and statusIcons moved above for use
 const statusColors = {
   Active: "bg-green-100 text-green-800",
@@ -572,6 +656,27 @@ export function HRManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportEmployeesToCSV(filteredEmployees)}
+        >
+          Exporter les employés (CSV)
+        </Button>
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportDepartmentsToCSV(departments)}
+        >
+          Exporter les départements (CSV)
+        </Button>
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportPositionsToCSV(positions)}
+        >
+          Exporter les postes (CSV)
+        </Button>
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

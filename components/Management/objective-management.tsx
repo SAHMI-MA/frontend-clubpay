@@ -49,6 +49,61 @@ import {
   BulkAssignObjectiveDto
 } from "@/lib/types/objective-management"
 
+/**
+ * Export a list of objectives to CSV
+ * @param objectives Array of Objective objects
+ */
+export function exportObjectivesToCSV(objectives: any[]) {
+  const header = ['ID', 'Name', 'Description', 'Target Value', 'Group', 'Created At'];
+  const rows = objectives.map(objective => [
+    objective.id,
+    objective.name,
+    objective.description || '',
+    objective.targetValue,
+    objective.objectiveGroup?.name || '',
+    objective.createdAt || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'objectives.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of objective groups to CSV
+ * @param groups Array of ObjectiveGroup objects
+ */
+export function exportObjectiveGroupsToCSV(groups: ObjectiveGroup[]) {
+  const header = ['ID', 'Name', 'Bonus Amount', 'Objectives Count', 'Created At'];
+  const rows = groups.map(group => [
+    group.id,
+    group.name,
+    group.bonusAmount || 0,
+    group.objectives?.length || 0,
+    group.createdAt || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'objective-groups.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function ObjectivesManagement() {
   // Redux state
   const dispatch = useDispatch<AppDispatch>()
@@ -769,6 +824,21 @@ export function ObjectivesManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportObjectiveGroupsToCSV(objectiveGroups)}
+        >
+          Exporter les groupes (CSV)
+        </Button>
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportObjectivesToCSV(objectives)}
+        >
+          Exporter les objectifs (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des objectifs et récompenses</h1>

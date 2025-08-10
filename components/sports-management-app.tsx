@@ -27,6 +27,7 @@ import { SalaryPaymentManagement } from "./HR/salary-payment-management"
 import { ClubSalaryPaymentsManagement } from "./Management/club-salary-payments-management"
 import { StockManagement } from "./Operations/stock-management"
 import { AllocationManagement } from "./Operations/allocation-management"
+import { ProfilePage } from "./profile-page"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -49,6 +50,14 @@ export function SportsManagementApp() {
   const handleLogout = () => {
     dispatch(logoutUser());
     setCurrentPage("dashboard");
+  }
+
+  const handleNavigateToProfile = () => {
+    setCurrentPage("profile");
+  }
+
+  const handleNavigateToSettings = () => {
+    setCurrentPage("settings");
   }
 
   const renderCurrentPage = () => {
@@ -93,6 +102,8 @@ export function SportsManagementApp() {
         return <MatchManagement />
       case "settings":
         return <AssociationSettings />
+      case "profile":
+        return <ProfilePage />
       default:
         return <Dashboard />
     }
@@ -113,7 +124,14 @@ export function SportsManagementApp() {
         <div className="flex min-h-screen w-full bg-gray-50 dark:bg-gray-900">
           <AppSidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
           <div className="flex-1 flex flex-col min-w-0">
-            <TopBar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onLogout={handleLogout} />
+            <TopBar 
+              darkMode={darkMode} 
+              setDarkMode={setDarkMode} 
+              user={user} 
+              onLogout={handleLogout}
+              onNavigateToProfile={handleNavigateToProfile}
+              onNavigateToSettings={handleNavigateToSettings}
+            />
             <main className="flex-1 p-6 overflow-auto">{renderCurrentPage()}</main>
           </div>
         </div>

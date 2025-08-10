@@ -1,5 +1,38 @@
 "use client"
 
+/**
+ * Export a list of suppliers to CSV
+ * @param suppliers Array of Supplier objects
+ */
+export function exportSuppliersToCSV(suppliers: Supplier[]) {
+  const header = ['ID', 'Name', 'Address', 'Phone', 'Email', 'Contact Person', 'Category', 'Rating', 'Total Orders', 'Total Spent (MAD)', 'Status'];
+  const rows = suppliers.map(supplier => [
+    supplier.id,
+    supplier.name || '',
+    supplier.address || '',
+    supplier.phone || '',
+    supplier.email || '',
+    supplier.contactPerson || '',
+    supplier.category || '',
+    supplier.rating || '',
+    supplier.totalOrders || 0,
+    supplier.totalSpent || 0,
+    supplier.isActive ? 'Active' : 'Inactive'
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'suppliers.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import { useState, useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { 
@@ -265,6 +298,16 @@ export function SupplierManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportSuppliersToCSV(filteredSuppliers)}
+        >
+          Exporter les fournisseurs (CSV)
+        </Button>
+      </div>
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des fournisseurs</h1>

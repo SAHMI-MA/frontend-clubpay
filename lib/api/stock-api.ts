@@ -140,6 +140,7 @@ export interface AllocationItem {
 }
 
 export interface Allocation {
+  user: any;
   id: number;
   allocationNumber: string;
   allocationType: 'Club' | 'Player' | 'Staff' | 'Employee';

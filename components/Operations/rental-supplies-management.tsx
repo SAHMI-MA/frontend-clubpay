@@ -1,5 +1,65 @@
 "use client"
 
+/**
+ * Export a list of acquisitions to CSV
+ * @param acquisitions Array of Acquisition objects
+ */
+export function exportAcquisitionsToCSV(acquisitions: Acquisition[]) {
+  const header = ['ID', 'Name', 'Type', 'Supplier', 'Status', 'Total Cost (MAD)', 'Start Date', 'End Date', 'Assignee'];
+  const rows = acquisitions.map(acquisition => [
+    acquisition.id,
+    acquisition.acquisitionName || '',
+    acquisition.acquisitionType || '',
+    acquisition.supplier?.name || '',
+    acquisition.approvalStatus || '',
+    acquisition.totalCost || 0,
+    acquisition.startDate || '',
+    acquisition.endDate || '',
+    acquisition.team?.name || acquisition.player?.firstName + ' ' + acquisition.player?.lastName || acquisition.staff?.firstName + ' ' + acquisition.staff?.lastName || acquisition.employee?.fullName || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'acquisitions.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of supplies to CSV
+ * @param supplies Array of Supply objects
+ */
+export function exportSupplesToCSV(supplies: Supply[]) {
+  const header = ['ID', 'Name', 'Description', 'Item Type', 'Condition', 'Quantity', 'Supplier'];
+  const rows = supplies.map(supply => [
+    supply.id,
+    supply.name || '',
+    supply.description || '',
+    supply.itemType || '',
+    supply.condition || '',
+    supply.quantity || 0,
+    supply.supplier?.name || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'supplies.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import { useState, useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { 
@@ -769,6 +829,16 @@ export function RentalSupplierManagement() {
     <div className="space-y-6">
       {/* Toast Notification */}
       <ToastNotification toast={toastState} onClose={hideToast} />
+      
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportAcquisitionsToCSV(acquisitionsList)}
+        >
+          Exporter les acquisitions (CSV)
+        </Button>
+      </div>
       
       <div className="flex items-center justify-between">
         <div>

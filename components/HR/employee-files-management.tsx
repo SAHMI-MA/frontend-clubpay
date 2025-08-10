@@ -67,6 +67,36 @@ const allowedTypes = [
 ];
 const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.csv'];
 
+/**
+ * Export a list of employee files to CSV
+ * @param files Array of EmployeeFile objects
+ */
+export function exportEmployeeFilesToCSV(files: EmployeeFile[]) {
+  const header = ['ID', 'Employee', 'File Name', 'File Type', 'Category', 'Size (bytes)', 'Uploaded Date', 'Description'];
+  const rows = files.map(file => [
+    file.id,
+    file.employee?.fullName || '',
+    file.fileName,
+    file.fileType || '',
+    file.category || '',
+    file.fileSize || '',
+    file.createdAt || '',
+    file.description || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'employee-files.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function EmployeeFilesManagement() {
   const [error, setError] = useState<string | null>(null);
   // Start with an empty array for files, removing the fake data
@@ -226,6 +256,15 @@ export function EmployeeFilesManagement() {
           {error}
         </Alert>
       )}
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportEmployeeFilesToCSV(filteredFiles)}
+        >
+          Exporter les fichiers (CSV)
+        </Button>
+      </div>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

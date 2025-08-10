@@ -39,6 +39,71 @@ import { hrLeavesApi, CreateLeaveRequestDto, UpdateLeaveRequestDto, LeaveStatus,
 import { useSelector } from "react-redux"
 import { RootState } from "@/lib/redux/store"
 
+/**
+ * Export a list of leave requests to CSV
+ * @param leaves Array of Leave Request objects
+ */
+export function exportLeaveRequestsToCSV(leaves: any[]) {
+  const header = ['ID', 'Employee', 'Type', 'Start Date', 'End Date', 'Days', 'Status', 'Reason', 'Submitted Date', 'Approved By', 'Comments'];
+  const rows = leaves.map(leave => [
+    leave.id,
+    leave.employee?.fullName || leave.employeeName || '',
+    leave.leaveType,
+    leave.startDate,
+    leave.endDate,
+    leave.totalDays || '',
+    leave.status,
+    leave.reason || '',
+    leave.submittedDate || leave.createdAt || '',
+    leave.approvedBy || '',
+    leave.comments || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'leave-requests.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export leave balances to CSV
+ * @param balances Array of Leave Balance objects
+ */
+export function exportLeaveBalancesToCSV(balances: LeaveBalance[]) {
+  const header = ['Employee ID', 'Employee Name', 'Annual Total', 'Annual Used', 'Annual Remaining', 'Sick Total', 'Sick Used', 'Sick Remaining', 'Personal Total', 'Personal Used', 'Personal Remaining'];
+  const rows = balances.map(balance => [
+    balance.employeeId,
+    balance.employeeName,
+    balance.annual.total,
+    balance.annual.used,
+    balance.annual.remaining,
+    balance.sick.total,
+    balance.sick.used,
+    balance.sick.remaining,
+    balance.personal.total,
+    balance.personal.used,
+    balance.personal.remaining
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'leave-balances.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 interface LeaveBalance {
   employeeId: string
@@ -470,6 +535,21 @@ export function AbsenceLeaveManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportLeaveRequestsToCSV(filteredRequests)}
+        >
+          Exporter les demandes (CSV)
+        </Button>
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white"
+          onClick={() => exportLeaveBalancesToCSV(leaveBalances)}
+        >
+          Exporter les soldes (CSV)
+        </Button>
+      </div>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

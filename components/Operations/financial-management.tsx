@@ -1,5 +1,64 @@
 "use client"
 
+/**
+ * Export a list of transactions to CSV
+ * @param transactions Array of Transaction objects
+ */
+export function exportTransactionsToCSV(transactions: any[]) {
+  const header = ['ID', 'Type', 'Category', 'Amount (MAD)', 'Description', 'Date', 'Status', 'Reference'];
+  const rows = transactions.map(transaction => [
+    transaction.id || '',
+    transaction.type || '',
+    transaction.category || '',
+    transaction.amount || 0,
+    transaction.description || '',
+    transaction.transactionDate || transaction.date || '',
+    transaction.status || '',
+    transaction.reference || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'transactions.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of salary payments to CSV
+ * @param salaryPayments Array of SalaryPayment objects
+ */
+export function exportSalaryPaymentsToCSV(salaryPayments: any[]) {
+  const header = ['ID', 'Employee', 'Period', 'Amount (MAD)', 'Status', 'Payment Date', 'Notes'];
+  const rows = salaryPayments.map(payment => [
+    payment.id || '',
+    payment.employeeName || payment.employee || '',
+    `${payment.periodStart || ''} - ${payment.periodEnd || ''}`,
+    payment.amount || 0,
+    payment.status || '',
+    payment.paymentDate || '',
+    payment.notes || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'salary-payments.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -1482,6 +1541,16 @@ export function FinancialManagement() {
     <div className="container mx-auto py-6 space-y-6">
       {/* Toast Notification */}
       <ToastNotification toast={toastState} onClose={hideToast} />
+      
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportTransactionsToCSV(transactions)}
+        >
+          Exporter les transactions (CSV)
+        </Button>
+      </div>
       
       <div className="flex items-center justify-between">
         <div>

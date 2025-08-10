@@ -27,6 +27,41 @@ import { fetchAllStaff, createStaff, updateStaff, deleteStaff } from "@/lib/redu
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
 import { Staff, StaffRole, CreateStaffDto, UpdateStaffDto } from "@/lib/types/team-management"
 
+/**
+ * Export a list of staff to CSV
+ * @param staff Array of Staff objects
+ */
+export function exportStaffToCSV(staff: Staff[]) {
+  const header = ['ID', 'First Name', 'Last Name', 'Role', 'Date of Birth', 'Phone', 'Email', 'Team', 'Qualification', 'Experience', 'Salary (MAD)', 'Contract Start', 'Contract End'];
+  const rows = staff.map(member => [
+    member.id,
+    member.firstName,
+    member.lastName,
+    member.role,
+    member.dateOfBirth,
+    member.phoneNumber || '',
+    member.email || '',
+    member.team?.name || '',
+    member.qualification || '',
+    member.experience || '',
+    member.salary || '',
+    member.contractStartDate || '',
+    member.contractEndDate || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'staff.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function StaffManagement() {
   const dispatch = useAppDispatch()
   const { staff,error } = useAppSelector((state) => state.staff)
@@ -224,6 +259,15 @@ export function StaffManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Staff CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportStaffToCSV(filteredStaff)}
+        >
+          Exporter le staff (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion du staff</h1>

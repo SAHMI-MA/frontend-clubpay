@@ -41,6 +41,36 @@ import {
 } from "@/lib/types/match-management"
 import { TacticalPlanner } from "./tactical-planner"
 
+/**
+ * Export a list of matches to CSV
+ * @param matches Array of Match objects
+ */
+export function exportMatchesToCSV(matches: Match[]) {
+  const header = ['ID', 'Match Name', 'Date/Time', 'City', 'Opposition', 'Team', 'Formation', 'Bonus'];
+  const rows = matches.map(match => [
+    match.id,
+    match.nomMatch,
+    match.dateTime,
+    match.city,
+    match.opposition,
+    match.team?.name || '',
+    match.formation || '',
+    match.bonus || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'matches.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function MatchManagement() {
   // Redux state
   const dispatch = useDispatch<AppDispatch>()
@@ -419,6 +449,15 @@ export function MatchManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Matches CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportMatchesToCSV(filteredMatches)}
+        >
+          Exporter les matchs (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des matchs</h1>

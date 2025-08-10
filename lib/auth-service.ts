@@ -125,5 +125,35 @@ export const authService = {  /**
   logout(): void {
     this.removeToken();
     localStorage.removeItem('user');
+  },
+
+  /**
+   * Change user password
+   * @param currentPassword - Current password
+   * @param newPassword - New password
+   * @returns Success response
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const token = this.getToken();
+    console.log('🔑 Token available for change password:', !!token);
+    console.log('🔑 Token length:', token?.length || 0);
+    
+    if (!token) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+    
+    return api.post<{ message: string }>('auth/change-password', {
+      currentPassword,
+      newPassword
+    });
+  },
+
+  /**
+   * Update user profile
+   * @param profileData - User profile data to update
+   * @returns Updated user data
+   */
+  async updateProfile(profileData: Partial<User>): Promise<User> {
+    return api.put<User>('auth/profile', profileData);
   }
 };

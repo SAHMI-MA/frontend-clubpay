@@ -168,7 +168,7 @@ export const api = {
         console.warn('⚠️ No auth token available for request:', endpoint);
         
         // For protected endpoints, explicitly require authentication
-        const protectedEndpoints = ['contracts', 'players', 'staff', 'teams', 'users', 'financial'];
+        const protectedEndpoints = ['contracts', 'players', 'staff', 'teams', 'users', 'financial', 'auth/change-password', 'auth/test'];
         const isProtectedEndpoint = protectedEndpoints.some(path => endpoint.includes(path));
         
         if (isProtectedEndpoint) {

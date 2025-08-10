@@ -21,9 +21,11 @@ interface TopBarProps {
   setDarkMode: (darkMode: boolean) => void
   user: { name: string; email: string; role: string } | null
   onLogout: () => void
+  onNavigateToProfile?: () => void
+  onNavigateToSettings?: () => void
 }
 
-export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
+export function TopBar({ darkMode, setDarkMode, user, onLogout, onNavigateToProfile, onNavigateToSettings }: TopBarProps) {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -201,8 +203,8 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout }: TopBarProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profil</DropdownMenuItem>
-            <DropdownMenuItem>Paramètres</DropdownMenuItem>
+            <DropdownMenuItem onClick={onNavigateToProfile}>Profil</DropdownMenuItem>
+            <DropdownMenuItem onClick={onNavigateToSettings}>Paramètres</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400">
               Déconnexion

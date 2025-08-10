@@ -29,6 +29,36 @@ import { TeamForm } from "../team-management/team-form"
 import { TeamList } from "../team-management/team-list"
 import { CategoryManagement } from "../team-management/category-management"
 
+/**
+ * Export a list of teams to CSV
+ * @param teams Array of Team objects
+ */
+export function exportTeamsToCSV(teams: Team[]) {
+  const header = ['ID', 'Name', 'Code', 'Budget (MAD)', 'Category', 'Players', 'Staff', 'Description'];
+  const rows = teams.map(team => [
+    team.id,
+    team.name,
+    team.code,
+    team.budget || 0,
+    team.category?.name || '',
+    team.numberOfPlayers || 0,
+    team.numberOfStaff || 0,
+    team.description || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'teams.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function TeamManagement() {
   const dispatch = useAppDispatch()
   const { teams, loading, error } = useAppSelector((state) => state.teams)
@@ -145,6 +175,15 @@ export function TeamManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Teams CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportTeamsToCSV(validTeams)}
+        >
+          Exporter les équipes (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des équipes</h1>

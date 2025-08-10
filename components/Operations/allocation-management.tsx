@@ -1,5 +1,35 @@
 "use client"
 
+/**
+ * Export a list of allocations to CSV
+ * @param allocations Array of Allocation objects
+ */
+export function exportAllocationsToCSV(allocations: Allocation[]) {
+  const header = ['Number', 'Type', 'User', 'Status', 'Date Created', 'Expected Return', 'Items Count', 'Notes'];
+  const rows = allocations.map(allocation => [
+    allocation.allocationNumber || '',
+    allocation.allocationType || '',
+    allocation.user?.name || '',
+    allocation.status,
+    allocation.createdAt || '',
+    allocation.expectedReturnDate || '',
+    allocation.items?.length || 0,
+    allocation.notes || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'allocations.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import React, { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -422,6 +452,16 @@ export function AllocationManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportAllocationsToCSV(filteredAllocations)}
+        >
+          Exporter les allocations (CSV)
+        </Button>
+      </div>
 
       <div className="flex items-center justify-between">
         <div>

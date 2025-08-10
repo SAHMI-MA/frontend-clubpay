@@ -1,5 +1,67 @@
 "use client"
 
+/**
+ * Export a list of articles to CSV
+ * @param articles Array of Article objects
+ */
+export function exportArticlesToCSV(articles: Article[]) {
+  const header = ['ID', 'Code', 'Name', 'Category', 'Unit', 'Current Stock', 'Min Stock', 'Max Stock', 'Unit Price (MAD)', 'Location'];
+  const rows = articles.map(article => [
+    article.id,
+    article.code || '',
+    article.name || '',
+    article.category || '',
+    article.unit || '',
+    article.currentStock || 0,
+    article.minStock || 0,
+    article.maxStock || '',
+    article.unitPrice || '',
+    article.location || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'articles.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export a list of stock movements to CSV
+ * @param movements Array of StockMovement objects
+ */
+export function exportStockMovementsToCSV(movements: any[]) {
+  const header = ['ID', 'Article', 'Type', 'Reason', 'Quantity', 'Date', 'Reference', 'Notes'];
+  const rows = movements.map(movement => [
+    movement.id || '',
+    movement.article?.name || movement.articleName || '',
+    movement.type || '',
+    movement.reason || '',
+    movement.quantity || 0,
+    movement.date || movement.movementDate || '',
+    movement.reference || '',
+    movement.notes || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'stock-movements.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import React, { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -316,6 +378,16 @@ export function StockManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportArticlesToCSV(articles)}
+        >
+          Exporter les articles (CSV)
+        </Button>
+      </div>
 
       <div className="flex items-center justify-between">
         <div>

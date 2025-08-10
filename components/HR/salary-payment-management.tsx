@@ -35,6 +35,36 @@ import {
 } from "@/lib/api/hr-salary-api"
 import { Department } from "@/lib/api/hr-api";
 
+/**
+ * Export a list of salary payments to CSV
+ * @param payments Array of SalaryPayment objects
+ */
+export function exportSalaryPaymentsToCSV(payments: ApiSalaryPayment[]) {
+  const header = ['ID', 'Employee ID', 'Period', 'Base Salary (MAD)', 'Bonuses (MAD)', 'Amount (MAD)', 'Status', 'Payment Date'];
+  const rows = payments.map(payment => [
+    payment.id,
+    payment.employee?.employeeId || '',
+    `${payment.periodStart} - ${payment.periodEnd}`,
+    payment.baseSalary || 0,
+    payment.bonuses || 0,
+    payment.amount || 0,
+    payment.status,
+    payment.paymentDate || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'salary-payments.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 interface Employee {
   employeeId: string
   name: string
@@ -395,6 +425,15 @@ export function SalaryPaymentManagement() {
           {error}
         </Alert>
       )}
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportSalaryPaymentsToCSV(filteredPayments)}
+        >
+          Exporter les paiements (CSV)
+        </Button>
+      </div>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

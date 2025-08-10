@@ -79,6 +79,39 @@ const isStaffContract = (contract: PlayerContract | StaffContract): contract is 
   return 'staffName' in contract || 'staff' in contract
 }
 
+/**
+ * Export a list of contracts to CSV
+ * @param contracts Array of Contract objects
+ */
+export function exportContractsToCSV(contracts: any[]) {
+  const header = ['ID', 'Start Date', 'End Date', 'Salary (MAD)', 'Has Bonus', 'Signature Bonus (MAD)', 'Type', 'Person', 'Description'];
+  const rows = contracts.map(contract => [
+    contract.id,
+    contract.startDate,
+    contract.endDate,
+    contract.salary || 0,
+    contract.hasBonus ? 'Yes' : 'No',
+    contract.signatureBonus || 0,
+    contract.player ? 'Player' : 'Staff',
+    contract.player 
+      ? `${contract.player.firstName} ${contract.player.lastName}` 
+      : (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : ''),
+    contract.description || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'contracts.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function ContractManagement() {
   // All hooks must be declared before any return
   const dispatch = useDispatch<AppDispatch>()
@@ -515,6 +548,15 @@ export function ContractManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Contracts CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportContractsToCSV([...playerContracts, ...staffContracts])}
+        >
+          Exporter les contrats (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des contrats</h1>

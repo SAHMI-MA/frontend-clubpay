@@ -1,5 +1,38 @@
 "use client"
 
+/**
+ * Export a list of club salary payments to CSV
+ * @param salaryPayments Array of SalaryPayment objects
+ */
+export function exportClubSalaryPaymentsToCSV(salaryPayments: any[]) {
+  const header = ['ID', 'Payment Date', 'Recipient', 'Type', 'Period', 'Gross Amount (MAD)', 'Tax Amount (MAD)', 'Net Amount (MAD)', 'Bonus (MAD)', 'Status'];
+  const rows = salaryPayments.map(payment => [
+    payment.id,
+    new Date(payment.paymentDate).toLocaleDateString(),
+    payment.player ? `${payment.player.firstName} ${payment.player.lastName} (Player)` : 
+     payment.staff ? `${payment.staff.firstName} ${payment.staff.lastName} (Staff)` : 'Unknown',
+    payment.playerId ? 'Player' : payment.staffId ? 'Staff' : 'Unknown',
+    `${new Date(payment.periodStart).toLocaleDateString()} - ${new Date(payment.periodEnd).toLocaleDateString()}`,
+    payment.amount || 0,
+    payment.taxAmount || 0,
+    payment.netAmount || 0,
+    payment.bonus || 0,
+    payment.status
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'club-salary-payments.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -366,6 +399,16 @@ export function ClubSalaryPaymentsManagement() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <ToastNotification toast={toastState} onClose={hideToast} />
+      
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportClubSalaryPaymentsToCSV(filteredSalaryPayments)}
+        >
+          Exporter les paiements (CSV)
+        </Button>
+      </div>
       
       {/* Header */}
       <div className="flex justify-between items-center">

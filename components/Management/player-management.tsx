@@ -22,6 +22,37 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PlayerForm } from "../team-management/player-form";
 import { PlayerList } from "../team-management/player-list";
 
+/**
+ * Export a list of players to CSV
+ * @param players Array of Player objects
+ */
+export function exportPlayersToCSV(players: Player[]) {
+  const header = ['ID', 'First Name', 'Last Name', 'Position', 'Player Number', 'Date of Birth', 'Team', 'Status', 'RIB'];
+  const rows = players.map(player => [
+    player.id,
+    player.firstName,
+    player.lastName,
+    player.position,
+    player.playerNumber || '',
+    player.dateOfBirth,
+    player.team?.name || '',
+    player.playerStatus || '',
+    player.rib || ''
+  ]);
+  const csvContent = [header, ...rows]
+    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'players.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function PlayerManagement() {
   const dispatch = useAppDispatch();
   const { players, loading, error } = useAppSelector((state) => state.players);
@@ -203,6 +234,15 @@ export function PlayerManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Export Players CSV Button */}
+      <div className="flex justify-end">
+        <Button
+          className="bg-blue-800 hover:bg-blue-900 text-white mb-2"
+          onClick={() => exportPlayersToCSV(filteredPlayers)}
+        >
+          Exporter les joueurs (CSV)
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des joueurs</h1>

@@ -150,9 +150,9 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
     return [...startingIds, ...subIds]
   }
 
-  // Filter available players (exclude already assigned ones)
+  // Filter available players (only include players from the selected team and exclude already assigned ones)
   const availablePlayersFiltered = availablePlayers.filter(
-    (player) => !getAssignedPlayerIds().includes(player.id)
+    (player) => player.teamId === match.team.id && !getAssignedPlayerIds().includes(player.id)
   )
 
   // Reset state when match changes and load existing participations
@@ -176,19 +176,19 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
     const starters = matchParticipations.filter(p => p.role === "Starter")
     const subs = matchParticipations.filter(p => p.role === "Substitute")
 
-    // Find players for starters and assign them to positions
+    // Find players for starters and assign them to positions (only from selected team)
     const newStartingXI: { [positionIndex: number]: Player } = {}
     starters.forEach((participation, index) => {
-      const player = availablePlayers.find(p => p.id === participation.player.id)
+      const player = availablePlayers.find(p => p.id === participation.player.id && p.teamId === match.team.id)
       if (player && index < currentFormation.positions.length) {
         newStartingXI[index] = player
       }
     })
 
-    // Find players for substitutes
+    // Find players for substitutes (only from selected team)
     const newSubstitutes: Player[] = []
     subs.forEach(participation => {
-      const player = availablePlayers.find(p => p.id === participation.player.id)
+      const player = availablePlayers.find(p => p.id === participation.player.id && p.teamId === match.team.id)
       if (player) {
         newSubstitutes.push(player)
       }
