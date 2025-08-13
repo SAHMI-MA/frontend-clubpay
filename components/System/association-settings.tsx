@@ -368,6 +368,17 @@ function BankAccountManagement() {
       }
       setShowDialog(false);
       fetchAccounts();
+      
+      // Show success message and refresh page
+      toast.success('Succès', {
+        duration: 4000,
+        description: 'Compte bancaire sauvegardé'
+      })
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -382,6 +393,17 @@ function BankAccountManagement() {
       const res = await fetch(getApiUrl(`/bank-accounts/${id}`), { method: 'DELETE', headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Erreur lors de la suppression du compte bancaire');
       fetchAccounts();
+      
+      // Show success message and refresh page
+      toast.success('Succès', {
+        duration: 4000,
+        description: 'Compte bancaire supprimé'
+      })
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -783,6 +805,11 @@ export function AssociationSettings() {
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error('Failed to save settings:', error)
       
@@ -877,6 +904,11 @@ export function AssociationSettings() {
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error('Failed to save branding:', error)
       
@@ -955,6 +987,11 @@ export function AssociationSettings() {
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error('Failed to upload logo:', error)
       
@@ -996,6 +1033,11 @@ export function AssociationSettings() {
       
       // Dispatch custom event to notify other components of the update
       window.dispatchEvent(new CustomEvent('associationSettingsUpdated'))
+      
+      // Refresh the page to reflect all changes
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error('Failed to remove logo:', error)
       toast.error('Échec de la suppression du logo')

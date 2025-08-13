@@ -33,6 +33,7 @@ import { formatCurrency } from '@/lib/pdf-utils'
 import { ToastNotification, useToast } from "@/components/ui/toast-notification"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { RootState } from "@/lib/redux/store"
+import { authUtils } from "@/lib/redux/auth-utils"
 import { 
   fetchSalaryPayments,
   createSalaryPayment,
@@ -163,6 +164,12 @@ export function ClubSalaryPaymentsManagement() {
     setSalaryPaymentError(null)
 
     try {
+      const currentUser = authUtils.getUser()
+      if (!currentUser) {
+        showToast("Utilisateur non authentifié", "error")
+        return
+      }
+
       const salaryPaymentData: CreateSalaryPaymentDto = {
         amount: parseFloat(salaryPaymentForm.amount),
         paymentDate: salaryPaymentForm.paymentDate,
@@ -170,9 +177,9 @@ export function ClubSalaryPaymentsManagement() {
         periodEnd: salaryPaymentForm.periodEnd,
         bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
         taxAmount: parseFloat(salaryPaymentForm.taxAmount),
-        netAmount: parseFloat(salaryPaymentForm.netAmount),
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
+        createdBy: currentUser.id, // Add the required createdBy field
       }
 
       console.log("Creating salary payment with data:", salaryPaymentData)

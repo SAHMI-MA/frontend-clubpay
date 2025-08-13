@@ -22,6 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ToastNotification, useToast } from "@/components/ui/toast-notification"
 import {
   Plus,
   Search,
@@ -168,6 +169,9 @@ export function ContractManagement() {
   const [editFileUploading, setEditFileUploading] = useState(false);
   const [editUploadedFileId, setEditUploadedFileId] = useState<number | null>(null);
   const [editFileUploadError, setEditFileUploadError] = useState<string | null>(null);
+
+  // Toast notification hook
+  const { toastState, showToast, hideToast } = useToast()
 
   // All useEffect hooks here
   useEffect(() => {
@@ -354,7 +358,21 @@ export function ContractManagement() {
   const handleCreateContract = async () => {
     try {
       setFileUploadError(null)
-      // Only allow contract creation if file is uploaded or not required
+      
+      // Validation
+      if (contractForm.contractType === "player" && !contractForm.playerId) {
+        showToast("Veuillez sélectionner un joueur dans le menu déroulant", "error", "Erreur de validation")
+        return
+      }
+      
+      if (contractForm.contractType === "staff" && !contractForm.staffId) {
+        showToast("Veuillez sélectionner un membre du staff dans le menu déroulant", "error", "Erreur de validation")
+        return
+      }
+
+      // Ensure contractFileId is a number or undefined to avoid validation errors
+      const contractFileId = uploadedFileId ? Number(uploadedFileId) : undefined
+      
       const contractData = {
         title: contractForm.title,
         salary: Number(contractForm.salary),
@@ -363,59 +381,76 @@ export function ContractManagement() {
         hasBonus: contractForm.hasBonus,
         signatureBonus: contractForm.hasBonus ? Number(contractForm.signatureBonus) : undefined,
         description: contractForm.description,
-        contractFileId: uploadedFileId ?? undefined, // <-- Ensure contractFileId is set if file uploaded
+        contractFileId: contractFileId, // Ensure it's a number or undefined
       }
 
+      console.log("Creating contract with data:", contractData)
+
       if (contractForm.contractType === "player") {
-        if (!contractForm.playerId) {
-          alert("Veuillez sélectionner un joueur dans le menu déroulant")
-          return
-        }
         const result = await dispatch(createPlayerContract({
           ...contractData,
           playerId: contractForm.playerId,
         }))
+        
         if (createPlayerContract.fulfilled.match(result)) {
           console.log("✅ Contrat joueur créé avec succès")
+          showToast("Contrat joueur créé avec succès", "success", "Succès")
+          
+          // Reset form and close dialog
+          setIsCreateDialogOpen(false)
+          resetForm()
+        } else if (createPlayerContract.rejected.match(result)) {
+          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la création du contrat"
+          console.error("❌ Erreur création contrat joueur:", errorMessage)
+          showToast(errorMessage, "error", "Erreur de création")
         }
       } else {
-        if (!contractForm.staffId) {
-          alert("Veuillez sélectionner un membre du staff dans le menu déroulant")
-          return
-        }
         const result = await dispatch(createStaffContract({
           ...contractData,
           staffId: contractForm.staffId,
           benefits: contractForm.benefits ? JSON.parse(contractForm.benefits) : undefined,
           terms: contractForm.terms,
         }))
+        
         if (createStaffContract.fulfilled.match(result)) {
           console.log("✅ Contrat staff créé avec succès")
+          showToast("Contrat staff créé avec succès", "success", "Succès")
+          
+          // Reset form and close dialog
+          setIsCreateDialogOpen(false)
+          resetForm()
+        } else if (createStaffContract.rejected.match(result)) {
+          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la création du contrat"
+          console.error("❌ Erreur création contrat staff:", errorMessage)
+          showToast(errorMessage, "error", "Erreur de création")
         }
       }
-
-      // Reset form and close dialog
-      setIsCreateDialogOpen(false)
-      setContractForm({
-        title: "",
-        playerId: "",
-        staffId: "",
-        salary: "",
-        signatureBonus: "",
-        startDate: "",
-        endDate: "",
-        hasBonus: false,
-        description: "",
-        benefits: "",
-        terms: "",
-        contractType: "player",
-      })
-      setContractFile(null)
-      setUploadedFileId(null)
-      setUploadedFileName(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Échec de la création du contrat:", error)
+      const errorMessage = error?.message || "Erreur inattendue lors de la création du contrat"
+      showToast(errorMessage, "error", "Erreur")
     }
+  }
+
+  // Helper function to reset form
+  const resetForm = () => {
+    setContractForm({
+      title: "",
+      playerId: "",
+      staffId: "",
+      salary: "",
+      signatureBonus: "",
+      startDate: "",
+      endDate: "",
+      hasBonus: false,
+      description: "",
+      benefits: "",
+      terms: "",
+      contractType: "player",
+    })
+    setContractFile(null)
+    setUploadedFileId(null)
+    setUploadedFileName(null)
   }
 
   // File upload handler
@@ -423,6 +458,7 @@ export function ContractManagement() {
     setFileUploadError(null)
     if (!contractFile) {
       setFileUploadError('Veuillez sélectionner un fichier à télécharger.')
+      showToast('Veuillez sélectionner un fichier à télécharger.', 'error', 'Erreur de fichier')
       return
     }
     setFileUploading(true)
@@ -440,12 +476,18 @@ export function ContractManagement() {
       console.log('Statut de la réponse de téléchargement de fichier:', res.status)
       const responseText = await res.text();
       console.log('Texte de la réponse de téléchargement de fichier:', responseText)
-      if (!res.ok) throw new Error(responseText || 'Échec du téléchargement du fichier')
+      if (!res.ok) {
+        const errorMessage = responseText || 'Échec du téléchargement du fichier'
+        throw new Error(errorMessage)
+      }
       const fileData = JSON.parse(responseText)
       setUploadedFileId(fileData.id)
       setUploadedFileName(contractFile.name)
+      showToast('Fichier téléchargé avec succès', 'success', 'Succès')
     } catch (err: any) {
-      setFileUploadError('Échec du téléchargement du fichier: ' + (err.message || err))
+      const errorMessage = 'Échec du téléchargement du fichier: ' + (err.message || err)
+      setFileUploadError(errorMessage)
+      showToast(errorMessage, 'error', 'Erreur de téléchargement')
       console.error('Erreur de téléchargement de fichier:', err)
     }
     setFileUploading(false)
@@ -463,6 +505,9 @@ export function ContractManagement() {
         }));
         if (terminatePlayerContract.fulfilled.match(result)) {
           console.log("✅ Contrat joueur résilié avec succès");
+          showToast("Contrat joueur résilié avec succès", "success", "Succès")
+        } else {
+          showToast("Erreur lors de la résiliation du contrat joueur", "error", "Erreur")
         }
       } else {
         const result = await dispatch(terminateStaffContract({
@@ -472,25 +517,43 @@ export function ContractManagement() {
         }));
         if (terminateStaffContract.fulfilled.match(result)) {
           console.log("✅ Contrat staff résilié avec succès");
+          showToast("Contrat staff résilié avec succès", "success", "Succès")
+        } else {
+          showToast("Erreur lors de la résiliation du contrat staff", "error", "Erreur")
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Échec de la résiliation du contrat:", error);
+      const errorMessage = error?.message || "Erreur lors de la résiliation du contrat"
+      showToast(errorMessage, "error", "Erreur")
     }
     setTerminateDialogOpen(false);
     setContractToTerminate(null);
     setTerminationReason("");
   };
+
   const handleDeleteContract = async () => {
     if (!contractToDelete) return;
     try {
       if (contractToDelete.type === "player") {
-        await dispatch(deletePlayerContract(contractToDelete.id));
+        const result = await dispatch(deletePlayerContract(contractToDelete.id));
+        if (deletePlayerContract.fulfilled.match(result)) {
+          showToast("Contrat joueur supprimé avec succès", "success", "Succès")
+        } else {
+          showToast("Erreur lors de la suppression du contrat joueur", "error", "Erreur")
+        }
       } else {
-        await dispatch(deleteStaffContract(contractToDelete.id));
+        const result = await dispatch(deleteStaffContract(contractToDelete.id));
+        if (deleteStaffContract.fulfilled.match(result)) {
+          showToast("Contrat staff supprimé avec succès", "success", "Succès")
+        } else {
+          showToast("Erreur lors de la suppression du contrat staff", "error", "Erreur")
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Échec de la suppression du contrat:", error);
+      const errorMessage = error?.message || "Erreur lors de la suppression du contrat"
+      showToast(errorMessage, "error", "Erreur")
     }
     setDeleteDialogOpen(false);
     setContractToDelete(null);
@@ -1550,56 +1613,75 @@ export function ContractManagement() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={async () => {
               if (!contractToEdit) return;
-              let updateData: any;
-              if (isPlayerContract(contractToEdit)) {
-                updateData = {
-                  title: editForm.title,
-                  salary: Number(editForm.salary),
-                  startDate: editForm.startDate,
-                  endDate: editForm.endDate,
-                  hasBonus: editForm.hasBonus,
-                  signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
-                  description: editForm.description,
-                  playerId: editForm.playerId ? Number(editForm.playerId) : undefined,
-                  contractFileId: editUploadedFileId
-                    ? editUploadedFileId
-                    : contractToEdit.contractFile?.id
-                    ? contractToEdit.contractFile.id
-                    : undefined,
-                };
-                await dispatch(updatePlayerContract({ id: contractToEdit.id.toString(), data: updateData }));
-              } else if (isStaffContract(contractToEdit)) {
-                updateData = {
-                  title: editForm.title,
-                  salary: Number(editForm.salary),
-                  startDate: editForm.startDate,
-                  endDate: editForm.endDate,
-                  hasBonus: editForm.hasBonus,
-                  signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
-                  description: editForm.description,
-                  staffId: editForm.staffId ? Number(editForm.staffId) : undefined,
-                  benefits: editForm.benefits,
-                  terms: editForm.terms,
-                  contractFileId: editUploadedFileId
-                    ? editUploadedFileId
-                    : contractToEdit.contractFile?.id
-                    ? contractToEdit.contractFile.id
-                    : undefined,
-                };
-                await dispatch(updateStaffContract({ id: contractToEdit.id.toString(), data: updateData }));
+              try {
+                let updateData: any;
+                if (isPlayerContract(contractToEdit)) {
+                  updateData = {
+                    title: editForm.title,
+                    salary: Number(editForm.salary),
+                    startDate: editForm.startDate,
+                    endDate: editForm.endDate,
+                    hasBonus: editForm.hasBonus,
+                    signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
+                    description: editForm.description,
+                    playerId: editForm.playerId ? Number(editForm.playerId) : undefined,
+                    contractFileId: editUploadedFileId
+                      ? editUploadedFileId
+                      : contractToEdit.contractFile?.id
+                      ? contractToEdit.contractFile.id
+                      : undefined,
+                  };
+                  const result = await dispatch(updatePlayerContract({ id: contractToEdit.id.toString(), data: updateData }));
+                  if (updatePlayerContract.fulfilled.match(result)) {
+                    showToast("Contrat joueur mis à jour avec succès", "success", "Succès")
+                  } else {
+                    showToast("Erreur lors de la mise à jour du contrat joueur", "error", "Erreur")
+                  }
+                } else if (isStaffContract(contractToEdit)) {
+                  updateData = {
+                    title: editForm.title,
+                    salary: Number(editForm.salary),
+                    startDate: editForm.startDate,
+                    endDate: editForm.endDate,
+                    hasBonus: editForm.hasBonus,
+                    signatureBonus: editForm.signatureBonus ? Number(editForm.signatureBonus) : undefined,
+                    description: editForm.description,
+                    staffId: editForm.staffId ? Number(editForm.staffId) : undefined,
+                    benefits: editForm.benefits,
+                    terms: editForm.terms,
+                    contractFileId: editUploadedFileId
+                      ? editUploadedFileId
+                      : contractToEdit.contractFile?.id
+                      ? contractToEdit.contractFile.id
+                      : undefined,
+                  };
+                  const result = await dispatch(updateStaffContract({ id: contractToEdit.id.toString(), data: updateData }));
+                  if (updateStaffContract.fulfilled.match(result)) {
+                    showToast("Contrat staff mis à jour avec succès", "success", "Succès")
+                  } else {
+                    showToast("Erreur lors de la mise à jour du contrat staff", "error", "Erreur")
+                  }
+                }
+                setIsEditDialogOpen(false);
+                setContractToEdit(null);
+                setEditForm(null);
+                setEditFile(null);
+                setEditUploadedFileId(null);
+                setEditFileUploadError(null);
+                // Refresh contract list after update
+                dispatch(fetchAllContracts());
+              } catch (error: any) {
+                console.error("Erreur lors de la mise à jour:", error);
+                const errorMessage = error?.message || "Erreur lors de la mise à jour du contrat"
+                showToast(errorMessage, "error", "Erreur")
               }
-              setIsEditDialogOpen(false);
-              setContractToEdit(null);
-              setEditForm(null);
-              setEditFile(null);
-              setEditUploadedFileId(null);
-              setEditFileUploadError(null);
-              // Refresh contract list after update
-              dispatch(fetchAllContracts());
             }}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Toast Notification */}
+      <ToastNotification toast={toastState} onClose={hideToast} />
     </div>
   )
 }

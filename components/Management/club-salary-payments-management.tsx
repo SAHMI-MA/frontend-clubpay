@@ -53,7 +53,6 @@ import {
   DollarSign, 
   Plus, 
   Search, 
-  FileText,
   Loader2,
   Users,
   UserCheck,
@@ -69,7 +68,8 @@ import { RootState } from "@/lib/redux/store"
 import { 
   fetchSalaryPayments,
   createSalaryPayment,
-  createTransactionFromSalaryPayment
+  createTransactionFromSalaryPayment,
+  approveSalaryPayment
 } from "@/lib/redux/financialSlice"
 import { 
   TransactionType, 
@@ -161,12 +161,94 @@ export function ClubSalaryPaymentsManagement() {
     dispatch(fetchAllStaff())
   }, [dispatch])
 
+  // Refresh payment counter when salary payments change
+  useEffect(() => {
+    console.log('Salary payments updated:', salaryPayments.length, 'payments loaded')
+  }, [salaryPayments])
+
+  // Calculate remaining payments for selected recipient
+  const calculateRemainingPayments = useCallback(() => {
+    if (salaryPaymentForm.recipientType === "player" && salaryPaymentForm.playerId) {
+      const selectedPlayer = players.find(p => p.id === salaryPaymentForm.playerId)
+      if (selectedPlayer?.contract) {
+        // Use salary payments directly from the player object (now included from API)
+        const playerSalaryPayments = selectedPlayer.salaryPayments || []
+        
+        // Count existing PAID payments for this player
+        const paidPayments = playerSalaryPayments.filter(payment => 
+          payment.status === 'PAID'
+        )
+        
+        // Debug logging
+        console.log('Payment Counter Debug (using player data):', {
+          playerId: salaryPaymentForm.playerId,
+          playerName: `${selectedPlayer.firstName} ${selectedPlayer.lastName}`,
+          playerSalaryPayments: playerSalaryPayments,
+          paidPaymentsFromPlayerData: paidPayments,
+          paidCount: paidPayments.length
+        })
+        
+        // Calculate contract duration in months
+        const startDate = new Date(selectedPlayer.contract.startDate)
+        const endDate = new Date(selectedPlayer.contract.endDate || new Date())
+        const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                          (endDate.getMonth() - startDate.getMonth())
+        
+        const remainingPayments = Math.max(0, monthsDiff - paidPayments.length)
+        return {
+          totalMonths: monthsDiff,
+          paidPayments: paidPayments.length,
+          remainingPayments,
+          recipientName: `${selectedPlayer.firstName} ${selectedPlayer.lastName}`,
+          contractEndDate: selectedPlayer.contract.endDate
+        }
+      }
+    } else if (salaryPaymentForm.recipientType === "staff" && salaryPaymentForm.staffId) {
+      const selectedStaff = staff.find(s => s.id === salaryPaymentForm.staffId)
+      if (selectedStaff?.contract) {
+        // Use salary payments directly from the staff object (now included from API)
+        const staffSalaryPayments = selectedStaff.salaryPayments || []
+        
+        // Count existing PAID payments for this staff member
+        const paidPayments = staffSalaryPayments.filter(payment => 
+          payment.status === 'PAID'
+        )
+        
+        // Debug logging
+        console.log('Staff Payment Counter Debug (using staff data):', {
+          staffId: salaryPaymentForm.staffId,
+          staffName: `${selectedStaff.firstName} ${selectedStaff.lastName}`,
+          staffSalaryPayments: staffSalaryPayments,
+          paidPaymentsFromStaffData: paidPayments,
+          paidCount: paidPayments.length
+        })
+        
+        // Calculate contract duration in months
+        const startDate = new Date(selectedStaff.contract.startDate)
+        const endDate = new Date(selectedStaff.contract.endDate || new Date())
+        const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                          (endDate.getMonth() - startDate.getMonth())
+        
+        const remainingPayments = Math.max(0, monthsDiff - paidPayments.length)
+        return {
+          totalMonths: monthsDiff,
+          paidPayments: paidPayments.length,
+          remainingPayments,
+          recipientName: `${selectedStaff.firstName} ${selectedStaff.lastName}`,
+          contractEndDate: selectedStaff.contract.endDate
+        }
+      }
+    }
+    return null
+  }, [salaryPaymentForm.recipientType, salaryPaymentForm.playerId, salaryPaymentForm.staffId, players, staff])
+
+  const paymentCounter = calculateRemainingPayments()
+
   // Create salary payment
   const handleCreateSalaryPayment = useCallback(async () => {
     // Validation
     if (!salaryPaymentForm.amount || !salaryPaymentForm.paymentDate || 
-        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd ||
-        !salaryPaymentForm.taxAmount || !salaryPaymentForm.netAmount) {
+        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd) {
       setSalaryPaymentError("Please fill in all required fields")
       return
     }
@@ -196,16 +278,23 @@ export function ClubSalaryPaymentsManagement() {
     setSalaryPaymentError(null)
 
     try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+      
+      if (!currentUser.id) {
+        setSalaryPaymentError("Authentication required: Please log in again to create a salary payment")
+        return
+      }
+
       const salaryPaymentData: CreateSalaryPaymentDto = {
         amount: parseFloat(salaryPaymentForm.amount),
         paymentDate: salaryPaymentForm.paymentDate,
         periodStart: salaryPaymentForm.periodStart,
         periodEnd: salaryPaymentForm.periodEnd,
         bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
-        taxAmount: parseFloat(salaryPaymentForm.taxAmount),
-        netAmount: parseFloat(salaryPaymentForm.netAmount),
+        taxAmount: salaryPaymentForm.taxAmount ? parseFloat(salaryPaymentForm.taxAmount) : undefined,
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
+        createdBy: currentUser.id,
       }
 
       console.log("Creating salary payment with data:", salaryPaymentData)
@@ -259,15 +348,6 @@ export function ClubSalaryPaymentsManagement() {
       setIsSubmittingSalaryPayment(false)
     }
   }, [salaryPaymentForm, dispatch, showToast])
-
-  // Open transaction type selection dialog for a salary payment
-  const openTransactionTypeDialog = useCallback((salaryPaymentId: number) => {
-    setSelectedSalaryPaymentId(salaryPaymentId)
-    // Default to expense and salary category for salary payments
-    setSelectedTransactionType(TransactionType.EXPENSE)
-    setSelectedTransactionCategory(TransactionCategory.SALARY)
-    setIsTransactionTypeDialogOpen(true)
-  }, [])
 
   // Create transaction from salary payment with specified type
   const handleCreateTransactionFromSalaryPayment = useCallback(async () => {
@@ -348,6 +428,48 @@ export function ClubSalaryPaymentsManagement() {
     }
   }, [selectedSalaryPaymentId, selectedTransactionType, selectedTransactionCategory, authUser, salaryPayments, players, staff, dispatch, showToast])
 
+  // Approve salary payment
+  const handleApproveSalaryPayment = useCallback(async (paymentId: number) => {
+    // Check authentication
+    let authToken
+    if (typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth_token')
+    }
+    
+    if (!authToken) {
+      showToast(
+        "Authentication required: Please log in again",
+        "error",
+        "Authentication Error"
+      )
+      return
+    }
+
+    try {
+      console.log(`Approving salary payment with ID: ${paymentId}`)
+      
+      const approvedPayment = await dispatch(approveSalaryPayment(paymentId)).unwrap()
+      
+      showToast(
+        "Paiement de salaire approuvé et transaction créée avec succès",
+        "success",
+        "Paiement Approuvé"
+      )
+
+      // Refresh salary payments to get updated data
+      dispatch(fetchSalaryPayments())
+      
+      console.log("Salary payment approved:", approvedPayment)
+    } catch (err: any) {
+      console.error("Failed to approve salary payment:", err)
+      showToast(
+        err.message || "Échec de l'approbation du paiement de salaire",
+        "error",
+        "Approbation Échouée"
+      )
+    }
+  }, [dispatch, showToast])
+
   // Filter salary payments based on search term, status, and recipient type
   const filteredSalaryPayments = useMemo(() => salaryPayments.filter((payment) => {
     const playerInfo = payment.player || (payment.playerId ? players.find(p => p.id === payment.playerId) : null)
@@ -384,9 +506,18 @@ export function ClubSalaryPaymentsManagement() {
   }, [])
 
   // Calculate salary payment statistics
-  const totalSalaryPayments = useMemo(() => 
-    salaryPayments.reduce((sum, payment) => sum + payment.netAmount, 0)
-  , [salaryPayments])
+  const totalSalaryPayments = useMemo(() => {
+    // Only include PAID payments in the total
+    const paidPayments = salaryPayments.filter(payment => payment.status === TransactionPaymentStatus.PAID);
+    const total = paidPayments.reduce((sum, payment) => {
+      // Parse netAmount as it comes as a string from the API
+      const netAmount = parseFloat(payment.netAmount?.toString() || '0') || 0;
+      console.log(`Payment ${payment.id}: netAmount=${payment.netAmount} (parsed: ${netAmount}), status=${payment.status}`);
+      return sum + netAmount;
+    }, 0);
+    console.log(`Total salary payments: ${total} from ${paidPayments.length} paid payments out of ${salaryPayments.length} total`);
+    return total;
+  }, [salaryPayments])
 
   const pendingPayments = useMemo(() => 
     salaryPayments.filter(payment => payment.status === TransactionPaymentStatus.PENDING).length
@@ -611,11 +742,11 @@ export function ClubSalaryPaymentsManagement() {
                               <Button 
                                 size="sm"
                                 variant="outline"
-                                className="border-blue-300 hover:bg-blue-100"
-                                onClick={() => openTransactionTypeDialog(payment.id)}
+                                className="border-green-300 hover:bg-green-100 text-green-700 hover:text-green-800"
+                                onClick={() => handleApproveSalaryPayment(payment.id)}
                               >
-                                <FileText className="h-3 w-3 mr-1" />
-                                Créer la transaction
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approuver
                               </Button>
                             )}
                             <Button 
@@ -640,7 +771,7 @@ export function ClubSalaryPaymentsManagement() {
 
       {/* Create Salary Payment Dialog */}
       <Dialog open={isCreateSalaryPaymentDialogOpen} onOpenChange={setIsCreateSalaryPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Créer un nouveau paiement de salaire pour le club</DialogTitle>
             <DialogDescription>
@@ -654,13 +785,13 @@ export function ClubSalaryPaymentsManagement() {
             </div>
           )}
           
-          <div className="grid gap-4 py-4">
+          <div className="space-y-4 py-2">
             {/* Recipient Type */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="recipientType" className="text-right">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
                 Type de bénéficiaire*
               </Label>
-              <div className="col-span-3 flex gap-4">
+              <div className="flex gap-6">
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
@@ -689,31 +820,55 @@ export function ClubSalaryPaymentsManagement() {
             </div>
             
             {/* Recipient Selection */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="recipient" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="recipient" className="text-sm font-medium">
                 Bénéficiaire*
               </Label>
-              <div className="col-span-3">
+              <div>
                 {salaryPaymentForm.recipientType === "player" ? (
                   <Select
                     value={salaryPaymentForm.playerId?.toString() || ""}
-                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, playerId: parseInt(value) })}
+                    onValueChange={(value) => {
+                      const playerId = parseInt(value)
+                      const selectedPlayer = players.find(p => p.id === playerId)
+                      
+                      // Auto-fill salary information when player is selected
+                      const updatedForm = { 
+                        ...salaryPaymentForm, 
+                        playerId: playerId 
+                      }
+                      
+                      // If player has contract with salary, auto-fill the amount
+                      if (selectedPlayer?.contract?.salary) {
+                        updatedForm.amount = selectedPlayer.contract.salary.toString()
+                        // Don't auto-calculate tax - let user enter manually or use calculate button
+                      }
+                      
+                      setSalaryPaymentForm(updatedForm)
+                    }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a player" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner un joueur" />
                     </SelectTrigger>
                     <SelectContent>
                       {playersLoading ? (
                         <div className="flex items-center justify-center p-4">
                           <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-                          <span className="ml-2">Loading players...</span>
+                          <span className="ml-2">Chargement des joueurs...</span>
                         </div>
                       ) : players.length === 0 ? (
-                        <div className="p-2 text-sm text-gray-500">No players available</div>
+                        <div className="p-2 text-sm text-gray-500">Aucun joueur disponible</div>
                       ) : (
                         players.map((player) => (
                           <SelectItem key={player.id} value={player.id.toString()}>
-                            {player.firstName} {player.lastName} ({player.position})
+                            <div className="flex items-center justify-between w-full">
+                              <span>{player.firstName} {player.lastName} ({player.position})</span>
+                              {player.contract?.salary && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {formatCurrency(player.contract.salary)}
+                                </span>
+                              )}
+                            </div>
                           </SelectItem>
                         ))
                       )}
@@ -722,23 +877,47 @@ export function ClubSalaryPaymentsManagement() {
                 ) : (
                   <Select
                     value={salaryPaymentForm.staffId?.toString() || ""}
-                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, staffId: parseInt(value) })}
+                    onValueChange={(value) => {
+                      const staffId = parseInt(value)
+                      const selectedStaff = staff.find(s => s.id === staffId)
+                      
+                      // Auto-fill salary information when staff is selected
+                      const updatedForm = { 
+                        ...salaryPaymentForm, 
+                        staffId: staffId 
+                      }
+                      
+                      // If staff has contract with salary, auto-fill the amount
+                      if (selectedStaff?.contract?.salary) {
+                        updatedForm.amount = selectedStaff.contract.salary.toString()
+                        // Don't auto-calculate tax - let user enter manually or use calculate button
+                      }
+                      
+                      setSalaryPaymentForm(updatedForm)
+                    }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a staff member" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner un membre du staff" />
                     </SelectTrigger>
                     <SelectContent>
                       {staffLoading ? (
                         <div className="flex items-center justify-center p-4">
                           <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-                          <span className="ml-2">Loading staff...</span>
+                          <span className="ml-2">Chargement du staff...</span>
                         </div>
                       ) : staff.length === 0 ? (
-                        <div className="p-2 text-sm text-gray-500">No staff available</div>
+                        <div className="p-2 text-sm text-gray-500">Aucun staff disponible</div>
                       ) : (
                         staff.map((staffMember) => (
                           <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
-                            {staffMember.firstName} {staffMember.lastName} ({staffMember.role})
+                            <div className="flex items-center justify-between w-full">
+                              <span>{staffMember.firstName} {staffMember.lastName} ({staffMember.role})</span>
+                              {staffMember.contract?.salary && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {formatCurrency(staffMember.contract.salary)}
+                                </span>
+                              )}
+                            </div>
                           </SelectItem>
                         ))
                       )}
@@ -748,32 +927,154 @@ export function ClubSalaryPaymentsManagement() {
               </div>
             </div>
 
-            {/* Payment Amount */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Montant brut*
-              </Label>
-              <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={salaryPaymentForm.amount}
-                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, amount: e.target.value })}
-                />
+            {/* Financial Information Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Payment Amount */}
+              <div className="space-y-1">
+                <Label htmlFor="amount" className="text-sm font-medium">
+                  Montant brut (MAD)*
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="pr-12 h-8"
+                    value={salaryPaymentForm.amount}
+                    onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, amount: e.target.value })}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">MAD</span>
+                </div>
+              </div>
+              
+              {/* Bonus (optional) */}
+              <div className="space-y-1">
+                <Label htmlFor="bonus" className="text-sm font-medium">
+                  Prime (MAD)
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="bonus"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="pr-12 h-8"
+                    value={salaryPaymentForm.bonus}
+                    onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, bonus: e.target.value })}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">MAD</span>
+                </div>
+              </div>
+              
+              {/* Tax Amount */}
+              <div className="space-y-1">
+                <Label htmlFor="taxAmount" className="text-sm font-medium">
+                  Montant des taxes (MAD)
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="taxAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="pr-12 h-8"
+                    value={salaryPaymentForm.taxAmount}
+                    onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, taxAmount: e.target.value })}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">MAD</span>
+                </div>
+              </div>
+              
+              {/* Net Amount - Display Only */}
+              <div className="space-y-1">
+                <Label htmlFor="netAmount" className="text-sm font-medium">
+                  Montant net (MAD) - Calculé automatiquement
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="netAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Calculé automatiquement"
+                    className="pr-12 h-8 bg-gray-50"
+                    value={salaryPaymentForm.netAmount}
+                    onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, netAmount: e.target.value })}
+                    disabled
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">MAD</span>
+                </div>
               </div>
             </div>
             
-            {/* Payment Date */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentDate" className="text-right">
-                Date de paiement*
-              </Label>
-              <div className="col-span-3">
+            {/* Tax Calculation Helper */}
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-700">Calcul automatique des taxes</span>
+                  <span className="text-xs text-gray-500">Calcule automatiquement les taxes sur le montant brut</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="taxRate" className="text-sm">Taux d'imposition:</Label>
+                  <div className="relative w-20">
+                    <Input
+                      id="taxRate"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      defaultValue="20"
+                      className="h-8 text-sm pr-6"
+                      onChange={(e) => {
+                        const taxRate = parseFloat(e.target.value) || 20;
+                        e.target.setAttribute('data-tax-rate', taxRate.toString());
+                      }}
+                    />
+                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">%</span>
+                  </div>
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => {
+                    const grossAmount = parseFloat(salaryPaymentForm.amount) || 0
+                    const taxRateInput = document.getElementById('taxRate') as HTMLInputElement
+                    const taxRate = parseFloat(taxRateInput?.getAttribute('data-tax-rate') || taxRateInput?.value || '20') / 100
+                    
+                    if (grossAmount > 0) {
+                      const estimatedTax = grossAmount * taxRate
+                      const netAmount = grossAmount - estimatedTax
+                      setSalaryPaymentForm({
+                        ...salaryPaymentForm,
+                        taxAmount: estimatedTax.toFixed(2),
+                        netAmount: netAmount.toFixed(2)
+                      })
+                    }
+                  }}
+                  disabled={!salaryPaymentForm.amount || parseFloat(salaryPaymentForm.amount) <= 0}
+                >
+                  Calculer les taxes
+                </Button>
+              </div>
+            </div>
+            
+            {/* Date Information Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Payment Date */}
+              <div className="space-y-2">
+                <Label htmlFor="paymentDate" className="text-sm font-medium">
+                  Date de paiement*
+                </Label>
                 <Input
                   id="paymentDate"
                   type="date"
@@ -781,14 +1082,12 @@ export function ClubSalaryPaymentsManagement() {
                   onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, paymentDate: e.target.value })}
                 />
               </div>
-            </div>
-            
-            {/* Period Start */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodStart" className="text-right">
-                Début de période*
-              </Label>
-              <div className="col-span-3">
+              
+              {/* Period Start */}
+              <div className="space-y-2">
+                <Label htmlFor="periodStart" className="text-sm font-medium">
+                  Début de période*
+                </Label>
                 <Input
                   id="periodStart"
                   type="date"
@@ -796,14 +1095,12 @@ export function ClubSalaryPaymentsManagement() {
                   onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, periodStart: e.target.value })}
                 />
               </div>
-            </div>
-            
-            {/* Period End */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodEnd" className="text-right">
-                Fin de période*
-              </Label>
-              <div className="col-span-3">
+              
+              {/* Period End */}
+              <div className="space-y-2">
+                <Label htmlFor="periodEnd" className="text-sm font-medium">
+                  Fin de période*
+                </Label>
                 <Input
                   id="periodEnd"
                   type="date"
@@ -812,67 +1109,41 @@ export function ClubSalaryPaymentsManagement() {
                 />
               </div>
             </div>
-            
-            {/* Bonus (optional) */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="bonus" className="text-right">
-                Prime
-              </Label>
-              <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
-                <Input
-                  id="bonus"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={salaryPaymentForm.bonus}
-                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, bonus: e.target.value })}
-                />
-              </div>
-            </div>
-            
-            {/* Tax Amount */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="taxAmount" className="text-right">
-                Montant des taxes*
-              </Label>
-              <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
-                <Input
-                  id="taxAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={salaryPaymentForm.taxAmount}
-                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, taxAmount: e.target.value })}
-                />
-              </div>
-            </div>
-            
-            {/* Net Amount */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="netAmount" className="text-right">
-                Montant net*
-              </Label>
-              <div className="col-span-3 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">MAD</span>
-                <Input
-                  id="netAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={salaryPaymentForm.netAmount}
-                  onChange={(e) => setSalaryPaymentForm({ ...salaryPaymentForm, netAmount: e.target.value })}
-                />
-              </div>
-            </div>
           </div>
+          
+          {/* Payment Counter Display */}
+          {paymentCounter && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-blue-900">
+                    Compteur de paiements - {paymentCounter.recipientName}
+                  </h4>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Contrat jusqu'au: {paymentCounter.contractEndDate ? new Date(paymentCounter.contractEndDate).toLocaleDateString('fr-FR') : 'Non défini'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-blue-900">
+                    {paymentCounter.remainingPayments} paiements restants
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    {paymentCounter.paidPayments} / {paymentCounter.totalMonths} mois payés
+                  </div>
+                </div>
+              </div>
+              {paymentCounter.remainingPayments === 0 && (
+                <div className="mt-2 p-2 bg-green-100 border border-green-300 rounded text-xs text-green-800">
+                  ✅ Tous les paiements du contrat ont été effectués
+                </div>
+              )}
+              {paymentCounter.remainingPayments > 0 && (
+                <div className="mt-2 text-xs text-blue-600">
+                  📅 Prochains paiements à prévoir selon la durée du contrat
+                </div>
+              )}
+            </div>
+          )}
           
           <DialogFooter>
             <Button

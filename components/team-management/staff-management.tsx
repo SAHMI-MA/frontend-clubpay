@@ -32,7 +32,7 @@ import { Staff, StaffRole, CreateStaffDto, UpdateStaffDto } from "@/lib/types/te
  * @param staff Array of Staff objects
  */
 export function exportStaffToCSV(staff: Staff[]) {
-  const header = ['ID', 'First Name', 'Last Name', 'Role', 'Date of Birth', 'Phone', 'Email', 'Team', 'Qualification', 'Experience', 'Salary (MAD)', 'Contract Start', 'Contract End'];
+  const header = ['ID', 'First Name', 'Last Name', 'Role', 'Date of Birth', 'Phone', 'Email', 'Team', 'Qualification', 'Experience', 'Contract Start', 'Contract End'];
   const rows = staff.map(member => [
     member.id,
     member.firstName,
@@ -44,7 +44,6 @@ export function exportStaffToCSV(staff: Staff[]) {
     member.team?.name || '',
     member.qualification || '',
     member.experience || '',
-    member.salary || '',
     member.contractStartDate || '',
     member.contractEndDate || ''
   ]);
@@ -101,7 +100,6 @@ export function StaffManagement() {
     experience: "",
     rib: "", // Bank account information
     staffImageId: undefined, // Staff image ID
-    salary: undefined, // Staff salary
     contractStartDate: "", // Contract start date
     contractEndDate: "", // Contract end date
     teamId: teams?.[0]?.id || 0,
@@ -180,7 +178,6 @@ export function StaffManagement() {
         experience: newStaff.experience,
         rib: newStaff.rib,
         staffImageId: newStaff.staffImageId,
-        salary: newStaff.salary,
         contractStartDate: newStaff.contractStartDate,
         contractEndDate: newStaff.contractEndDate,
         teamId: newStaff.teamId // Use teamId, not selectedTeamId
@@ -201,7 +198,6 @@ export function StaffManagement() {
         qualification: "",
         experience: "",
         rib: "",
-        salary: undefined,
         contractStartDate: "",
         contractEndDate: "",
         teamId: teams?.[0]?.id || 0,
@@ -249,7 +245,7 @@ export function StaffManagement() {
 
   // Statistics
   const totalStaff = staff.length
-  // No longer tracking contracts or salary in the API
+  // Staff role distribution for analytics
   const roleDistribution = Object.values(StaffRole)
     .map((role) => ({
       role,
@@ -401,19 +397,7 @@ export function StaffManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salary">Salaire</Label>
-                  <Input
-                    id="salary"
-                    type="number"
-                    min="0"
-                    value={newStaff.salary || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="Entrez le salaire mensuel"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="rib">RIB (Compte bancaire)</Label>
                   <Input
@@ -939,19 +923,7 @@ export function StaffManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-salary">Salaire</Label>
-                  <Input
-                    id="edit-salary"
-                    type="number"
-                    min="0"
-                    value={editingStaff.salary || ""}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, salary: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="Entrez le salaire mensuel"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-rib">RIB (Compte bancaire)</Label>
                   <Input

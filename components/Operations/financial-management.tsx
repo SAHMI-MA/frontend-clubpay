@@ -1151,8 +1151,7 @@ export function FinancialManagement() {
   const handleCreateSalaryPayment = useCallback(async () => {
     // Validation
     if (!salaryPaymentForm.amount || !salaryPaymentForm.paymentDate || 
-        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd ||
-        !salaryPaymentForm.taxAmount || !salaryPaymentForm.netAmount) {
+        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd) {
       setSalaryPaymentError("Please fill in all required fields")
       return
     }
@@ -1182,16 +1181,23 @@ export function FinancialManagement() {
     setSalaryPaymentError(null)
 
     try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+      
+      if (!currentUser.id) {
+        setSalaryPaymentError("Authentication required: Please log in again to create a salary payment")
+        return
+      }
+
       const salaryPaymentData: CreateSalaryPaymentDto = {
         amount: parseFloat(salaryPaymentForm.amount),
         paymentDate: salaryPaymentForm.paymentDate,
         periodStart: salaryPaymentForm.periodStart,
         periodEnd: salaryPaymentForm.periodEnd,
         bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
-        taxAmount: parseFloat(salaryPaymentForm.taxAmount),
-        netAmount: parseFloat(salaryPaymentForm.netAmount),
+        taxAmount: salaryPaymentForm.taxAmount ? parseFloat(salaryPaymentForm.taxAmount) : undefined,
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
+        createdBy: currentUser.id,
       }
 
       console.log("Creating salary payment with data:", salaryPaymentData)
@@ -1246,15 +1252,6 @@ export function FinancialManagement() {
       setIsSubmittingSalaryPayment(false)
     }
   }, [salaryPaymentForm, dispatch, showToast]);
-  
-  // Open transaction type selection dialog for a salary payment
-  const openTransactionTypeDialog = useCallback((salaryPaymentId: number) => {
-    setSelectedSalaryPaymentId(salaryPaymentId);
-    // Default to expense and salary category for salary payments
-    setSelectedTransactionType(TransactionType.EXPENSE);
-    setSelectedTransactionCategory(TransactionCategory.SALARY);
-    setIsTransactionTypeDialogOpen(true);
-  }, []);
   
   // Create transaction from salary payment with specified type
   const handleCreateTransactionFromSalaryPayment = useCallback(async () => {
@@ -1637,9 +1634,8 @@ export function FinancialManagement() {
       </div>
 
       <Tabs defaultValue="transactions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="salary-payments">Paiements de salaires</TabsTrigger>
           <TabsTrigger value="reports">Rapports & Analyses</TabsTrigger>
         </TabsList>
 
@@ -1752,113 +1748,6 @@ export function FinancialManagement() {
                           </TableCell>
                         </TableRow>
                       ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="salary-payments" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Paiements de salaires</CardTitle>
-              <CardDescription>Consultez et gérez les paiements de salaires des joueurs et du staff</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Filters */}
-              <div className="flex justify-between items-center mb-6">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder="Rechercher un paiement de salaire..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white ml-2" 
-                  onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouveau paiement de salaire
-                </Button>
-              </div>
-
-              {/* Salary Payments Table */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date de paiement</TableHead>
-                      <TableHead>Bénéficiaire</TableHead>
-                      <TableHead>Période</TableHead>
-                      <TableHead>Montant brut</TableHead>
-                      <TableHead>Montant des taxes</TableHead>
-                      <TableHead>Montant net</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          <div className="flex justify-center items-center">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
-                            <span>Chargement des paiements de salaires...</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : !salaryPayments || salaryPayments.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          Aucuns paiements de salaires trouvés.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      salaryPayments.map((payment) => {
-                        // Use recipient details directly from API response if available
-                        // Fall back to our local state if not available
-                        const playerInfo = payment.player || (payment.playerId ? players.find(p => p.id === payment.playerId) : null);
-                        const staffInfo = payment.staff || (payment.staffId ? staff.find(s => s.id === payment.staffId) : null);
-                        const recipientName = playerInfo 
-                          ? `${playerInfo.firstName} ${playerInfo.lastName} (Player)` 
-                          : staffInfo 
-                            ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})` 
-                            : 'Unknown';
-                        
-                        return (
-                          <TableRow key={payment.id}>
-                            <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
-                            <TableCell className="font-medium">{recipientName}</TableCell>
-                            <TableCell>
-                              {new Date(payment.periodStart).toLocaleDateString()} - {new Date(payment.periodEnd).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                            <TableCell>{formatCurrency(payment.taxAmount)}</TableCell>
-                            <TableCell>{formatCurrency(payment.netAmount)}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(payment.status)}>{payment.status === TransactionPaymentStatus.PAID ? 'Payé' : payment.status === TransactionPaymentStatus.PENDING ? 'En attente' : payment.status === TransactionPaymentStatus.APPROVED ? 'Approuvé' : payment.status}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              {payment.status === TransactionPaymentStatus.PENDING && (
-                                <Button 
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-blue-300 hover:bg-blue-100"
-                                  onClick={() => openTransactionTypeDialog(payment.id)}
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  Créer la transaction
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
                     )}
                   </TableBody>
                 </Table>

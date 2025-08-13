@@ -356,6 +356,31 @@ export const updateSalaryPaymentStatus = createAsyncThunk(
   }
 );
 
+export const approveSalaryPayment = createAsyncThunk(
+  'financial/approveSalaryPayment',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      // Check for authentication token
+      let authToken;
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('auth_token');
+      }
+
+      if (!authToken) {
+        return rejectWithValue('Authentication required: No token found. Please log in again.');
+      }
+
+      console.log(`Approving salary payment with ID: ${id}`);
+      const response = await api.patch<SalaryPayment>(`accounting/salary-payments/${id}/approve`, {});
+      console.log('Salary payment approved successfully:', response);
+      return response;
+    } catch (error: any) {
+      console.error('Salary payment approval failed:', error);
+      return rejectWithValue(error.message || 'Failed to approve salary payment');
+    }
+  }
+);
+
 // Bulk Salary Payments Thunk
 export const createBulkSalaryPayment = createAsyncThunk(
   'financial/createBulkSalaryPayment',
@@ -716,6 +741,27 @@ const financialSlice = createSlice({
       }
     });
     builder.addCase(updateSalaryPaymentStatus.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // Approve Salary Payment
+    builder.addCase(approveSalaryPayment.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(approveSalaryPayment.fulfilled, (state, action) => {
+      state.loading = false;
+      const index = state.salaryPayments.findIndex((p: SalaryPayment) => p.id === action.payload.id);
+      if (index !== -1) {
+        state.salaryPayments[index] = action.payload;
+      }
+
+      if (state.selectedSalaryPayment?.id === action.payload.id) {
+        state.selectedSalaryPayment = action.payload;
+      }
+    });
+    builder.addCase(approveSalaryPayment.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });

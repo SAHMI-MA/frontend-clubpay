@@ -77,7 +77,7 @@ class AssociationAPIService {
 
   async uploadLogo(file: File): Promise<AssociationSettings> {
     const formData = new FormData()
-    formData.append('logo', file)
+    formData.append('file', file)
     
     const response = await fetch(`${this.baseURL}/associations/logo`, {
       method: 'POST',
@@ -200,7 +200,7 @@ export const navigationGroups = [
         id: "allocation-management",
       },
       {
-        title: "Bon de récéption",
+        title: "Finances",
         icon: CreditCard,
         id: "financial",
       },

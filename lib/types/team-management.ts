@@ -39,6 +39,22 @@ export interface Team {
   updatedAt?: string;
 }
 
+export interface ClubSalaryPayment {
+  id: number;
+  amount: number;
+  paymentDate: string;
+  periodStart: string;
+  periodEnd: string;
+  bonus?: number;
+  taxAmount: number;
+  netAmount: number;
+  status: 'PAID' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  playerId?: number;
+  staffId?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Player {
   id: number;
   firstName: string;
@@ -57,6 +73,7 @@ export interface Player {
   teamId?: number | null; // Allow null for consistency
   team?: Team;
   contract?: Contract;
+  salaryPayments?: ClubSalaryPayment[]; // NEW: Salary payment relationship
   matchParticipations?: MatchParticipation[];
   objectiveProgress?: ObjectiveProgress[];
   createdAt?: string;
@@ -236,8 +253,27 @@ export interface Staff {
   contractEndDate?: string; // NEW: Contract end date
   teamId?: number; // NEW: Team association
   team?: Team;
+  contract?: StaffContract; // NEW: Staff contract relationship
+  salaryPayments?: ClubSalaryPayment[]; // NEW: Salary payment relationship
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Staff Contract interface
+export interface StaffContract {
+  id: number;
+  title: string;
+  salary: number;
+  startDate: string;
+  endDate?: string;
+  terminationDate?: string;
+  status: string;
+  description?: string;
+  benefits?: any;
+  terms?: string;
+  staffId: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateStaffDto {
