@@ -167,6 +167,25 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
                       <div></div>
                     </>
                   )}
+                  {player.playerCode && (
+                    <>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Code Joueur</p>
+                        <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{player.playerCode}</p>
+                      </div>
+                      <div></div>
+                    </>
+                  )}
+                  {/* Always show signature bonus section */}
+                  <div>
+                    <p className="font-medium text-muted-foreground">Prime de Signature</p>
+                    {player.contract?.signatureBonus ? (
+                      <p className="font-semibold text-green-600">{formatCurrency(player.contract.signatureBonus)}</p>
+                    ) : (
+                      <p className="text-gray-400 text-xs">Aucune prime</p>
+                    )}
+                  </div>
+                  <div></div>
                   {player.rib && (
                     <>
                       <div className="col-span-2">

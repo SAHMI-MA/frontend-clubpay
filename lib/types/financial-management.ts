@@ -27,6 +27,9 @@ export enum PaymentStatus {
 }
 
 export interface Transaction {
+  sourceId: string;
+  sourceType: string;
+  referenceNumber: string;
   purchaseOrder: any;
   id: number;
   type: TransactionType;

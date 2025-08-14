@@ -71,6 +71,13 @@ import type { Player, Staff } from "@/lib/types/team-management"
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
 
+// Type for combined contract display
+type CombinedContract = (PlayerContract | StaffContract) & {
+  contractType: "player" | "staff"
+  personName: string
+  role: string
+}
+
 // Type guard helper functions
 const isPlayerContract = (contract: PlayerContract | StaffContract): contract is PlayerContract => {
   return 'playerName' in contract || 'player' in contract
@@ -134,8 +141,9 @@ export function ContractManagement() {
   const staffError = useSelector((state: RootState) => state.staff?.error || null)
 
   // Local state (all hooks at the top)
-  const [activeTab, setActiveTab] = useState("players")
+  const [activeTab, setActiveTab] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
+  const [contractTypeFilter, setContractTypeFilter] = useState<"all" | "player" | "staff">("all")
   const [selectedContract, setSelectedContract] = useState<PlayerContract | StaffContract | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [contractForm, setContractForm] = useState({
@@ -776,7 +784,7 @@ export function ContractManagement() {
                   )}
 
                   <div>
-                    <Label htmlFor="salary">Salaire annuel (MAD)</Label>
+                    <Label htmlFor="salary">Salaire Mensuel (MAD)</Label>
                     <Input
                       id="salary"
                       type="number"
@@ -880,11 +888,321 @@ export function ContractManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="all">Tous les contrats</TabsTrigger>
           <TabsTrigger value="players">Contrats joueurs</TabsTrigger>
           <TabsTrigger value="staff">Contrats staff</TabsTrigger>
           <TabsTrigger value="analytics">Statistiques</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="all" className="space-y-6">
+          {/* Combined Contract Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Contrats actifs</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {contractStats.player.active + contractStats.staff.active}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  {contractStats.player.active} joueurs, {contractStats.staff.active} staff
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Valeur totale</CardTitle>
+                <DollarSign className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {(contractStats.player.totalValue + contractStats.staff.totalValue).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Engagement salarial total</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Expirés</CardTitle>
+                <Clock className="h-4 w-4 text-gray-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-600">
+                  {contractStats.player.expired + contractStats.staff.expired}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">À renouveler</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Résiliés</CardTitle>
+                <XCircle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {contractStats.player.terminated + contractStats.staff.terminated}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Résiliations anticipées</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* All Contracts Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tous les contrats</CardTitle>
+              <CardDescription>Gérez tous les contrats joueurs et staff</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Search and Filters */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Rechercher un contrat..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={contractTypeFilter} onValueChange={(value: "all" | "player" | "staff") => setContractTypeFilter(value)}>
+                  <SelectTrigger className="w-48">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filtrer par type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="player">Joueurs uniquement</SelectItem>
+                    <SelectItem value="staff">Staff uniquement</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus || "all"} onValueChange={handleStatusFilterChange}>
+                  <SelectTrigger className="w-48">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filtrer par statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="expired">Expiré</SelectItem>
+                    <SelectItem value="terminated">Résilié</SelectItem>
+                    <SelectItem value="draft">Brouillon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Combined Contracts Table */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Personne</TableHead>
+                    <TableHead>Poste/Rôle</TableHead>
+                    <TableHead>Titre du contrat</TableHead>
+                    <TableHead>Salaire</TableHead>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    // Combine and filter contracts
+                    const allContracts: CombinedContract[] = [];
+                    
+                    // Add player contracts
+                    if (contractTypeFilter === "all" || contractTypeFilter === "player") {
+                      filteredPlayerContracts.forEach(contract => {
+                        allContracts.push({
+                          ...contract,
+                          contractType: "player" as const,
+                          personName: contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : 'Inconnu'),
+                          role: contract.position || contract.player?.position || 'N/A'
+                        });
+                      });
+                    }
+                    
+                    // Add staff contracts
+                    if (contractTypeFilter === "all" || contractTypeFilter === "staff") {
+                      filteredStaffContracts.forEach(contract => {
+                        allContracts.push({
+                          ...contract,
+                          contractType: "staff" as const,
+                          personName: contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : 'Inconnu'),
+                          role: contract.role || contract.staff?.role || 'N/A'
+                        });
+                      });
+                    }
+                    
+                    // Sort by creation date or ID
+                    allContracts.sort((a, b) => {
+                      if (a.createdAt && b.createdAt) {
+                        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                      }
+                      return Number(b.id) - Number(a.id);
+                    });
+                    
+                    return allContracts.map((contract) => (
+                      <TableRow key={`${contract.contractType}-${contract.id}`}>
+                        <TableCell>
+                          <Badge className={contract.contractType === "player" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}>
+                            {contract.contractType === "player" ? "Joueur" : "Staff"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{contract.personName}</TableCell>
+                        <TableCell>{contract.role}</TableCell>
+                        <TableCell>{contract.title}</TableCell>
+                        <TableCell className="font-medium">
+                          {(typeof contract.salary === 'string' ? parseFloat(contract.salary) : contract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{dayjs(contract.startDate).locale('fr').format('DD/MM/YYYY')}</div>
+                            <div className="text-gray-500">à {dayjs(contract.endDate).locale('fr').format('DD/MM/YYYY')}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(contract.status, contract.terminationDate)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" onClick={() => setSelectedContract(contract)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-3xl">
+                                <DialogHeader>
+                                  <DialogTitle>Détails du contrat {contract.contractType === "player" ? "joueur" : "staff"}</DialogTitle>
+                                  <DialogDescription>
+                                    Informations complètes du contrat pour {contract.personName}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                {selectedContract && (
+                                  <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-sm font-medium">ID du contrat</Label>
+                                        <p className="text-sm text-gray-600">{selectedContract.id}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Type</Label>
+                                        <p className="text-sm font-bold">
+                                          {contract.contractType === "player" ? "Contrat joueur" : "Contrat staff"}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Personne</Label>
+                                        <p className="text-sm font-bold">{contract.personName}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">{contract.contractType === "player" ? "Poste" : "Rôle"}</Label>
+                                        <p className="text-sm text-gray-600">{contract.role}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Salaire mensuel (MAD)</Label>
+                                        <p className="text-sm font-bold">{(typeof selectedContract.salary === 'string' ? parseFloat(selectedContract.salary) : selectedContract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Prime de signature</Label>
+                                        <p className="text-sm text-gray-600">
+                                          {selectedContract.signatureBonus ? (typeof selectedContract.signatureBonus === 'string' ? parseFloat(selectedContract.signatureBonus) : selectedContract.signatureBonus).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 }) : '-'}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Période du contrat</Label>
+                                        <p className="text-sm text-gray-600">
+                                          {dayjs(selectedContract.startDate).locale('fr').format('DD/MM/YYYY')} à {dayjs(selectedContract.endDate).locale('fr').format('DD/MM/YYYY')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Statut</Label>
+                                      <div className="mt-1">
+                                        {getStatusBadge(selectedContract.status, selectedContract.terminationDate)}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Description</Label>
+                                      <p className="text-sm text-gray-600">{selectedContract.description}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Bonus de performance</Label>
+                                      <p className="text-sm text-gray-600">
+                                        {selectedContract.hasBonus ? 'Inclus dans le contrat' : 'Non inclus'}
+                                      </p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                                      <div>
+                                        <Label className="text-xs font-medium">Créé le</Label>
+                                        <p>{selectedContract.createdAt}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs font-medium">Dernière modification</Label>
+                                        <p>{selectedContract.updatedAt}</p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Fichier du contrat</Label>
+                                      {selectedContract.contractFile && selectedContract.contractFile.url ? (
+                                        <Button
+                                          className="mt-2"
+                                          onClick={() => {
+                                            const fileUrl = selectedContract.contractFile?.url || '';
+                                            const isAbsolute = fileUrl.startsWith('http://') || fileUrl.startsWith('https://');
+                                            const urlToOpen = isAbsolute ? fileUrl : `${apiConfig.baseUrl}${fileUrl}`;
+                                            window.open(urlToOpen, '_blank', 'noopener,noreferrer');
+                                          }}
+                                        >
+                                          Voir le contrat
+                                        </Button>
+                                      ) : (
+                                        <p className="text-gray-400 mt-2">Aucun fichier de contrat disponible.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+
+                            <Button variant="outline" size="sm" onClick={() => {
+                              setContractToEdit(contract);
+                              setEditForm({ ...contract });
+                              setEditUploadedFileId(contract.contractFile?.id || null);
+                              setIsEditDialogOpen(true);
+                            }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 bg-transparent"
+                              onClick={() => {
+                                setContractToDelete({ 
+                                  id: contract.id.toString(), 
+                                  type: contract.contractType 
+                                });
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="players" className="space-y-6">
           {/* Player Contract Statistics */}
@@ -1042,7 +1360,7 @@ export function ContractManagement() {
                                       <p className="text-sm text-gray-600">{selectedContract.position || 'N/A'}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">Salaire annuel (MAD)</Label>
+                                      <Label className="text-sm font-medium">Salaire mensuel (MAD)</Label>
                                       <p className="text-sm font-bold">{(typeof selectedContract.salary === 'string' ? parseFloat(selectedContract.salary) : selectedContract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
                                     </div>
                                     <div>
@@ -1295,7 +1613,7 @@ export function ContractManagement() {
                                       <p className="text-sm text-gray-600">{selectedContract.role || 'N/A'}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium">Salaire annuel (MAD)</Label>
+                                      <Label className="text-sm font-medium">Salaire mensuel (MAD)</Label>
                                       <p className="text-sm font-bold">{(typeof selectedContract.salary === 'string' ? parseFloat(selectedContract.salary) : selectedContract.salary).toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</p>
                                     </div>
                                     <div>

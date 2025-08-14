@@ -119,6 +119,10 @@ export function ClubSalaryPaymentsManagement() {
   const [isSubmittingSalaryPayment, setIsSubmittingSalaryPayment] = useState(false)
   const [salaryPaymentError, setSalaryPaymentError] = useState<string | null>(null)
   
+  // State for viewing payment details
+  const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false)
+  const [selectedPaymentForView, setSelectedPaymentForView] = useState<any>(null)
+  
   // State for transaction creation from salary payment
   const [selectedSalaryPaymentId, setSelectedSalaryPaymentId] = useState<number | null>(null)
   const [selectedTransactionType, setSelectedTransactionType] = useState<TransactionType>(TransactionType.EXPENSE)
@@ -471,35 +475,67 @@ export function ClubSalaryPaymentsManagement() {
   }, [dispatch, showToast])
 
   // Filter salary payments based on search term, status, and recipient type
-  const filteredSalaryPayments = useMemo(() => salaryPayments.filter((payment) => {
-    const playerInfo = payment.player || (payment.playerId ? players.find(p => p.id === payment.playerId) : null)
-    const staffInfo = payment.staff || (payment.staffId ? staff.find(s => s.id === payment.staffId) : null)
-    const recipientName = playerInfo 
-      ? `${playerInfo.firstName} ${playerInfo.lastName}` 
-      : staffInfo 
-        ? `${staffInfo.firstName} ${staffInfo.lastName}` 
-        : ''
+  const filteredSalaryPayments = useMemo(() => {
+    console.log('Filtering payments with selectedRecipientType:', selectedRecipientType)
+    console.log('Total payments to filter:', salaryPayments.length)
+    
+    const filtered = salaryPayments.filter((payment) => {
+      const playerInfo = payment.player || (payment.playerId ? players.find(p => p.id === payment.playerId) : null)
+      const staffInfo = payment.staff || (payment.staffId ? staff.find(s => s.id === payment.staffId) : null)
+      
+      // Debug each payment's type
+      const isPlayerPayment = !!(payment.playerId || playerInfo)
+      const isStaffPayment = !!(payment.staffId || staffInfo)
+      
+      console.log(`Payment ${payment.id}: playerId=${payment.playerId}, staffId=${payment.staffId}, isPlayer=${isPlayerPayment}, isStaff=${isStaffPayment}`)
+      
+      // Create searchable text including name, position/role
+      const recipientName = playerInfo 
+        ? `${playerInfo.firstName} ${playerInfo.lastName}` 
+        : staffInfo 
+          ? `${staffInfo.firstName} ${staffInfo.lastName}` 
+          : ''
+      
+      const recipientRole = playerInfo 
+        ? playerInfo.position || '' 
+        : staffInfo 
+          ? staffInfo.role || '' 
+          : ''
+      
+      const searchableText = `${recipientName} ${recipientRole}`.toLowerCase()
+      const matchesSearch = searchableText.includes(searchTerm.toLowerCase())
+      
+      // Fix status filtering to map French filter values to English API values
+      const statusMapping: Record<string, string> = {
+        "pending": "PENDING",
+        "paid": "PAID"
+      }
+      
+      const matchesStatus = selectedStatus === "all" || 
+        payment.status.toString().toUpperCase() === (statusMapping[selectedStatus] || selectedStatus).toUpperCase()
+      
+      // Fix recipient type filtering
+      const matchesRecipientType = selectedRecipientType === "all" || 
+        (selectedRecipientType === "player" && isPlayerPayment) ||
+        (selectedRecipientType === "staff" && isStaffPayment)
 
-    const matchesSearch = recipientName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === "all" || payment.status.toString().toLowerCase() === selectedStatus.toLowerCase()
-    const matchesRecipientType = selectedRecipientType === "all" || 
-      (selectedRecipientType === "player" && payment.playerId) ||
-      (selectedRecipientType === "staff" && payment.staffId)
-
-    return matchesSearch && matchesStatus && matchesRecipientType
-  }), [salaryPayments, players, staff, searchTerm, selectedStatus, selectedRecipientType])
+      const passes = matchesSearch && matchesStatus && matchesRecipientType
+      console.log(`Payment ${payment.id} passes filter: ${passes} (search: ${matchesSearch}, status: ${matchesStatus}, type: ${matchesRecipientType})`)
+      
+      return passes
+    })
+    
+    console.log(`Filtered ${filtered.length} payments from ${salaryPayments.length} total`)
+    return filtered
+  }, [salaryPayments, players, staff, searchTerm, selectedStatus, selectedRecipientType])
 
   // Utility function to get color based on payment status
   const getStatusColor = useCallback((status: TransactionPaymentStatus) => {
     switch (status) {
       case TransactionPaymentStatus.PAID:
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case TransactionPaymentStatus.APPROVED:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
       case TransactionPaymentStatus.PENDING:
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      case TransactionPaymentStatus.REJECTED:
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
     }
@@ -618,7 +654,7 @@ export function ClubSalaryPaymentsManagement() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Rechercher par nom..."
+                placeholder="Rechercher par nom, poste, rôle..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -631,9 +667,7 @@ export function ClubSalaryPaymentsManagement() {
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="approved">Approuvé</SelectItem>
                 <SelectItem value="paid">Payé</SelectItem>
-                <SelectItem value="rejected">Rejeté</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedRecipientType} onValueChange={setSelectedRecipientType}>
@@ -753,6 +787,15 @@ export function ClubSalaryPaymentsManagement() {
                               size="sm"
                               variant="ghost"
                               className="text-gray-600 hover:text-gray-800"
+                              onClick={() => {
+                                console.log('🔍 Selected payment for view:', payment)
+                                console.log('🔍 Payment playerId:', payment?.playerId)
+                                console.log('🔍 Payment staffId:', payment?.staffId)
+                                console.log('🔍 Payment player object:', payment?.player)
+                                console.log('🔍 Payment staff object:', payment?.staff)
+                                setSelectedPaymentForView(payment)
+                                setIsViewDetailsDialogOpen(true)
+                              }}
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               Voir
@@ -1252,6 +1295,145 @@ export function ClubSalaryPaymentsManagement() {
               className="bg-blue-800 hover:bg-blue-900 text-white"
             >
               Créer la transaction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Payment Details Dialog */}
+      <Dialog open={isViewDetailsDialogOpen} onOpenChange={setIsViewDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Détails du Paiement de Salaire</DialogTitle>
+            <DialogDescription>
+              Informations complètes du paiement sélectionné
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPaymentForView && (
+            <div className="space-y-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">ID Paiement</Label>
+                  <p className="font-medium">{selectedPaymentForView.id}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Date Paiement</Label>
+                  <p className="font-medium">
+                    {new Date(selectedPaymentForView.paymentDate).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Statut</Label>
+                  <Badge className={
+                    selectedPaymentForView.status === TransactionPaymentStatus.PAID
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }>
+                    {selectedPaymentForView.status === TransactionPaymentStatus.PAID ? 'Payé' : 'En attente'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Recipient Info */}
+              <div className="border-t pt-3">
+                <Label className="text-sm font-medium">Bénéficiaire</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
+                  <div>
+                    <Label className="text-xs text-gray-500">Nom</Label>
+                    <p className="font-medium">
+                      {selectedPaymentForView.player 
+                        ? `${selectedPaymentForView.player.firstName} ${selectedPaymentForView.player.lastName}`
+                        : selectedPaymentForView.staff 
+                          ? `${selectedPaymentForView.staff.firstName} ${selectedPaymentForView.staff.lastName}`
+                          : 'Inconnu'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Type & Poste</Label>
+                    <p className="font-medium">
+                      {selectedPaymentForView.playerId || selectedPaymentForView.player 
+                        ? 'Joueur' 
+                        : selectedPaymentForView.staffId || selectedPaymentForView.staff 
+                          ? 'Staff' 
+                          : 'Inconnu'
+                      } • {selectedPaymentForView.player?.position || selectedPaymentForView.staff?.role || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Period */}
+              <div className="border-t pt-3">
+                <Label className="text-sm font-medium">Période</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
+                  <div>
+                    <Label className="text-xs text-gray-500">Du</Label>
+                    <p className="font-medium">
+                      {new Date(selectedPaymentForView.periodStart).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Au</Label>
+                    <p className="font-medium">
+                      {new Date(selectedPaymentForView.periodEnd).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="border-t pt-3">
+                <Label className="text-sm font-medium">Détails Financiers</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Montant Brut:</span>
+                      <span className="font-medium text-blue-600">{formatCurrency(selectedPaymentForView.amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Taxes:</span>
+                      <span className="font-medium text-red-500">-{formatCurrency(selectedPaymentForView.taxAmount || 0)}</span>
+                    </div>
+                    {selectedPaymentForView.bonus && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Bonus:</span>
+                        <span className="font-medium text-green-500">+{formatCurrency(selectedPaymentForView.bonus)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center border-l pl-3">
+                    <div className="text-center">
+                      <Label className="text-xs text-gray-500">MONTANT NET</Label>
+                      <p className="text-xl font-bold text-green-600">
+                        {formatCurrency(selectedPaymentForView.netAmount || (selectedPaymentForView.amount - (selectedPaymentForView.taxAmount || 0)))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timestamps - Compact */}
+              {(selectedPaymentForView.createdAt || selectedPaymentForView.updatedAt) && (
+                <div className="border-t pt-3 text-xs text-gray-400">
+                  <div className="flex justify-between">
+                    {selectedPaymentForView.createdAt && (
+                      <span>Créé: {new Date(selectedPaymentForView.createdAt).toLocaleDateString('fr-FR')}</span>
+                    )}
+                    {selectedPaymentForView.updatedAt && (
+                      <span>Modifié: {new Date(selectedPaymentForView.updatedAt).toLocaleDateString('fr-FR')}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsViewDetailsDialogOpen(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>

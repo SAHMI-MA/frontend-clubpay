@@ -1695,6 +1695,8 @@ export function FinancialManagement() {
                       <TableHead>Catégorie</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Montant</TableHead>
+                      <TableHead>Référence</TableHead>
+                      <TableHead>Désignation</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead>Bon de commande</TableHead>
                     </TableRow>
@@ -1727,6 +1729,8 @@ export function FinancialManagement() {
                           <TableCell className={transaction.type === TransactionType.INCOME ? "text-green-600" : "text-red-600"}>
                             {formatCurrency(transaction.amount)}
                           </TableCell>
+                          <TableCell>{transaction.sourceId || 'N/A'}</TableCell>
+                          <TableCell>{transaction.sourceType || 'N/A'}</TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(transaction.status)}>{transaction.status === TransactionPaymentStatus.PAID ? 'Payé' : transaction.status === TransactionPaymentStatus.PENDING ? 'En attente' : transaction.status === TransactionPaymentStatus.APPROVED ? 'Approuvé' : transaction.status}</Badge>
                           </TableCell>

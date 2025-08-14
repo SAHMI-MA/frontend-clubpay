@@ -61,6 +61,7 @@ export interface Player {
   lastName: string;
   dateOfBirth: string;
   position: string;
+  playerCode?: string; // NEW: Unique player code
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
   playerStatus?: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status

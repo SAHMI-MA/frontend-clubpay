@@ -5,6 +5,33 @@
  * @param suppliers Array of Supplier objects
  */
 export function exportSuppliersToCSV(suppliers: Supplier[]) {
+  // Helper function to safely parse numeric values
+  const parseNumericValue = (value: string | number | undefined | null): number => {
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return value || 0;
+  };
+
+  // Helper function to calculate actual total spent from acquisitions
+  const calculateTotalSpent = (supplier: any): number => {
+    if (!supplier.acquisitions || !Array.isArray(supplier.acquisitions)) {
+      return 0;
+    }
+    return supplier.acquisitions.reduce((sum: number, acquisition: any) => {
+      return sum + parseNumericValue(acquisition.totalCost);
+    }, 0);
+  };
+
+  // Helper function to calculate total orders count from acquisitions
+  const getTotalOrders = (supplier: any): number => {
+    if (!supplier.acquisitions || !Array.isArray(supplier.acquisitions)) {
+      return 0;
+    }
+    return supplier.acquisitions.length;
+  };
+
   const header = ['ID', 'Name', 'Address', 'Phone', 'Email', 'Contact Person', 'Category', 'Rating', 'Total Orders', 'Total Spent (MAD)', 'Status'];
   const rows = suppliers.map(supplier => [
     supplier.id,
@@ -14,9 +41,9 @@ export function exportSuppliersToCSV(suppliers: Supplier[]) {
     supplier.email || '',
     supplier.contactPerson || '',
     supplier.category || '',
-    supplier.rating || '',
-    supplier.totalOrders || 0,
-    supplier.totalSpent || 0,
+    parseNumericValue(supplier.rating),
+    getTotalOrders(supplier),
+    calculateTotalSpent(supplier),
     supplier.isActive ? 'Active' : 'Inactive'
   ]);
   const csvContent = [header, ...rows]
@@ -83,6 +110,47 @@ export function SupplierManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
+
+  // Helper function to safely parse numeric values from API
+  const parseNumericValue = (value: string | number | undefined | null): number => {
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return value || 0;
+  }
+
+  // Helper function to calculate actual total spent from acquisitions
+  const calculateTotalSpent = (supplier: any): number => {
+    if (!supplier.acquisitions || !Array.isArray(supplier.acquisitions)) {
+      return 0;
+    }
+    return supplier.acquisitions.reduce((sum: number, acquisition: any) => {
+      return sum + parseNumericValue(acquisition.totalCost);
+    }, 0);
+  }
+
+  // Helper function to calculate last order date from acquisitions
+  const getLastOrderDate = (supplier: any): Date | null => {
+    if (!supplier.acquisitions || !Array.isArray(supplier.acquisitions) || supplier.acquisitions.length === 0) {
+      return null;
+    }
+    
+    const dates = supplier.acquisitions
+      .map((acquisition: any) => new Date(acquisition.createdAt))
+      .filter((date: Date) => !isNaN(date.getTime()))
+      .sort((a: Date, b: Date) => b.getTime() - a.getTime());
+    
+    return dates.length > 0 ? dates[0] : null;
+  }
+
+  // Helper function to calculate total orders count from acquisitions
+  const getTotalOrders = (supplier: any): number => {
+    if (!supplier.acquisitions || !Array.isArray(supplier.acquisitions)) {
+      return 0;
+    }
+    return supplier.acquisitions.length;
+  }
 
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -282,9 +350,9 @@ export function SupplierManagement() {
   // Statistics
   const totalSuppliers = suppliersList.length
   const activeSuppliers = suppliersList.filter((s) => s.isActive).length
-  const totalSpent = suppliersList.reduce((sum, s) => sum + (s.totalSpent || 0), 0)
+  const totalSpent = suppliersList.reduce((sum, s) => sum + calculateTotalSpent(s), 0)
   const averageRating = suppliersList.length > 0 
-    ? suppliersList.reduce((sum, s) => sum + (s.rating || 0), 0) / suppliersList.length 
+    ? suppliersList.reduce((sum, s) => sum + parseNumericValue(s.rating), 0) / suppliersList.length 
     : 0
 
   const categoryStats = ["Equipment", "Uniforms", "Medical", "Maintenance", "Catering", "Transportation"].map(
@@ -292,7 +360,7 @@ export function SupplierManagement() {
       category,
       count: suppliersList.filter((s) => s.category === category).length,
       spent: suppliersList.filter((s) => s.category === category)
-        .reduce((sum, s) => sum + (s.totalSpent || 0), 0),
+        .reduce((sum, s) => sum + calculateTotalSpent(s), 0),
     }),
   )
 
@@ -568,15 +636,17 @@ export function SupplierManagement() {
                         <span className="text-sm font-medium">{supplier.rating}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{supplier.totalOrders}</TableCell>
-                    <TableCell className="font-medium">{supplier.totalSpent?.toLocaleString() || '0'} MAD</TableCell>
+                    <TableCell className="font-medium">{getTotalOrders(supplier)}</TableCell>
+                    <TableCell className="font-medium">
+                      {calculateTotalSpent(supplier).toLocaleString('fr-FR')} MAD
+                    </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(supplier.isActive)}>
                         {supplier.isActive ? "Actif" : "Inactif"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {supplier.lastOrderDate ? new Date(supplier.lastOrderDate).toLocaleDateString('fr-FR') : "Jamais"}
+                      {getLastOrderDate(supplier) ? getLastOrderDate(supplier)!.toLocaleDateString('fr-FR') : "Jamais"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -681,16 +751,18 @@ export function SupplierManagement() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Commandes totales</Label>
-                  <p className="text-lg font-bold">{selectedSupplier.totalOrders}</p>
+                  <p className="text-lg font-bold">{getTotalOrders(selectedSupplier)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Total dépensé</Label>
-                  <p className="text-lg font-bold">{selectedSupplier.totalSpent?.toLocaleString() || '0'} MAD</p>
+                  <p className="text-lg font-bold">
+                    {calculateTotalSpent(selectedSupplier).toLocaleString('fr-FR')} MAD
+                  </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Dernière commande</Label>
                   <p className="text-lg font-bold">
-                    {selectedSupplier.lastOrderDate ? new Date(selectedSupplier.lastOrderDate).toLocaleDateString('fr-FR') : "Jamais"}
+                    {getLastOrderDate(selectedSupplier) ? getLastOrderDate(selectedSupplier)!.toLocaleDateString('fr-FR') : "Jamais"}
                   </p>
                 </div>
               </div>

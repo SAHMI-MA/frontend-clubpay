@@ -1,5 +1,7 @@
 "use client"
 
+import { generatePurchaseOrderPDF, AcquisitionForPDF } from '@/lib/pdf-export-utils'
+
 /**
  * Export a list of acquisitions to CSV
  * @param acquisitions Array of Acquisition objects
@@ -817,6 +819,56 @@ export function RentalSupplierManagement() {
     }
   }
 
+  // Export acquisition as purchase order PDF
+  const handleExportPurchaseOrder = (acquisition: Acquisition) => {
+    try {
+      // Convert the acquisition to the format expected by the PDF generator
+      const acquisitionForPDF: AcquisitionForPDF = {
+        id: acquisition.id,
+        acquisitionName: acquisition.acquisitionName,
+        description: acquisition.description,
+        acquisitionType: acquisition.acquisitionType,
+        startDate: acquisition.startDate || new Date().toISOString().split('T')[0],
+        endDate: acquisition.endDate,
+        totalCost: acquisition.totalCost || 0,
+        approvalStatus: acquisition.approvalStatus,
+        createdAt: acquisition.createdAt || new Date().toISOString(),
+        supplier: acquisition.supplier ? {
+          name: acquisition.supplier.name,
+          address: (acquisition.supplier as any).address || '',
+          phone: (acquisition.supplier as any).phone || '',
+          email: (acquisition.supplier as any).email || ''
+        } : undefined,
+        acquisitionSupplies: acquisition.acquisitionSupplies?.map(as => ({
+          supply: {
+            name: as.supply.name,
+            description: as.supply.description
+          },
+          quantity: as.quantity,
+          unitPrice: as.unitPrice
+        })),
+        team: acquisition.team ? { name: acquisition.team.name } : undefined,
+        player: acquisition.player ? { 
+          firstName: acquisition.player.firstName, 
+          lastName: acquisition.player.lastName 
+        } : undefined,
+        staff: acquisition.staff ? { 
+          firstName: acquisition.staff.firstName, 
+          lastName: acquisition.staff.lastName 
+        } : undefined,
+        employee: acquisition.employee ? { 
+          fullName: acquisition.employee.fullName 
+        } : undefined
+      };
+
+      generatePurchaseOrderPDF(acquisitionForPDF);
+      showToast("Bon de réception généré avec succès", "success", "Export PDF");
+    } catch (error: any) {
+      console.error("Erreur lors de l'export PDF:", error);
+      showToast(`Échec de l'export PDF: ${error.message}`, "error", "Erreur");
+    }
+  }
+
   // Statistics
   const totalAcquisitions = acquisitionsList.length
   const totalSpent = acquisitionsList.reduce((sum, a) => sum + (Number(a.totalCost) || 0), 0)
@@ -1243,6 +1295,7 @@ export function RentalSupplierManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>ID</TableHead>
                       <TableHead>Article</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Affecté à</TableHead>
@@ -1259,6 +1312,7 @@ export function RentalSupplierManagement() {
                   <TableBody>
                     {filteredAcquisitions.map((acquisition) => (
                       <TableRow key={acquisition.id}>
+                        <TableCell className="font-medium">{acquisition.id}</TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{acquisition.acquisitionName || "Acquisition sans nom"}</p>
@@ -1550,10 +1604,22 @@ export function RentalSupplierManagement() {
       }}>
         <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Détails de l'acquisition</DialogTitle>
-            <DialogDescription>
-              {selectedAcquisition?.acquisitionName || "Acquisition sans nom"} - {selectedAcquisition && acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Détails de l'acquisition</DialogTitle>
+                <DialogDescription>
+                  {selectedAcquisition?.acquisitionName || "Acquisition sans nom"} - {selectedAcquisition && acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
+                </DialogDescription>
+              </div>
+              <Button 
+                onClick={() => selectedAcquisition && handleExportPurchaseOrder(selectedAcquisition)}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                size="sm"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Bon de réception
+              </Button>
+            </div>
           </DialogHeader>
           {selectedAcquisition && (
             <Tabs defaultValue="overview" className="space-y-4">

@@ -308,7 +308,8 @@ export function useAllocationManagement() {
     try {
       const employeesData = await hrApi.getEmployees();
       const formattedEmployees = employeesData.map(emp => ({
-        id: parseInt(emp.employeeId) || 0,
+        id: parseInt(emp.employeeId) || 0, // Keep numeric ID for UI consistency
+        employeeId: emp.employeeId, // Preserve original string employeeId for API calls
         name: emp.fullName || `${emp.user?.firstName || ''} ${emp.user?.lastName || ''}`.trim() || `Employee ${emp.employeeId}`,
         type: 'Employee'
       }));
