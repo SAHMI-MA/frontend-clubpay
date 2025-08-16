@@ -52,7 +52,36 @@ export const updateStaff = createAsyncThunk(
   'staff/update',
   async ({ id, data }: { id: number; data: UpdateStaffDto }, { rejectWithValue }) => {
     try {
-      return await api.patch(`/staff/${id}`, data);
+      // Only send allowed fields from UpdateStaffDto
+      const {
+        firstName,
+        lastName,
+        role,
+        dateOfBirth,
+        phoneNumber,
+        email,
+        qualification,
+        experience,
+        rib,
+        staffImageId,
+        salary,
+        teamId,
+      } = data;
+      const updatePayload: UpdateStaffDto = {
+        firstName,
+        lastName,
+        role,
+        dateOfBirth,
+        phoneNumber,
+        email,
+        qualification,
+        experience,
+        rib,
+        staffImageId,
+        salary,
+        teamId,
+      };
+      return await api.patch(`/staff/${id}`, updatePayload);
     } catch (error: any) {
       return rejectWithValue(error.message || `Failed to update staff member with ID ${id}`);
     }

@@ -304,11 +304,11 @@ export interface UpdateStaffDto {
   qualification?: string;
   experience?: string;
   rib?: string; // NEW: Bank account information
-  staffImageId?: number;
+  staffImageId?: number; // Use staffImageId (number), not staffImage (string)
   salary?: number; // NEW: Staff salary
-  contractStartDate?: string; // NEW: Contract start date
-  contractEndDate?: string; // NEW: Contract end date
   teamId?: number; // We still use teamId when updating staff
+  contractStartDate?: string; // Contract start date
+  contractEndDate?: string; // Contract end date
 }
 
 export interface CreateTeamDto {

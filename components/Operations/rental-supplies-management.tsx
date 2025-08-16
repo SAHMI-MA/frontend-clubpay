@@ -64,30 +64,30 @@ export function exportSupplesToCSV(supplies: Supply[]) {
 
 import { useState, useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { 
-  fetchAllAcquisitions, 
-  createAcquisition, 
-  updateAcquisition, 
+import {
+  fetchAllAcquisitions,
+  createAcquisition,
+  updateAcquisition,
   deleteAcquisition,
   approveOrRejectAcquisition,
-  setSelectedAcquisition  
+  setSelectedAcquisition
 } from "@/lib/redux/acquisitionSlice"
 import { fetchAllSuppliers } from "@/lib/redux/supplierSlice"
-import { 
-  fetchAllSupplies, 
-  createSupply, 
-  updateSupply, 
+import {
+  fetchAllSupplies,
+  createSupply,
+  updateSupply,
   deleteSupply,
 } from "@/lib/redux/suppliesSlice"
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
 import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import { fetchAllEmployees } from "@/lib/redux/employeeSlice"
-import { 
-  Acquisition, 
-  AcquisitionType, 
-  ApprovalStatus, 
-  CreateAcquisitionDto, 
+import {
+  Acquisition,
+  AcquisitionType,
+  ApprovalStatus,
+  CreateAcquisitionDto,
   CreateAcquisitionSupplyDto,
   UpdateAcquisitionDto,
   AssigneeType,
@@ -238,7 +238,7 @@ export function RentalSupplierManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSupplierId, setSelectedSupplierId] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
-  
+
   // Dialog states
   const [isAddAcquisitionDialogOpen, setIsAddAcquisitionDialogOpen] = useState(false)
   const [isEditAcquisitionDialogOpen, setIsEditAcquisitionDialogOpen] = useState(false)
@@ -250,7 +250,7 @@ export function RentalSupplierManagement() {
 
   // Redux
   const dispatch = useAppDispatch()
-  const { acquisitions: acquisitionsList, selectedAcquisition} = useAppSelector((state) => state.acquisitions)
+  const { acquisitions: acquisitionsList, selectedAcquisition } = useAppSelector((state) => state.acquisitions)
   const { suppliers: suppliersList } = useAppSelector((state) => state.suppliers)
   const { supplies: suppliesList } = useAppSelector((state) => state.supplies)
   const { teams } = useAppSelector((state) => state.teams)
@@ -258,7 +258,7 @@ export function RentalSupplierManagement() {
   const { staff } = useAppSelector((state) => state.staff)
   const { employees } = useAppSelector((state) => state.employees)
   const { user: currentUser } = useAppSelector((state) => state.auth)
-  
+
   // Toast notifications
   const { toastState, showToast, hideToast } = useToast()
 
@@ -291,14 +291,14 @@ export function RentalSupplierManagement() {
     createdBy: currentUser?.id || 0,
     quotationFileId: undefined,
   })
-  
+
   // State for managing supplies in the form
   const [currentSupply, setCurrentSupply] = useState<CreateAcquisitionSupplyDto>({
     supplyId: 0,
     quantity: 1,
     unitPrice: 0
   })
-  
+
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -325,7 +325,7 @@ export function RentalSupplierManagement() {
     console.log('Supplies list:', suppliesList);
     console.log('Current supply state:', currentSupply);
     console.log('New acquisition state:', newAcquisition);
-    
+
     // If no supplies loaded, you can create some mock supplies for testing
     if (suppliesList.length === 0) {
       console.log('No supplies loaded. This might be because the backend API endpoint for supplies is not yet implemented.');
@@ -343,24 +343,24 @@ export function RentalSupplierManagement() {
       acquisition.staff?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       acquisition.staff?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       acquisition.employee?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesSupplier = selectedSupplierId === "all" || 
+
+    const matchesSupplier = selectedSupplierId === "all" ||
       (acquisition.supplier && acquisition.supplier.id.toString() === selectedSupplierId)
-    
+
     const matchesType = selectedType === "all" || acquisition.acquisitionType === selectedType
-    
+
     return matchesSearch && matchesSupplier && matchesType
   })
 
   // Helper functions
   const getSupplierName = (acquisition: Acquisition | null) => {
     if (!acquisition) return "Fournisseur inconnu";
-    
+
     // First, check if the acquisition has a supplier object
     if (acquisition.supplier && acquisition.supplier.name) {
       return acquisition.supplier.name;
     }
-    
+
     // If we don't have a supplier object or it doesn't have a name, try to find it in the suppliers list
     // Note: This is a fallback for backward compatibility and should be rare if the API is returning nested supplier objects
     if (acquisition.supplier && acquisition.supplier.id) {
@@ -369,13 +369,13 @@ export function RentalSupplierManagement() {
         return supplier.name;
       }
     }
-    
+
     return "Fournisseur inconnu";
   }
 
   const getAssigneeName = (acquisition: Acquisition | null): string => {
     if (!acquisition) return "Non affecté";
-    
+
     if (acquisition.team) {
       return acquisition.team.name;
     } else if (acquisition.player) {
@@ -427,9 +427,9 @@ export function RentalSupplierManagement() {
           setNewAcquisition({ ...newAcquisition, supplies: updatedSupplies });
         } else {
           // Add new supply
-          setNewAcquisition({ 
-            ...newAcquisition, 
-            supplies: [...newAcquisition.supplies, { ...currentSupply }] 
+          setNewAcquisition({
+            ...newAcquisition,
+            supplies: [...newAcquisition.supplies, { ...currentSupply }]
           });
         }
         // Reset current supply form
@@ -451,15 +451,15 @@ export function RentalSupplierManagement() {
   const getAcquisitionDisplayName = (acquisition: Acquisition | null): string => {
     return acquisition?.acquisitionName || acquisition?.description || "Acquisition sans nom";
   }
-  
+
   const getAcquisitionTotal = (acquisition: Acquisition | null): number => {
     if (!acquisition) return 0;
     return acquisition.totalCost || 0;
   }
-  
+
   const getAcquisitionDate = (acquisition: Acquisition | null): Date => {
     if (!acquisition) return new Date();
-    
+
     // Try to use createdAt if available, fall back to current date
     try {
       return acquisition.createdAt ? new Date(acquisition.createdAt) : new Date();
@@ -468,10 +468,10 @@ export function RentalSupplierManagement() {
       return new Date();
     }
   }
-  
+
   const getAcquisitionStatus = (acquisition: Acquisition | null): ApprovalStatus => {
     if (!acquisition) return ApprovalStatus.PENDING;
-    
+
     // Use the approvalStatus or default to PENDING
     return acquisition.approvalStatus || ApprovalStatus.PENDING;
   }
@@ -506,7 +506,7 @@ export function RentalSupplierManagement() {
       createdBy: currentUser?.id || 0,
       quotationFileId: newAcquisition.quotationFileId,
     }
-    
+
     if (newAcquisition.assigneeType && newAcquisition.assigneeId) {
       const assigneeField = getAssigneeIdField(newAcquisition.assigneeType);
       if (assigneeField) {
@@ -520,7 +520,7 @@ export function RentalSupplierManagement() {
         }
       }
     }
-    
+
     dispatch(createAcquisition(acquisitionData))
       .unwrap()
       .then(() => {
@@ -589,7 +589,7 @@ export function RentalSupplierManagement() {
             : (typeof selectedAcquisition.quotationFile?.id === 'number' ? selectedAcquisition.quotationFile.id : undefined),
         createdBy: currentUser?.id || 0,
       };
-      
+
       // Handle assignee fields
       if (newAcquisition.assigneeType && newAcquisition.assigneeId) {
         const assigneeField = getAssigneeIdField(newAcquisition.assigneeType);
@@ -610,7 +610,7 @@ export function RentalSupplierManagement() {
         if (selectedAcquisition.staff?.id) updateData.staffId = selectedAcquisition.staff.id;
         if (selectedAcquisition.employee?.employeeId) updateData.employeeId = selectedAcquisition.employee.employeeId;
       }
-      
+
       dispatch(updateAcquisition({ id: selectedAcquisition.id, data: updateData }))
         .unwrap()
         .then(() => {
@@ -637,28 +637,28 @@ export function RentalSupplierManagement() {
         console.log(`Attempting to delete acquisition with ID: ${selectedAcquisition.id}`);
         // Using unwrap() will throw an error if the action is rejected
         await dispatch(deleteAcquisition(selectedAcquisition.id)).unwrap();
-        
+
         console.log(`Successfully deleted acquisition ${selectedAcquisition.id}`);
-        
+
         // Clear UI state after successful deletion
         setIsDeleteDialogOpen(false);
         setItemToDelete(null);
-        
+
         // Show success toast
         showToast(
-          "Acquisition supprimée avec succès", 
-          "success", 
+          "Acquisition supprimée avec succès",
+          "success",
           "Succès"
         );
-        
+
         // Refresh acquisitions list
         dispatch(fetchAllAcquisitions());
       } catch (error: any) {
         console.error("Échec de la suppression de l'acquisition:", error);
-        
+
         // Show error toast with more detailed message
         showToast(
-          `Échec de la suppression de l'acquisition : ${error.message || "Erreur inconnue"}`, 
+          `Échec de la suppression de l'acquisition : ${error.message || "Erreur inconnue"}`,
           "error",
           "Erreur"
         );
@@ -670,12 +670,12 @@ export function RentalSupplierManagement() {
     dispatch(setSelectedAcquisition(acquisition))
     setIsViewDialogOpen(true)
   }
-  
+
   // Handle acquisition approval or rejection
   const handleApproveAcquisition = (acquisition: Acquisition) => {
     // Get the authenticated user ID from Redux or localStorage
     let approverId: number;
-    
+
     if (currentUser?.id) {
       // Use the authenticated user from Redux state
       approverId = currentUser.id;
@@ -706,17 +706,17 @@ export function RentalSupplierManagement() {
         return; // Exit early if we can't get a valid user ID
       }
     }
-    
+
     // Create approval data with the authenticated user's ID
     const approvalData = {
       approvalStatus: ApprovalStatus.APPROVED,
       approverId, // Use the current user's ID
       approvalComments: "Approuvé depuis la gestion des locations et fournitures"
     };
-    
+
     // Show loading state for this specific acquisition
     setApprovingId(acquisition.id);
-    
+
     // Dispatch approve action with correct PUT endpoint format
     console.log(`Sending approval request for acquisition ID ${acquisition.id} with approverId ${approverId}:`, JSON.stringify(approvalData));
     dispatch(approveOrRejectAcquisition({ id: acquisition.id, approvalData }))
@@ -848,16 +848,16 @@ export function RentalSupplierManagement() {
           unitPrice: as.unitPrice
         })),
         team: acquisition.team ? { name: acquisition.team.name } : undefined,
-        player: acquisition.player ? { 
-          firstName: acquisition.player.firstName, 
-          lastName: acquisition.player.lastName 
+        player: acquisition.player ? {
+          firstName: acquisition.player.firstName,
+          lastName: acquisition.player.lastName
         } : undefined,
-        staff: acquisition.staff ? { 
-          firstName: acquisition.staff.firstName, 
-          lastName: acquisition.staff.lastName 
+        staff: acquisition.staff ? {
+          firstName: acquisition.staff.firstName,
+          lastName: acquisition.staff.lastName
         } : undefined,
-        employee: acquisition.employee ? { 
-          fullName: acquisition.employee.fullName 
+        employee: acquisition.employee ? {
+          fullName: acquisition.employee.fullName
         } : undefined
       };
 
@@ -881,7 +881,7 @@ export function RentalSupplierManagement() {
     <div className="space-y-6">
       {/* Toast Notification */}
       <ToastNotification toast={toastState} onClose={hideToast} />
-      
+
       {/* Export Button */}
       <div className="flex justify-end">
         <Button
@@ -891,7 +891,7 @@ export function RentalSupplierManagement() {
           Exporter les acquisitions (CSV)
         </Button>
       </div>
-      
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion des locations et acquisitions</h1>
@@ -1043,7 +1043,7 @@ export function RentalSupplierManagement() {
                       {/* Supplies Management Section */}
                       <div className="space-y-4 border-t pt-4">
                         <h4 className="font-medium text-gray-900 dark:text-white">Fournitures</h4>
-                        
+
                         {/* Add Supply Form */}
                         <div className="grid grid-cols-4 gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                           <div className="col-span-2 space-y-2">
@@ -1611,14 +1611,6 @@ export function RentalSupplierManagement() {
                   {selectedAcquisition?.acquisitionName || "Acquisition sans nom"} - {selectedAcquisition && acquisitionTypeLabels[selectedAcquisition.acquisitionType]}
                 </DialogDescription>
               </div>
-              <Button 
-                onClick={() => selectedAcquisition && handleExportPurchaseOrder(selectedAcquisition)}
-                className="bg-green-600 hover:bg-green-700 text-white"
-                size="sm"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Bon de réception
-              </Button>
             </div>
           </DialogHeader>
           {selectedAcquisition && (
@@ -1716,6 +1708,28 @@ export function RentalSupplierManagement() {
                       )}
                     </div>
                   </Card>
+                  <Card className="p-4">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Bon de Réception</h4>
+                    <div className="flex justify-between items-center">
+                      {selectedAcquisition.approvalStatus === ApprovalStatus.APPROVED && (
+                        <Button
+                          onClick={() => selectedAcquisition && handleExportPurchaseOrder(selectedAcquisition)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Bon de réception
+                        </Button>
+                      )}
+                      {selectedAcquisition.endDate && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Date de fin</Label>
+                          <p>{new Date(selectedAcquisition.endDate).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
                 </div>
               </TabsContent>
 
@@ -1728,7 +1742,7 @@ export function RentalSupplierManagement() {
                       {selectedAcquisition.acquisitionSupplies?.length || 0} fourniture(s)
                     </Badge>
                   </div>
-                  
+
                   {selectedAcquisition.acquisitionSupplies && selectedAcquisition.acquisitionSupplies.length > 0 ? (
                     <div className="space-y-3">
                       {selectedAcquisition.acquisitionSupplies.map((acquisitionSupply, index) => (
@@ -1769,14 +1783,14 @@ export function RentalSupplierManagement() {
               <TabsContent value="assignment">
                 <div className="space-y-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white">Informations d'affectation</h4>
-                  
+
                   <Card className="p-6">
                     <div className="flex items-center gap-4 mb-4">
                       {selectedAcquisition.team && <Building className="h-8 w-8 text-blue-600" />}
                       {selectedAcquisition.player && <User className="h-8 w-8 text-green-600" />}
                       {selectedAcquisition.staff && <Users className="h-8 w-8 text-purple-600" />}
                       {selectedAcquisition.employee && <Briefcase className="h-8 w-8 text-orange-600" />}
-                      
+
                       <div>
                         <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Affecté à</Label>
                         <p className="font-medium text-lg">{getAssigneeName(selectedAcquisition)}</p>
@@ -1842,7 +1856,7 @@ export function RentalSupplierManagement() {
               <TabsContent value="approval">
                 <div className="space-y-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white">Statut d'approbation</h4>
-                  
+
                   <Card className="p-6">
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
@@ -1852,7 +1866,7 @@ export function RentalSupplierManagement() {
                         {selectedAcquisition.approvalStatus === ApprovalStatus.DELIVERED && <Truck className="h-6 w-6 text-blue-600" />}
                         {selectedAcquisition.approvalStatus === ApprovalStatus.RETURNED && <RotateCcw className="h-6 w-6 text-purple-600" />}
                         {selectedAcquisition.approvalStatus === ApprovalStatus.CANCELLED && <Ban className="h-6 w-6 text-gray-600" />}
-                        
+
                         <div>
                           <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Statut actuel</Label>
                           <div className="mt-1">
@@ -1897,7 +1911,7 @@ export function RentalSupplierManagement() {
               <TabsContent value="documents">
                 <div className="space-y-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white">Documents associés</h4>
-                  
+
                   {selectedAcquisition.quotationFile && selectedAcquisition.quotationFile.url ? (
                     <Card className="p-6">
                       <div className="space-y-4">
@@ -1908,7 +1922,7 @@ export function RentalSupplierManagement() {
                             <p className="text-sm text-gray-500">{selectedAcquisition.quotationFile.fileName || 'Document sans nom'}</p>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Type de fichier</Label>
@@ -1937,13 +1951,13 @@ export function RentalSupplierManagement() {
                             const apiUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
                             const fileUrl = `${process.env.NEXT_PUBLIC_API_URL || apiUrl}${selectedAcquisition.quotationFile.url}`;
                             const fileType = selectedAcquisition.quotationFile.fileType;
-                            
+
                             if (fileType.startsWith('image/')) {
-                              return <img src={fileUrl} alt="Devis" className="max-h-64 rounded border mx-auto" style={{maxWidth: '100%'}} />;
+                              return <img src={fileUrl} alt="Devis" className="max-h-64 rounded border mx-auto" style={{ maxWidth: '100%' }} />;
                             } else if (fileType === 'application/pdf') {
-                              return <iframe src={fileUrl} title="Devis PDF" className="w-full" style={{height: '400px', border: '1px solid #ccc', borderRadius: '4px'}} />;
+                              return <iframe src={fileUrl} title="Devis PDF" className="w-full" style={{ height: '400px', border: '1px solid #ccc', borderRadius: '4px' }} />;
                             } else if (fileType === 'text/plain') {
-                              return <iframe src={fileUrl} title="Devis TXT" className="w-full" style={{height: '200px', border: '1px solid #ccc', borderRadius: '4px', background: '#fafafa'}} />;
+                              return <iframe src={fileUrl} title="Devis TXT" className="w-full" style={{ height: '200px', border: '1px solid #ccc', borderRadius: '4px', background: '#fafafa' }} />;
                             } else {
                               return (
                                 <div className="text-center py-8">
@@ -2008,7 +2022,7 @@ export function RentalSupplierManagement() {
                   rows={3}
                 />
               </div>
-              
+
               {/* Note: Full supplies editing will be implemented in a separate iteration */}
               <div className="text-sm text-gray-500">
                 Note: Modification des fournitures sera disponible prochainement

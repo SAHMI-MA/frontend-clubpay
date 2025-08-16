@@ -50,21 +50,21 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { 
-  Plus, 
-  Search, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  RotateCcw, 
-  FileText, 
-  Download, 
-  Users, 
-  User, 
-  UserCheck, 
-  Building2, 
-  RefreshCw, 
+import {
+  Plus,
+  Search,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  RotateCcw,
+  FileText,
+  Download,
+  Users,
+  User,
+  UserCheck,
+  Building2,
+  RefreshCw,
   AlertTriangle,
   AlertCircle,
   ArrowRight,
@@ -73,11 +73,12 @@ import {
 } from 'lucide-react'
 import { useAllocationManagement, useInternalPurchaseOrders } from "@/hooks/use-stock-management"
 import { useStockManagement } from "@/hooks/use-stock-management"
-import { 
-  Allocation, 
+import {
+  Allocation,
   CreateAllocationDto,
   Article
 } from "@/lib/api/stock-api"
+import { generateBonDeSortiePDF } from "@/lib/pdf-export-utils";
 
 // Types for the allocation form
 interface AllocationFormItem {
@@ -99,6 +100,17 @@ interface AllocationFormState {
 
 export function AllocationManagement() {
   // Use our custom hooks for data management
+  // Export allocation as Bon de Sortie PDF
+  const handleExportBonDeSortie = (allocation: Allocation) => {
+    try {
+      // You should implement generateBonDeSortiePDF similar to generatePurchaseOrderPDF
+      generateBonDeSortiePDF(allocation);
+      // Optionally show a toast or notification
+    } catch (error: any) {
+      console.error('Erreur lors de l\'export Bon de Sortie:', error);
+      alert(`Échec de l'export Bon de Sortie: ${error.message}`);
+    }
+  }
   const {
     allocations,
     entities,
@@ -159,18 +171,18 @@ export function AllocationManagement() {
       return false;
     }
 
-    const matchesSearch = 
+    const matchesSearch =
       allocation.allocationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       allocation.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      allocation.items?.some(item => 
+      allocation.items?.some(item =>
         // Search by article ID for now since we don't have article details populated
         item.articleId.toString().includes(searchTerm)
       )
-    
+
     // Status and type filtering using backend values
     const matchesStatus = selectedStatus === "all" || allocation.status === selectedStatus
     const matchesType = selectedType === "all" || allocation.allocationType === selectedType
-    
+
     return matchesSearch && matchesStatus && matchesType
   })
 
@@ -271,95 +283,95 @@ export function AllocationManagement() {
       alert('Aucun article sélectionné pour l\'allocation')
       return
     }
-    
+
     if (newAllocation.entityId < 0) {
       alert('Aucune entité sélectionnée pour l\'allocation')
       return
     }
-    
-    if (newAllocation.duration === 'temporary' && !newAllocation.expectedReturnDate) {
-        alert('La date de retour prévue est requise pour les allocations temporaires')
-        return
-      }
 
-      // Validate that all selected articles still exist and have sufficient stock
-      const invalidItems = newAllocation.items.filter(item => {
+    if (newAllocation.duration === 'temporary' && !newAllocation.expectedReturnDate) {
+      alert('La date de retour prévue est requise pour les allocations temporaires')
+      return
+    }
+
+    // Validate that all selected articles still exist and have sufficient stock
+    const invalidItems = newAllocation.items.filter(item => {
+      const article = articles?.find(a => a.id === item.articleId)
+      if (!article) {
+        console.error(`Article with ID ${item.articleId} not found`)
+        return true
+      }
+      if (article.currentStock < item.quantity) {
+        console.error(`Article ${article.name} has insufficient stock. Required: ${item.quantity}, Available: ${article.currentStock}`)
+        return true
+      }
+      return false
+    })
+
+    if (invalidItems.length > 0) {
+      const missingArticles = invalidItems.filter(item => !articles?.find(a => a.id === item.articleId))
+      const insufficientStock = invalidItems.filter(item => {
         const article = articles?.find(a => a.id === item.articleId)
-        if (!article) {
-          console.error(`Article with ID ${item.articleId} not found`)
-          return true
-        }
-        if (article.currentStock < item.quantity) {
-          console.error(`Article ${article.name} has insufficient stock. Required: ${item.quantity}, Available: ${article.currentStock}`)
-          return true
-        }
-        return false
+        return article && article.currentStock < item.quantity
       })
 
-      if (invalidItems.length > 0) {
-        const missingArticles = invalidItems.filter(item => !articles?.find(a => a.id === item.articleId))
-        const insufficientStock = invalidItems.filter(item => {
+      let errorMessage = 'Échec de la validation :\n'
+      if (missingArticles.length > 0) {
+        errorMessage += `- Articles non trouvés : ${missingArticles.map(item => `ID ${item.articleId}`).join(', ')}\n`
+      }
+      if (insufficientStock.length > 0) {
+        errorMessage += `- Stock insuffisant pour : ${insufficientStock.map(item => {
           const article = articles?.find(a => a.id === item.articleId)
-          return article && article.currentStock < item.quantity
-        })
-
-        let errorMessage = 'Échec de la validation :\n'
-        if (missingArticles.length > 0) {
-          errorMessage += `- Articles non trouvés : ${missingArticles.map(item => `ID ${item.articleId}`).join(', ')}\n`
-        }
-        if (insufficientStock.length > 0) {
-          errorMessage += `- Stock insuffisant pour : ${insufficientStock.map(item => {
-            const article = articles?.find(a => a.id === item.articleId)
-            return `${article?.name} (besoin ${item.quantity}, disponible ${article?.currentStock})`
-          }).join(', ')}`
-        }
-        
-        alert(errorMessage)
-        return
+          return `${article?.name} (besoin ${item.quantity}, disponible ${article?.currentStock})`
+        }).join(', ')}`
       }
 
-      // Transform the form state to CreateAllocationDto
-      const createDto: CreateAllocationDto = {
-        allocationType: newAllocation.type === 'team' ? 'Club' :
-                       newAllocation.type === 'player' ? 'Player' :
-                       newAllocation.type === 'staff' ? 'Staff' : 'Employee',
-        allocationDuration: newAllocation.duration === 'temporary' ? 'Temporary' : 'Permanent',
-        items: newAllocation.items.map(item => ({
-          articleId: item.articleId,
-          quantity: item.quantity
-        })),
-        teamId: newAllocation.type === 'team' ? Number(newAllocation.entityId) : undefined,
-        playerId: newAllocation.type === 'player' ? Number(newAllocation.entityId) : undefined,
-        staffId: newAllocation.type === 'staff' ? Number(newAllocation.entityId) : undefined,
-        employeeId: newAllocation.type === 'employee' ? (newAllocation.employeeId || String(newAllocation.entityId)) : undefined,
-        notes: newAllocation.remarks || undefined,
-        expectedReturnDate: newAllocation.expectedReturnDate ? new Date(newAllocation.expectedReturnDate).toISOString() : undefined,
-        allocatedById: 1 // This should come from auth context
+      alert(errorMessage)
+      return
+    }
+
+    // Transform the form state to CreateAllocationDto
+    const createDto: CreateAllocationDto = {
+      allocationType: newAllocation.type === 'team' ? 'Club' :
+        newAllocation.type === 'player' ? 'Player' :
+          newAllocation.type === 'staff' ? 'Staff' : 'Employee',
+      allocationDuration: newAllocation.duration === 'temporary' ? 'Temporary' : 'Permanent',
+      items: newAllocation.items.map(item => ({
+        articleId: item.articleId,
+        quantity: item.quantity
+      })),
+      teamId: newAllocation.type === 'team' ? Number(newAllocation.entityId) : undefined,
+      playerId: newAllocation.type === 'player' ? Number(newAllocation.entityId) : undefined,
+      staffId: newAllocation.type === 'staff' ? Number(newAllocation.entityId) : undefined,
+      employeeId: newAllocation.type === 'employee' ? (newAllocation.employeeId || String(newAllocation.entityId)) : undefined,
+      notes: newAllocation.remarks || undefined,
+      expectedReturnDate: newAllocation.expectedReturnDate ? new Date(newAllocation.expectedReturnDate).toISOString() : undefined,
+      allocatedById: 1 // This should come from auth context
+    }
+
+    console.log('Creating allocation with data:', createDto)
+    console.log('Available articles in dropdown:', articles?.map(a => ({
+      id: a.id,
+      name: a.name,
+      code: a.code,
+      currentStock: a.currentStock
+    })))
+    console.log('Selected items to allocate:', newAllocation.items.map(item => {
+      const article = articles?.find(a => a.id === item.articleId)
+      return {
+        articleId: item.articleId,
+        quantity: item.quantity,
+        articleName: article?.name,
+        articleExists: !!article,
+        availableStock: article?.currentStock
       }
+    }))
 
-      console.log('Creating allocation with data:', createDto)
-      console.log('Available articles in dropdown:', articles?.map(a => ({
-        id: a.id, 
-        name: a.name, 
-        code: a.code,
-        currentStock: a.currentStock
-      })))
-      console.log('Selected items to allocate:', newAllocation.items.map(item => {
-        const article = articles?.find(a => a.id === item.articleId)
-        return {
-          articleId: item.articleId,
-          quantity: item.quantity,
-          articleName: article?.name,
-          articleExists: !!article,
-          availableStock: article?.currentStock
-        }
-      }))
-
-      try {
-        await createAllocation(createDto)
-        resetForm()
-        setIsCreateDialogOpen(false)
-      } catch (error) {
+    try {
+      await createAllocation(createDto)
+      resetForm()
+      setIsCreateDialogOpen(false)
+    } catch (error) {
       console.error('❌ Failed to create allocation - Full Error Details:', {
         error,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
@@ -389,12 +401,12 @@ export function AllocationManagement() {
             data: apiError.response.data,
             headers: apiError.response.headers
           });
-          
+
           userFriendlyMessage = `Erreur API (${apiError.response.status}): ${apiError.response.statusText}`;
           if (apiError.response.data?.message) {
             userFriendlyMessage += ` - ${apiError.response.data.message}`;
           }
-          
+
           technicalDetails = JSON.stringify(apiError.response.data, null, 2);
         } else if (apiError.request) {
           console.error('Network Error:', apiError.request);
@@ -475,7 +487,7 @@ Vérifiez la console pour plus de détails.`;
   const updateArticleQuantity = (articleId: number, quantity: number) => {
     setNewAllocation(prev => ({
       ...prev,
-      items: prev.items.map(item => 
+      items: prev.items.map(item =>
         item.articleId === articleId ? { ...item, quantity } : item
       )
     }))
@@ -486,11 +498,11 @@ Vérifiez la console pour plus de détails.`;
     // Map the form type values to the actual entity types (in English as returned by API)
     const typeMapping = {
       "team": "Club",
-      "player": "Player", 
+      "player": "Player",
       "staff": "Staff",
       "employee": "Employee"
     };
-    
+
     const expectedType = typeMapping[newAllocation.type];
     return entity.type === expectedType;
   })
@@ -528,10 +540,10 @@ Vérifiez la console pour plus de détails.`;
               <AlertTriangle className="h-5 w-5" />
               <span className="font-medium">Erreur lors du chargement des données : {error}</span>
             </div>
-            <Button 
-              onClick={refreshData} 
-              variant="outline" 
-              size="sm" 
+            <Button
+              onClick={refreshData}
+              variant="outline"
+              size="sm"
               className="mt-3"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -557,9 +569,9 @@ Vérifiez la console pour plus de détails.`;
           <p className="text-gray-600 dark:text-gray-400">Gérer les allocations d'équipements pour les clubs, joueurs, personnel et employés</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={refreshData} 
-            variant="outline" 
+          <Button
+            onClick={refreshData}
+            variant="outline"
             className="gap-2"
             disabled={loading}
           >
@@ -689,13 +701,13 @@ Vérifiez la console pour plus de détails.`;
                       <TableCell>
                         <div>
                           <div className="font-medium">
-                            {allocation.items && allocation.items.length === 1 
+                            {allocation.items && allocation.items.length === 1
                               ? `Article ID: ${allocation.items[0].articleId}`
                               : `${allocation.items?.length || 0} articles`
                             }
                           </div>
                           <div className="text-sm text-gray-500">
-                            {allocation.items && allocation.items.length === 1 
+                            {allocation.items && allocation.items.length === 1
                               ? `Qté: ${allocation.items[0].quantity}`
                               : 'Allocation multiple'
                             }
@@ -718,7 +730,7 @@ Vérifiez la console pour plus de détails.`;
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {allocation.createdAt 
+                        {allocation.createdAt
                           ? new Date(allocation.createdAt).toLocaleDateString('fr-FR')
                           : 'N/A'
                         }
@@ -804,8 +816,8 @@ Vérifiez la console pour plus de détails.`;
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
                               style={{ width: `${percentage}%` }}
                             ></div>
                           </div>
@@ -844,7 +856,7 @@ Vérifiez la console pour plus de détails.`;
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className={`h-2 rounded-full ${color}`}
                               style={{ width: `${percentage}%` }}
                             ></div>
@@ -908,22 +920,22 @@ Vérifiez la console pour plus de détails.`;
                         const allocDate = new Date(a.allocationDate);
                         const currentDate = new Date();
                         const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - (11 - index), 1);
-                        return allocDate.getMonth() === targetMonth.getMonth() && 
-                               allocDate.getFullYear() === targetMonth.getFullYear();
+                        return allocDate.getMonth() === targetMonth.getMonth() &&
+                          allocDate.getFullYear() === targetMonth.getFullYear();
                       }).length;
                       const maxHeight = Math.max(...[...Array(12)].map((_, i) => {
                         const date = new Date();
                         const month = new Date(date.getFullYear(), date.getMonth() - (11 - i), 1);
                         return (allocations || []).filter(a => {
                           const allocDate = new Date(a.allocationDate);
-                          return allocDate.getMonth() === month.getMonth() && 
-                                 allocDate.getFullYear() === month.getFullYear();
+                          return allocDate.getMonth() === month.getMonth() &&
+                            allocDate.getFullYear() === month.getFullYear();
                         }).length;
                       }));
                       const height = maxHeight > 0 ? (monthAllocations / maxHeight) * 100 : 0;
                       return (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className="bg-blue-500 rounded-t flex-1 min-h-[4px]"
                           style={{ height: `${Math.max(height, 4)}%` }}
                           title={`${monthAllocations} allocations`}
@@ -993,7 +1005,7 @@ Vérifiez la console pour plus de détails.`;
                     Actualiser Articles
                   </Button>
                 </div>
-                
+
                 {/* Article Selection */}
                 <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
                   <h4 className="font-medium mb-4">Ajouter un article</h4>
@@ -1001,8 +1013,8 @@ Vérifiez la console pour plus de détails.`;
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="articleSelect">Article</Label>
-                        <Select 
-                          value={selectedArticleId.toString()} 
+                        <Select
+                          value={selectedArticleId.toString()}
                           onValueChange={(value) => setSelectedArticleId(parseInt(value))}
                         >
                           <SelectTrigger>
@@ -1010,8 +1022,8 @@ Vérifiez la console pour plus de détails.`;
                           </SelectTrigger>
                           <SelectContent>
                             {(articles || []).map(article => (
-                              <SelectItem 
-                                key={article.id} 
+                              <SelectItem
+                                key={article.id}
                                 value={article.id.toString()}
                                 disabled={isArticleAdded(article.id)}
                               >
@@ -1026,7 +1038,7 @@ Vérifiez la console pour plus de détails.`;
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="quantity">Quantité</Label>
                         <Input
@@ -1039,9 +1051,9 @@ Vérifiez la console pour plus de détails.`;
                         />
                       </div>
                     </div>
-                    
+
                     <div className="flex justify-end">
-                      <Button 
+                      <Button
                         onClick={addArticleToAllocation}
                         disabled={!selectedArticleId || selectedQuantity <= 0 || isArticleAdded(selectedArticleId)}
                         className="px-6"
@@ -1118,14 +1130,14 @@ Vérifiez la console pour plus de détails.`;
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Choisir Entité</h3>
                 <p className="text-sm text-gray-600">Sélectionnez le type d'entité et le destinataire spécifique</p>
-                
+
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="allocationType">Type d'Entité</Label>
                     <Select
                       value={newAllocation.type}
-                      onValueChange={(value: 'team' | 'player' | 'staff' | 'employee') => setNewAllocation({ 
-                        ...newAllocation, 
+                      onValueChange={(value: 'team' | 'player' | 'staff' | 'employee') => setNewAllocation({
+                        ...newAllocation,
                         type: value,
                         entityId: -1, // Reset to no selection when type changes
                         employeeId: undefined // Reset employeeId when type changes
@@ -1146,8 +1158,8 @@ Vérifiez la console pour plus de détails.`;
                   <div>
                     <Label htmlFor="entityId">Sélectionner {
                       newAllocation.type === 'team' ? 'Équipe' :
-                      newAllocation.type === 'player' ? 'Joueur' :
-                      newAllocation.type === 'staff' ? 'Staff' : 'Employé'
+                        newAllocation.type === 'player' ? 'Joueur' :
+                          newAllocation.type === 'staff' ? 'Staff' : 'Employé'
                     }</Label>
                     <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto mt-2">
                       {loading ? (
@@ -1163,15 +1175,14 @@ Vérifiez la console pour plus de détails.`;
                         entitiesByType.map(entity => (
                           <div
                             key={entity.id}
-                            className={`p-3 border rounded cursor-pointer transition-colors ${
-                              newAllocation.entityId === (typeof entity.id === 'string' ? parseInt(entity.id) || 0 : entity.id)
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
+                            className={`p-3 border rounded cursor-pointer transition-colors ${newAllocation.entityId === (typeof entity.id === 'string' ? parseInt(entity.id) || 0 : entity.id)
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                              : 'border-gray-200 hover:border-gray-300'
+                              }`}
                             onClick={() => {
                               const numericId = typeof entity.id === 'string' ? parseInt(entity.id) || 0 : entity.id;
-                              setNewAllocation({ 
-                                ...newAllocation, 
+                              setNewAllocation({
+                                ...newAllocation,
                                 entityId: numericId,
                                 // Store original employeeId if this is an employee
                                 employeeId: entity.type === 'Employee' && (entity as any).employeeId ? (entity as any).employeeId : undefined
@@ -1195,15 +1206,16 @@ Vérifiez la console pour plus de détails.`;
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Détails de l'Allocation</h3>
                 <p className="text-sm text-gray-600">Configurer la durée et autres détails</p>
-                
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-4">
+                </div>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="duration">Durée</Label>
                     <Select
                       value={newAllocation.duration}
-                      onValueChange={(value: 'temporary' | 'permanent') => setNewAllocation({ 
-                        ...newAllocation, 
-                        duration: value 
+                      onValueChange={(value: 'temporary' | 'permanent') => setNewAllocation({
+                        ...newAllocation,
+                        duration: value
                       })}
                     >
                       <SelectTrigger>
@@ -1247,7 +1259,7 @@ Vérifiez la console pour plus de détails.`;
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Confirmer Allocation</h3>
                 <p className="text-sm text-gray-600">Vérifiez les détails de l'allocation avant de soumettre</p>
-                
+
                 <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
                   {/* Summary Info */}
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1267,8 +1279,8 @@ Vérifiez la console pour plus de détails.`;
                       <span className="font-medium">Type:</span>
                       <span>{
                         newAllocation.type === 'team' ? 'Équipe' :
-                        newAllocation.type === 'player' ? 'Joueur' :
-                        newAllocation.type === 'staff' ? 'Staff' : 'Employé'
+                          newAllocation.type === 'player' ? 'Joueur' :
+                            newAllocation.type === 'staff' ? 'Staff' : 'Employé'
                       }</span>
                     </div>
                     <div className="flex justify-between">
@@ -1282,9 +1294,9 @@ Vérifiez la console pour plus de détails.`;
                       </div>
                     )}
                   </div>
-                  
+
                   <Separator />
-                  
+
                   {/* Articles List - Compact */}
                   <div className="space-y-2">
                     <span className="font-medium text-sm">Détail des articles:</span>
@@ -1305,7 +1317,7 @@ Vérifiez la console pour plus de détails.`;
                       ))}
                     </div>
                   </div>
-                  
+
                   {newAllocation.remarks && (
                     <>
                       <Separator />
@@ -1347,7 +1359,7 @@ Vérifiez la console pour plus de détails.`;
                 Annuler
               </Button>
               {currentStep < 4 ? (
-                <Button 
+                <Button
                   onClick={nextStep}
                   disabled={
                     (currentStep === 1 && newAllocation.items.length === 0) ||
@@ -1400,8 +1412,8 @@ Vérifiez la console pour plus de détails.`;
                         <p className="text-sm text-gray-600">Quantité: {item.quantity}</p>
                       </div>
                     )) || (
-                      <p>Aucun article</p>
-                    )}
+                        <p>Aucun article</p>
+                      )}
                   </div>
                 </div>
                 <div>
@@ -1449,16 +1461,26 @@ Vérifiez la console pour plus de détails.`;
                   <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded">{viewingAllocation.notes}</p>
                 </div>
               )}
+              <div className="space-y-2">
+                <Button
+                  onClick={() => viewingAllocation && handleExportBonDeSortie(viewingAllocation)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Bon de Sortie
+                </Button>
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingAllocation(null)}>
               Close
             </Button>
-            {viewingAllocation?.internalPurchaseOrderPath && (
-              <Button onClick={() => handleDownloadDocument(viewingAllocation.id)}>
+            {viewingAllocation && translateStatus(viewingAllocation.status) === 'Approuvé' && (
+              <Button onClick={() => handleExportBonDeSortie(viewingAllocation)} className="bg-green-600 hover:bg-green-700 text-white">
                 <Download className="h-4 w-4 mr-2" />
-                Download Document
+                Bon de Sortie
               </Button>
             )}
           </DialogFooter>

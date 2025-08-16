@@ -409,28 +409,6 @@ export function StaffManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contractStartDate">Début du contrat</Label>
-                  <Input
-                    id="contractStartDate"
-                    type="date"
-                    value={newStaff.contractStartDate}
-                    onChange={(e) => setNewStaff({ ...newStaff, contractStartDate: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contractEndDate">Fin du contrat</Label>
-                  <Input
-                    id="contractEndDate"
-                    type="date"
-                    value={newStaff.contractEndDate}
-                    onChange={(e) => setNewStaff({ ...newStaff, contractEndDate: e.target.value })}
-                  />
-                </div>
-              </div>
-
               {/* Contract details have been removed as requested */}
             </div>
             <DialogFooter>
@@ -831,31 +809,32 @@ export function StaffManagement() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-firstName">Prénom</Label>
+                  <Label htmlFor="firstName">Prénom *</Label>
                   <Input
-                    id="edit-firstName"
+                    id="firstName"
                     value={editingStaff.firstName}
                     onChange={(e) => setEditingStaff({ ...editingStaff, firstName: e.target.value })}
+                    placeholder="Entrez le prénom"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-lastName">Nom</Label>
+                  <Label htmlFor="lastName">Nom *</Label>
                   <Input
-                    id="edit-lastName"
+                    id="lastName"
                     value={editingStaff.lastName}
                     onChange={(e) => setEditingStaff({ ...editingStaff, lastName: e.target.value })}
+                    placeholder="Entrez le nom"
+                    required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-role">Rôle</Label>
-                  <Select
-                    value={editingStaff.role}
-                    onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value as StaffRole })}
-                  >
-                    <SelectTrigger id="edit-role">
+                  <Label htmlFor="role">Rôle *</Label>
+                  <Select value={editingStaff.role} onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value as StaffRole })}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un rôle" />
                     </SelectTrigger>
                     <SelectContent>
@@ -868,20 +847,12 @@ export function StaffManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-team">Équipe</Label>
+                  <Label htmlFor="team">Équipe *</Label>
                   <Select
-                    value={(editingStaff.team?.id || 0).toString()}
-                    onValueChange={(value) => {
-                      const selectedTeam = teams.find(t => t.id.toString() === value);
-                      // When updating, we need to send teamId in the API call, but we store it in a temporary field
-                      setEditingStaff({ 
-                        ...editingStaff, 
-                        team: selectedTeam,
-                        teamId: parseInt(value) 
-                      });
-                    }}
+                    value={editingStaff.team?.id.toString()}
+                    onValueChange={(value) => setEditingStaff({ ...editingStaff, teamId: parseInt(value) })}
                   >
-                    <SelectTrigger id="edit-team">
+                    <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une équipe" />
                     </SelectTrigger>
                     <SelectContent>
@@ -895,67 +866,75 @@ export function StaffManagement() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Date de naissance *</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={editingStaff.dateOfBirth}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, dateOfBirth: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Téléphone</Label>
+                  <Label htmlFor="phone">Téléphone</Label>
                   <Input
-                    id="edit-phone"
-                    value={editingStaff.phoneNumber || ""}
+                    id="phone"
+                    value={editingStaff.phoneNumber}
                     onChange={(e) => setEditingStaff({ ...editingStaff, phoneNumber: e.target.value })}
+                    placeholder="Entrez le numéro de téléphone"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="edit-email"
-                    value={editingStaff.email || ""}
+                    id="email"
+                    type="email"
+                    value={editingStaff.email}
                     onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                    placeholder="Entrez l'email"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-qualification">Qualification</Label>
+                <Label htmlFor="qualification">Qualification</Label>
                 <Input
-                  id="edit-qualification"
-                  value={editingStaff.qualification || ""}
+                  id="qualification"
+                  value={editingStaff.qualification}
                   onChange={(e) => setEditingStaff({ ...editingStaff, qualification: e.target.value })}
+                  placeholder="Entrez les qualifications"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="experience">Expérience</Label>
+                <Textarea
+                  id="experience"
+                  value={editingStaff.experience}
+                  onChange={(e) => setEditingStaff({ ...editingStaff, experience: e.target.value })}
+                  placeholder="Décrivez l'expérience"
+                  rows={3}
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-rib">RIB (Compte bancaire)</Label>
+                  <Label htmlFor="rib">RIB (Compte bancaire)</Label>
                   <Input
-                    id="edit-rib"
-                    value={editingStaff.rib || ""}
+                    id="rib"
+                    value={editingStaff.rib}
                     onChange={(e) => setEditingStaff({ ...editingStaff, rib: e.target.value })}
                     placeholder="Informations bancaires"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-contractStartDate">Début du contrat</Label>
-                  <Input
-                    id="edit-contractStartDate"
-                    type="date"
-                    value={editingStaff.contractStartDate || ""}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, contractStartDate: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-contractEndDate">Fin du contrat</Label>
-                  <Input
-                    id="edit-contractEndDate"
-                    type="date"
-                    value={editingStaff.contractEndDate || ""}
-                    onChange={(e) => setEditingStaff({ ...editingStaff, contractEndDate: e.target.value })}
-                  />
-                </div>
-              </div>
+              {/* Contract details have been removed as requested */}
             </div>
           )}
           <DialogFooter>
