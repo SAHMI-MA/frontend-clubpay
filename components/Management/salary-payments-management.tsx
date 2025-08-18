@@ -176,7 +176,6 @@ export function ClubSalaryPaymentsManagement() {
         periodStart: salaryPaymentForm.periodStart,
         periodEnd: salaryPaymentForm.periodEnd,
         bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
-        taxAmount: parseFloat(salaryPaymentForm.taxAmount),
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
         createdBy: currentUser.id, // Add the required createdBy field

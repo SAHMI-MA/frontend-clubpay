@@ -60,6 +60,8 @@ export interface Player {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  cin: string;
+  nationality: string;
   position: string;
   playerCode?: string; // NEW: Unique player code
   playerNumber?: number; // NEW: Jersey/shirt number
@@ -180,6 +182,8 @@ export interface CreatePlayerDto {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  cin: string;
+  nationality: string;
   position: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
@@ -192,6 +196,8 @@ export interface UpdatePlayerDto {
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
+  cin: string;
+  nationality: string;
   position?: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
@@ -239,6 +245,8 @@ export interface Staff {
   role: StaffRole;
   dateOfBirth: string;
   phoneNumber?: string;
+  cin: string;
+  nationality: string;
   email?: string;
   qualification?: string;
   experience?: string;
@@ -282,6 +290,8 @@ export interface CreateStaffDto {
   lastName: string;
   role: StaffRole;
   dateOfBirth: string;
+  cin: string;
+  nationality: string;
   phoneNumber?: string;
   email?: string;
   qualification?: string;
@@ -289,8 +299,6 @@ export interface CreateStaffDto {
   rib?: string; // NEW: Bank account information
   staffImageId?: number;
   salary?: number; // NEW: Staff salary
-  contractStartDate?: string; // NEW: Contract start date
-  contractEndDate?: string; // NEW: Contract end date
   teamId: number; // We still use teamId when creating staff
 }
 
@@ -299,6 +307,8 @@ export interface UpdateStaffDto {
   lastName?: string;
   role?: StaffRole;
   dateOfBirth?: string;
+  cin?: string;
+  nationality?: string;
   phoneNumber?: string;
   email?: string;
   qualification?: string;

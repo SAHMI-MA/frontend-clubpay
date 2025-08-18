@@ -17,7 +17,8 @@ import { testApiConnection, loginWithDemoCredentials } from "@/lib/api-utils";
 import { getTacticalFieldPositions, getPositionDisplayName } from "@/lib/utils";
 import { imageService } from "@/lib/team-management-services";
 import { PlayerAvatar } from "./player-avatar";
-
+import { countries } from "@/lib/types/countries";
+import { ToastNotification, useToast } from "@/components/ui/toast-notification";
 interface PlayerFormProps {
   player?: Player | null;
   preselectedTeamId?: number | null;
@@ -40,14 +41,13 @@ export function PlayerForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState({
     isServerReachable: true,
     isAuthenticated: true,
     loading: true
   });
-  // isConnected is not used, so we'll just comment it out
-  // const isConnected = connectionStatus.isServerReachable;
-  
+
   // Form state
   const [formData, setFormData] = useState<CreatePlayerDto | UpdatePlayerDto>({
     firstName: "",
@@ -59,7 +59,10 @@ export function PlayerForm({
     playerStatus: "ACTIVE",
     teamId: undefined,
     ImageId: null,
+    cin: "",
+    nationality: ""
   });
+  const { toastState, showToast, hideToast } = useToast();
 
   // Check API connection when component mounts
   useEffect(() => {
@@ -72,10 +75,9 @@ export function PlayerForm({
           isAuthenticated: status.isAuthenticated,
           loading: false
         });
-        
-        // If server is not reachable or not authenticated in development, set up demo login
-        if (process.env.NODE_ENV === 'development' && 
-            (!status.isServerReachable || !status.isAuthenticated)) {
+
+        if (process.env.NODE_ENV === 'development' &&
+          (!status.isServerReachable || !status.isAuthenticated)) {
           toast.warning('Utilisation de l\'authentification démo pour le développement');
           await loginWithDemoCredentials();
         }
@@ -88,7 +90,7 @@ export function PlayerForm({
         toast.error('Échec de la connexion au serveur ' + _error);
       }
     };
-    
+
     checkConnection();
   }, []);
 
@@ -103,16 +105,17 @@ export function PlayerForm({
       setFormData({
         firstName: player.firstName,
         lastName: player.lastName,
-        dateOfBirth: player.dateOfBirth.split("T")[0], // Format date for input field
+        dateOfBirth: player.dateOfBirth.split("T")[0],
         position: player.position,
         playerNumber: player.playerNumber,
         rib: player.rib || "",
         playerStatus: player.playerStatus || "ACTIVE",
         teamId: player.teamId,
         ImageId: player.playerImageId,
+        cin: player.cin || "",
+        nationality: player.nationality || ""
       });
-      
-      // Set image preview if player has an image
+
       if (player.playerImage?.url) {
         setImagePreview(player.playerImage.url);
       }
@@ -124,15 +127,13 @@ export function PlayerForm({
     }
   }, [player, isEditing, preselectedTeamId]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "teamId" ? Number(value) : 
-              name === "playerNumber" ? (value ? Number(value) : undefined) : 
-              value,
+      [name]: name === "teamId" ? Number(value) :
+        name === "playerNumber" ? (value ? Number(value) : undefined) :
+          value,
     }));
   };
 
@@ -145,14 +146,18 @@ export function PlayerForm({
 
   const handleTeamChange = (value: string) => {
     const teamIdValue = value === "none" ? null : Number(value);
-    
+
     setFormData((prev) => ({
       ...prev,
       teamId: teamIdValue,
     }));
-    
-    // Log the selection to help with debugging
-    console.log('Team selected:', value, 'Converted to:', teamIdValue);
+  };
+
+  const handleNationalityChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      nationality: value,
+    }));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,11 +171,10 @@ export function PlayerForm({
         ...prev,
         ImageId: uploadedImage.id
       }));
-      
-      // Create preview URL
+
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
-      
+
       toast.success("Image téléchargée avec succès");
     } catch (error) {
       toast.error("Échec du téléchargement de l'image");
@@ -186,8 +190,7 @@ export function PlayerForm({
       ImageId: null
     }));
     setImagePreview(null);
-    
-    // Clear the file input
+
     const fileInput = document.getElementById('playerImage') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -197,69 +200,67 @@ export function PlayerForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setIsError(false);
 
-    // Verify connection status before submitting
     if (!connectionStatus.isServerReachable) {
-      toast.error("Impossible de soumettre le formulaire : Serveur non accessible");
+      showToast("Impossible de soumettre le formulaire : Serveur non accessible", "error");
       setIsSubmitting(false);
       return;
     }
 
     if (!connectionStatus.isAuthenticated) {
-      toast.error("Impossible de soumettre le formulaire : Non authentifié");
+      showToast("Impossible de soumettre le formulaire : Non authentifié", "error");
       setIsSubmitting(false);
       return;
     }
 
     try {
       if (isCreating) {
-        // Log form data before dispatching to check teamId
-        console.log('Creating player with data:', formData);
-        
-        // Make sure teamId is properly converted to number if it exists
         const playerData = {
           ...formData,
           teamId: formData.teamId !== undefined && formData.teamId !== null ? Number(formData.teamId) : null,
         };
-        
-        console.log('Final player data being sent:', playerData);
+
         await dispatch(createPlayer(playerData as CreatePlayerDto)).unwrap();
         toast.success("Joueur créé avec succès");
       } else if (isEditing && player) {
-        // Make sure teamId is properly converted to number if it exists
         const playerData = {
           ...formData,
           teamId: formData.teamId !== undefined && formData.teamId !== null ? Number(formData.teamId) : null,
         };
-        
+
         await dispatch(
           updatePlayer({ id: player.id, playerData: playerData as UpdatePlayerDto })
         ).unwrap();
         toast.success("Joueur mis à jour avec succès");
       }
       onSuccess?.();
+      showToast("Joueur créé avec succès", "success");
     } catch (error) {
-      // Check if error is auth-related
+      setIsError(true);
       const errorMsg = error instanceof Error ? error.message : String(error);
       if (errorMsg.includes('401') || errorMsg.toLowerCase().includes('unauthorized')) {
         setConnectionStatus(prev => ({ ...prev, isAuthenticated: false }));
-        toast.error("Échec de l'authentification. Veuillez vous reconnecter.");
+        showToast("Échec de l'authentification. Veuillez vous reconnecter.", "error");
+      } else if (errorMsg.includes('409') && errorMsg.toLowerCase().includes('playernumber')) {
+        showToast("Ce numéro de maillot est déjà attribué à un autre joueur. Veuillez choisir un autre numéro.", "error");
+      } else if (errorMsg.includes('409') && errorMsg.toLowerCase().includes('cin')) {
+        showToast("Un joueur avec ce CIN existe déjà. Veuillez vérifier le numéro ou modifier le joueur existant.", "error");
       } else {
-        toast.error(
-          typeof error === "string" 
-            ? error 
-            : "Échec de l'enregistrement du joueur. Veuillez réessayer."
+        showToast(
+          typeof error === "string"
+            ? error
+            : "Échec de l'enregistrement du joueur. Veuillez réessayer.",
+          "error"
         );
       }
     } finally {
-      setIsSubmitting(false);
+      if(!isError)
+        setIsSubmitting(false);
     }
   };
 
-  // Get tactical field positions only (no staff roles for players)
   const tacticalPositions = getTacticalFieldPositions();
-  
-  // Prepare options for the combobox - only field positions for players
   const positionOptions = tacticalPositions.map(position => ({
     value: position,
     label: getPositionDisplayName(position)
@@ -267,6 +268,7 @@ export function PlayerForm({
 
   return (
     <Card className="w-full shadow-lg">
+      <ToastNotification toast={toastState} onClose={hideToast} />
       <CardHeader className="border-b pb-4">
         <div className="flex items-center gap-2">
           <User className="h-6 w-6 text-blue-800" />
@@ -357,13 +359,47 @@ export function PlayerForm({
             </div>
           </div>
 
+          {/* New CIN/PASSPORT and Nationality fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Increased gap from 4 to 6 */}
+            {/* CIN Field - Full width on mobile, half on desktop */}
+            <div className="space-y-2">
+              <Label htmlFor="cin">CIN</Label>
+              <div className="flex gap-4"> {/* Added flex container for CIN and Passport */}
+                <div className="flex-1"> {/* CIN input takes available space */}
+                  <Input
+                    id="cin"
+                    name="cin"
+                    placeholder="N° CIN | Passeport"
+                    value={formData.cin || ""}
+                    onChange={handleChange}
+                    className="w-full" /* Ensure full width */
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Nationalité Field - Full width on mobile, half on desktop */}
+            <div className="space-y-2">
+              <Label htmlFor="nationality">Nationalité</Label>
+              <Combobox
+                options={countries.map(c => ({ value: c.code, label: c.name }))}
+                value={formData.nationality}
+                onValueChange={handleNationalityChange}
+                placeholder="Sélectionner une nationalité..."
+                searchPlaceholder="Rechercher un pays..."
+                emptyText="Aucun pays trouvé."
+                className="w-full min-w-[250px]" /* Added min-width */
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="playerStatus">Statut du joueur</Label>
               <Select
                 value={formData.playerStatus || "ACTIVE"}
-                onValueChange={(value) => setFormData(prev => ({ 
-                  ...prev, 
+                onValueChange={(value) => setFormData(prev => ({
+                  ...prev,
                   playerStatus: value as 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'
                 }))}
               >
@@ -388,38 +424,39 @@ export function PlayerForm({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une équipe" />
                 </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Aucune équipe</SelectItem>
-                {teams.map((team) => (
-                  <SelectItem key={team.id} value={team.id.toString()}>
-                    {team.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  <SelectItem value="none">Aucune équipe</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id.toString()}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Image Upload Section */}
           <div className="space-y-4">
             <Label htmlFor="playerImage">Image du joueur</Label>
-            
-            {/* Current/Preview Image */}
+
             {(imagePreview || player?.playerImage) && (
               <div className="flex items-center space-x-4">
-                <PlayerAvatar 
+                <PlayerAvatar
                   player={{
                     id: player?.id || 0,
                     firstName: formData.firstName || 'Joueur',
                     lastName: formData.lastName || '',
                     dateOfBirth: formData.dateOfBirth || new Date().toISOString(),
+                    cin: formData.cin || '',
+                    nationality: formData.nationality || '',
                     position: formData.position || 'MIDFIELDER',
                     playerNumber: formData.playerNumber,
                     teamId: formData.teamId,
                     playerStatus: formData.playerStatus || 'ACTIVE',
                     playerImageId: formData.ImageId || undefined,
-                    playerImage: imagePreview 
-                      ? { id: 0, url: imagePreview, filename: 'preview' } 
+                    playerImage: imagePreview
+                      ? { id: 0, url: imagePreview, filename: 'preview' }
                       : player?.playerImage
                   }}
                   size="lg"
@@ -435,8 +472,7 @@ export function PlayerForm({
                 </Button>
               </div>
             )}
-            
-            {/* Upload Button */}
+
             <div>
               <input
                 type="file"
@@ -468,8 +504,6 @@ export function PlayerForm({
             </div>
           </div>
 
-          {/* TODO: Add player image upload functionality */}
-
           {connectionStatus.loading ? (
             <div className="flex items-center p-4 text-sm text-blue-700 bg-blue-50 rounded-lg" role="alert">
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -488,15 +522,15 @@ export function PlayerForm({
           ) : null}
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={onCancel}
           >
             Annuler
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="bg-blue-800 hover:bg-blue-900 text-white"
             disabled={isSubmitting}
           >

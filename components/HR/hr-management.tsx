@@ -1,14 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import type React from "react"
+import { useEffect, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -42,93 +37,517 @@ import {
   CheckCircle,
   Clock,
   UserX,
+  FileText,
+  Printer,
+  CreditCard,
+  User as LucidUser,
 } from "lucide-react"
-import { hrApi, Employee, Department, Position } from "@/lib/api/hr-api"
-import { userService, User } from "@/lib/services"
+import { hrApi, type Employee, type Department, type Position } from "@/lib/api/hr-api"
+import { userService } from "@/lib/services"
+import { User } from "@/lib/services"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { countries } from "@/lib/types/countries"
+import { Combobox } from "../ui/combobox"
+import { useReactToPrint } from "react-to-print"
+import { GenerateEmployeeProfilePDF } from "@/lib/jsPDF/EmployeeProfilePDF"
+// Remove this import
+// import html2canvas from "html2canvas"
 
 /**
  * Export a list of employees to CSV
- * @param employees Array of Employee objects
  */
 export function exportEmployeesToCSV(employees: Employee[]) {
-  const header = ['ID', 'Full Name', 'Department', 'Position', 'Status', 'Hire Date', 'Current Salary (MAD)', 'Phone', 'Email'];
-  const rows = employees.map(employee => [
+  const header = [
+    "ID",
+    "Full Name",
+    "Department",
+    "Position",
+    "Status",
+    "Hire Date",
+    "Current Salary (MAD)",
+    "Phone",
+    "Email",
+  ]
+  const rows = employees.map((employee) => [
     employee.employeeId,
     employee.fullName,
-    employee.department?.name || '',
-    employee.position?.title || '',
-    employee.status || '',
-    employee.hireDate || '',
-    employee.currentSalary || '',
-    employee.phoneNumber || '',
-    employee.personalEmail || ''
-  ]);
+    employee.department?.name || "",
+    employee.position?.title || "",
+    employee.status || "",
+    employee.hireDate || "",
+    employee.currentSalary || "",
+    employee.phoneNumber || "",
+    employee.personalEmail || "",
+  ])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'employees.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "employees.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
  * Export a list of departments to CSV
- * @param departments Array of Department objects
  */
 export function exportDepartmentsToCSV(departments: Department[]) {
-  const header = ['ID', 'Name', 'Description', 'Employees Count'];
-  const rows = departments.map(dept => [
-    dept.id,
-    dept.name,
-    dept.description || '',
-    dept.employees?.length || 0
-  ]);
+  const header = ["ID", "Name", "Description", "Employees Count"]
+  const rows = departments.map((dept) => [dept.id, dept.name, dept.description || "", dept.employees?.length || 0])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'departments.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "departments.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
  * Export a list of positions to CSV
- * @param positions Array of Position objects
  */
 export function exportPositionsToCSV(positions: Position[]) {
-  const header = ['ID', 'Title', 'Description', 'Department', 'Employees Count'];
-  const rows = positions.map(position => [
+  const header = ["ID", "Title", "Description", "Department", "Employees Count"]
+  const rows = positions.map((position) => [
     position.id,
     position.title,
-    position.description || '',
-    position.department?.name || '',
-    position.employees?.length || 0
-  ]);
+    position.description || "",
+    position.department?.name || "",
+    position.employees?.length || 0,
+  ])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'positions.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "positions.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+// Employee Details Component for PDF Export
+function EmployeeDetails({ employee, onClose }: { employee: Employee; onClose: () => void }) {
+  const printRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState("personal")
+
+  // Print handler
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+      @media print {
+        body { padding: 20px; }
+        .no-print { display: none !important; }
+        .print-break { page-break-before: always; }
+      }
+    `,
+    documentTitle: `Fiche_Employe_${employee.fullName?.replace(/\s+/g, "_")}`,
+  })
+
+  // Enhanced PDF generation without html2canvas dependency
+  const generatePDF = async () => {
+    if (!printRef.current) return
+
+    try {
+      await GenerateEmployeeProfilePDF(employee)
+    } catch (error) {
+      console.error("Erreur lors de la génération du PDF:", error)
+      alert("Erreur lors de la génération du PDF. Veuillez réessayer.")
+    }
+  }
+
+  // Format date for display
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A"
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth?: string): string => {
+    if (!dateOfBirth) return "N/A"
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const m = today.getMonth() - birthDate.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age.toString()
+  }
+
+  // Format currency
+  const formatCurrency = (amount?: string | number) => {
+    const numAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount || 0
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "MAD",
+      maximumFractionDigits: 2,
+    }).format(numAmount)
+  }
+
+  return (
+    <DialogContent className="w-full min-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="flex items-center justify-between">
+          <span>Fiche Employé - {employee.fullName}</span>
+          <div className="flex gap-2 no-print">
+            <Button onClick={handlePrint} variant="outline" size="sm">
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimer
+            </Button>
+            <Button onClick={generatePDF} variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              PDF
+            </Button>
+          </div>
+        </DialogTitle>
+      </DialogHeader>
+
+      <div ref={printRef} className="space-y-6">
+        {/* Employee Header */}
+        <div className="flex items-center gap-4 p-6 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg text-white">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+            <LucidUser className="h-8 w-8" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">{employee.fullName || "N/A"}</h2>
+            <div className="flex items-center gap-3 mt-2">
+              <Badge className="bg-white/20 hover:bg-white/30 text-white">
+                {employee.position?.title || "Poste non défini"}
+              </Badge>
+              <Badge className="bg-white/20 hover:bg-white/30 text-white">
+                {employee.department?.name || "Département non défini"}
+              </Badge>
+              <Badge
+                className={
+                  employee.status === "Active"
+                    ? "bg-green-500/20 hover:bg-green-500/30 text-green-100"
+                    : employee.status === "Inactive"
+                      ? "bg-gray-500/20 hover:bg-gray-500/30 text-gray-100"
+                      : employee.status === "On Leave"
+                        ? "bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-100"
+                        : employee.status === "Terminated"
+                          ? "bg-red-500/20 hover:bg-red-500/30 text-red-100"
+                          : "bg-orange-500/20 hover:bg-orange-500/30 text-orange-100"
+                }
+              >
+                {employee.status || "Actif"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabbed Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3 no-print">
+            <TabsTrigger value="personal">Informations Personnelles</TabsTrigger>
+            <TabsTrigger value="professional">Informations Professionnelles</TabsTrigger>
+            <TabsTrigger value="financial">Informations Financières</TabsTrigger>
+          </TabsList>
+
+          {/* Personal Information Tab */}
+          <TabsContent value="personal" data-tab-content className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <LucidUser className="h-4 w-4" />
+                    Informations Générales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">ID Employé</p>
+                      <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{employee.employeeId}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Âge</p>
+                      <p>{calculateAge(employee.dateOfBirth)} ans</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="font-medium text-muted-foreground">Date de Naissance</p>
+                      <p>{formatDate(employee.dateOfBirth)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="font-medium text-muted-foreground">CIN/Passeport</p>
+                      <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                        {employee.nationalId || "Non renseigné"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="font-medium text-muted-foreground">Nationalité</p>
+                      <p>{employee.nationality || "Non renseignée"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="font-medium text-muted-foreground">Situation Familiale</p>
+                      <p>{employee.maritalStatus || "Non renseignée"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Contact & Adresse
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Téléphone</p>
+                      <p className="flex items-center gap-2">
+                        <Phone className="h-3 w-3" />
+                        {employee.phoneNumber || "Non renseigné"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Email Personnel</p>
+                      <p className="flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        {employee.personalEmail || "Non renseigné"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Adresse</p>
+                      <p className="flex items-start gap-2">
+                        <MapPin className="h-3 w-3 mt-1" />
+                        <span>{employee.address || "Non renseignée"}</span>
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Professional Information Tab */}
+          <TabsContent value="professional" data-tab-content className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Poste et Département
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Département</p>
+                      <p className="font-medium">{employee.department?.name || "Non assigné"}</p>
+                      <p className="text-xs text-muted-foreground">{employee.department?.code || ""}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Poste</p>
+                      <p className="font-medium">{employee.position?.title || "Non assigné"}</p>
+                      <p className="text-xs text-muted-foreground">{employee.position?.level || ""}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Date d'Embauche</p>
+                      <p className="flex items-center gap-2">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(employee.hireDate)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Statut</p>
+                      <p className="font-medium">{employee.status || "Actif"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Détails du Département
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Description</p>
+                      <p>{employee.department?.description || "Aucune description"}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Localisation</p>
+                      <p className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3" />
+                        {employee.department?.location || "Non spécifiée"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Budget Département</p>
+                      <p className="font-semibold text-green-600">
+                        {employee.department?.budget ? formatCurrency(employee.department.budget) : "Non spécifié"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Position Requirements */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Exigences du Poste</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                  <div>
+                    <p className="font-medium text-muted-foreground mb-2">Description du Poste</p>
+                    <p>{employee.position?.description || "Aucune description disponible"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground mb-2">Exigences</p>
+                    <p>{employee.position?.requirements || "Aucune exigence spécifiée"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Fourchette Salariale</p>
+                    <p className="font-medium">
+                      {employee.position?.minSalary && employee.position?.maxSalary
+                        ? `${formatCurrency(employee.position.minSalary)} - ${formatCurrency(employee.position.maxSalary)}`
+                        : "Non spécifiée"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Postes Ouverts</p>
+                    <p className="font-medium">{employee.position?.openings || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Financial Information Tab */}
+          <TabsContent value="financial" data-tab-content className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Informations Salariales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Salaire Actuel (Mensuel)</p>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(employee.currentSalary)}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Salaire Annuel Estimé</p>
+                      <p className="font-semibold text-blue-600">
+                        {formatCurrency(Number.parseFloat(employee.currentSalary || "0") * 12)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Position dans la Fourchette</p>
+                      <div className="mt-2">
+                        {employee.position?.minSalary && employee.position?.maxSalary ? (
+                          <div className="relative">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      ((Number.parseFloat(employee.currentSalary || "0") -
+                                        employee.position.minSalary) /
+                                        (employee.position.maxSalary - employee.position.minSalary)) *
+                                        100,
+                                    ),
+                                  )}%`,
+                                }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between text-xs mt-1 text-muted-foreground">
+                              <span>{formatCurrency(employee.position.minSalary)}</span>
+                              <span>{formatCurrency(employee.position.maxSalary)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">Fourchette non définie</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Informations Bancaires
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Numéro de Compte</p>
+                      <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                        {employee.bankAccountNumber || "Non renseigné"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Banque</p>
+                      <p>{employee.bankName || "Non renseignée"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Notes Section */}
+            {employee.notes && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{employee.notes}</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <DialogFooter className="no-print">
+        <Button variant="outline" onClick={onClose}>
+          Fermer
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  )
 }
 
 // statusColors and statusIcons moved above for use
@@ -159,6 +578,8 @@ export function HRManagement() {
   const [showEmployeeDialog, setShowEmployeeDialog] = useState(false)
   const [showDepartmentDialog, setShowDepartmentDialog] = useState(false)
   const [showPositionDialog, setShowPositionDialog] = useState(false)
+  const [showEmployeeDetailsDialog, setShowEmployeeDetailsDialog] = useState(false)
+  const [employeeForDetails, setEmployeeForDetails] = useState<Employee | null>(null)
 
   // Dynamic state for API data
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -173,7 +594,7 @@ export function HRManagement() {
     code: "",
     description: "",
     location: "",
-    budget: ""
+    budget: "",
   })
   const [isSubmittingDepartment, setIsSubmittingDepartment] = useState(false)
   const [departmentFormError, setDepartmentFormError] = useState<string | null>(null)
@@ -188,6 +609,7 @@ export function HRManagement() {
     hireDate: "",
     dateOfBirth: "",
     nationalId: "",
+    nationality: "",
     status: "Active" as any,
     phoneNumber: "",
     personalEmail: "",
@@ -197,7 +619,7 @@ export function HRManagement() {
     // Bank information fields
     bankAccountNumber: "",
     bankName: "",
-    notes: ""
+    notes: "",
   })
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false)
   const [employeeFormError, setEmployeeFormError] = useState<string | null>(null)
@@ -230,9 +652,9 @@ export function HRManagement() {
 
   // Debug: Monitor employees state changes
   useEffect(() => {
-    console.log('Employees state changed, current count:', employees.length)
+    console.log("Employees state changed, current count:", employees.length)
     if (employees.length > 0) {
-      console.log('Sample employee:', employees[0])
+      console.log("Sample employee:", employees[0])
     }
   }, [employees])
 
@@ -249,9 +671,20 @@ export function HRManagement() {
     setLoading(true)
     setError(null)
     Promise.all([
-      hrApi.getDepartments().catch((e: any) => { setError("Failed to load departments " + e.message); return [] }),
-      hrApi.getPositions ? hrApi.getPositions().catch((e: any) => { setError("Failed to load positions " + e.message); return [] }) : Promise.resolve([]),
-      hrApi.getEmployees().catch((e: any) => { setError("Failed to load employees " + e.message); return [] })
+      hrApi.getDepartments().catch((e: any) => {
+        setError("Failed to load departments " + e.message)
+        return []
+      }),
+      hrApi.getPositions
+        ? hrApi.getPositions().catch((e: any) => {
+            setError("Failed to load positions " + e.message)
+            return []
+          })
+        : Promise.resolve([]),
+      hrApi.getEmployees().catch((e: any) => {
+        setError("Failed to load employees " + e.message)
+        return []
+      }),
     ]).then(([dept, pos, empList]) => {
       setDepartments(dept)
       setPositions(pos)
@@ -264,7 +697,8 @@ export function HRManagement() {
   // Fetch users for combobox
   useEffect(() => {
     setUsersLoading(true)
-    userService.getAllUsers()
+    userService
+      .getAllUsers()
       .then(setUsers)
       .catch((e: any) => setUsersError("Failed to load users " + e.message))
       .finally(() => setUsersLoading(false))
@@ -272,22 +706,30 @@ export function HRManagement() {
 
   // Filter employees based on search and filters
   const filteredEmployees = employees.filter((employee) => {
-    const user = employee.user;
-    const userEmail = user && 'email' in user && user.email ? user.email : '';
+    const user = employee.user
+    const userEmail = user && "email" in user && user.email ? user.email : ""
     const matchesSearch =
       employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      userEmail.toLowerCase().includes(searchTerm.toLowerCase())
+      userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (employee.fullName && employee.fullName.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || employee.status === statusFilter
     const matchesDepartment = departmentFilter === "all" || employee.department.id.toString() === departmentFilter
 
     return matchesSearch && matchesStatus && matchesDepartment
   })
-  
+
+  const handleNationalityChange = (value: string) => {
+    setEmployeeForm((prev) => ({
+      ...prev,
+      nationality: value,
+    }))
+  }
+
   // Debug log for filtering
-  console.log('Current employees count:', employees.length)
-  console.log('Filtered employees count:', filteredEmployees.length)
-  console.log('Current filters - search:', searchTerm, 'status:', statusFilter, 'department:', departmentFilter)
+  console.log("Current employees count:", employees.length)
+  console.log("Filtered employees count:", filteredEmployees.length)
+  console.log("Current filters - search:", searchTerm, "status:", statusFilter, "department:", departmentFilter)
 
   // Calculate statistics
   const employeeStats = {
@@ -322,7 +764,7 @@ export function HRManagement() {
         code: selectedDepartment.code || "",
         description: selectedDepartment.description || "",
         location: selectedDepartment.location || "",
-        budget: selectedDepartment.budget?.toString() || ""
+        budget: selectedDepartment.budget?.toString() || "",
       })
     } else {
       setDepartmentForm({ name: "", code: "", description: "", location: "", budget: "" })
@@ -348,27 +790,27 @@ export function HRManagement() {
         location: departmentForm.location,
         budget: Number(departmentForm.budget),
         // managerId is required by the API type, but should not be sent from the UI
-      };
-      let department: import("@/lib/api/hr-api").Department;
+      }
+      let department: import("@/lib/api/hr-api").Department
       if (isEditDepartment) {
-        department = await hrApi.updateDepartment(selectedDepartment.id, payload);
-        setDepartments((prev) => prev.map((d) => (d.id === department.id ? department : d)));
+        department = await hrApi.updateDepartment(selectedDepartment.id, payload)
+        setDepartments((prev) => prev.map((d) => (d.id === department.id ? department : d)))
       } else {
-        department = await hrApi.createDepartment(payload as any);
-        console.log('Created department response:', department) // Debug log
-        
+        department = await hrApi.createDepartment(payload as any)
+        console.log("Created department response:", department) // Debug log
+
         // Always reload departments after creation to ensure we have the latest data
-        const allDepartments = await hrApi.getDepartments();
-        setDepartments(allDepartments);
+        const allDepartments = await hrApi.getDepartments()
+        setDepartments(allDepartments)
       }
       setShowDepartmentDialog(false)
       setSelectedDepartment(null)
     } catch (err: any) {
-      console.error('Department creation/update error:', err)
-      console.error('Error details:', {
+      console.error("Department creation/update error:", err)
+      console.error("Error details:", {
         message: err?.message,
         stack: err?.stack,
-        response: err?.response
+        response: err?.response,
       })
       setDepartmentFormError(err?.message || "Failed to save department")
     } finally {
@@ -387,6 +829,7 @@ export function HRManagement() {
         hireDate: selectedEmployee.hireDate || "",
         dateOfBirth: selectedEmployee.dateOfBirth || "",
         nationalId: selectedEmployee.nationalId || "",
+        nationality: selectedEmployee.nationality || "",
         status: selectedEmployee.status || "Active",
         phoneNumber: selectedEmployee.phoneNumber || "",
         personalEmail: selectedEmployee.personalEmail || "",
@@ -396,7 +839,7 @@ export function HRManagement() {
         // Bank information fields
         bankAccountNumber: selectedEmployee.bankAccountNumber || "",
         bankName: selectedEmployee.bankName || "",
-        notes: selectedEmployee.notes || ""
+        notes: selectedEmployee.notes || "",
       })
     } else {
       setEmployeeForm({
@@ -407,6 +850,7 @@ export function HRManagement() {
         hireDate: new Date().toISOString().slice(0, 10),
         dateOfBirth: "",
         nationalId: "",
+        nationality: "",
         status: "Active",
         phoneNumber: "",
         personalEmail: "",
@@ -416,7 +860,7 @@ export function HRManagement() {
         // Bank information fields
         bankAccountNumber: "",
         bankName: "",
-        notes: ""
+        notes: "",
       })
     }
   }, [selectedEmployee, showEmployeeDialog])
@@ -435,19 +879,19 @@ export function HRManagement() {
   }, [employeeForm.departmentId, isEditEmployee])
 
   function handleEmployeeFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const { id, value } = e.target;
+    const { id, value } = e.target
     if (id === "userId" || id === "departmentId" || id === "positionId") {
-      setEmployeeForm({ ...employeeForm, [id]: value === "" ? undefined : parseInt(value, 10) })
+      setEmployeeForm({ ...employeeForm, [id]: value === "" ? undefined : Number.parseInt(value, 10) })
     } else {
       setEmployeeForm({ ...employeeForm, [id]: value })
     }
   }
   function handleEmployeeSelectChange(id: string, value: string) {
     if (id === "userId") {
-      const numValue = value === "no-user" ? undefined : parseInt(value, 10);
+      const numValue = value === "no-user" ? undefined : Number.parseInt(value, 10)
       setEmployeeForm({ ...employeeForm, [id]: numValue })
     } else if (id === "departmentId" || id === "positionId") {
-      const numValue = value === "" ? undefined : parseInt(value, 10);
+      const numValue = value === "" ? undefined : Number.parseInt(value, 10)
       setEmployeeForm({ ...employeeForm, [id]: numValue })
     } else {
       setEmployeeForm({ ...employeeForm, [id]: value })
@@ -460,9 +904,9 @@ export function HRManagement() {
     setEmployeeFormError(null)
     // Validate fullName is not empty or whitespace
     if (!employeeForm.fullName || employeeForm.fullName.trim() === "") {
-      setEmployeeFormError("Le nom complet est obligatoire.");
-      setIsSubmittingEmployee(false);
-      return;
+      setEmployeeFormError("Le nom complet est obligatoire.")
+      setIsSubmittingEmployee(false)
+      return
     }
     try {
       if (isEditEmployee) {
@@ -478,26 +922,30 @@ export function HRManagement() {
           address: employeeForm.address,
           maritalStatus: employeeForm.maritalStatus,
           currentSalary: employeeForm.currentSalary,
+          nationality: employeeForm.nationality,
           // Bank information fields
           bankAccountNumber: employeeForm.bankAccountNumber,
           bankName: employeeForm.bankName,
           notes: employeeForm.notes,
-        };
+        }
         // Use employee.employeeId for update, not selectedEmployee.id
-        const employee = await hrApi.updateEmployee(selectedEmployee.employeeId, updatePayload);
-        console.log('Updated employee response:', employee) // Debug log
-        console.log('Update payload sent:', updatePayload) // Debug log
-        
+        const employee = await hrApi.updateEmployee(selectedEmployee.employeeId, updatePayload)
+        console.log("Updated employee response:", employee) // Debug log
+        console.log("Update payload sent:", updatePayload) // Debug log
+
         // Let's also check what we get from the fresh API call
-        const allEmployees = await hrApi.getEmployees();
-        const freshEmployee = allEmployees.find(e => e.employeeId === selectedEmployee.employeeId);
-        console.log('Fresh employees from API:', freshEmployee) // Debug log
-        console.log('Current employees state before update:', employees.find(e => e.employeeId === selectedEmployee.employeeId)) // Debug log
-        setEmployees(allEmployees);
-        console.log('Employees state updated, new count:', allEmployees.length) // Debug log
-        
+        const allEmployees = await hrApi.getEmployees()
+        const freshEmployee = allEmployees.find((e) => e.employeeId === selectedEmployee.employeeId)
+        console.log("Fresh employees from API:", freshEmployee) // Debug log
+        console.log(
+          "Current employees state before update:",
+          employees.find((e) => e.employeeId === selectedEmployee.employeeId),
+        ) // Debug log
+        setEmployees(allEmployees)
+        console.log("Employees state updated, new count:", allEmployees.length) // Debug log
+
         // Force a re-render by updating a timestamp
-        console.log('Update completed at:', new Date().toISOString()) // Debug log
+        console.log("Update completed at:", new Date().toISOString()) // Debug log
       } else {
         // CREATE: only include fields that CreateEmployeeRequest accepts
         const payload: import("@/lib/api/hr-api").CreateEmployeeRequest = {
@@ -508,6 +956,7 @@ export function HRManagement() {
           hireDate: employeeForm.hireDate,
           dateOfBirth: employeeForm.dateOfBirth,
           nationalId: employeeForm.nationalId,
+          nationality: employeeForm.nationality,
           status: employeeForm.status,
           phoneNumber: employeeForm.phoneNumber,
           personalEmail: employeeForm.personalEmail,
@@ -518,30 +967,27 @@ export function HRManagement() {
           bankAccountNumber: employeeForm.bankAccountNumber,
           bankName: employeeForm.bankName,
           notes: employeeForm.notes,
-        };
-        const employee = await hrApi.createEmployee(payload);
-        console.log('Created employee response:', employee) // Debug log
-        
+        }
+        const employee = await hrApi.createEmployee(payload)
+        console.log("Created employee response:", employee) // Debug log
+
         // Always reload employees and positions after creation to ensure we have the latest data
-        const [allEmployees, allPositions] = await Promise.all([
-          hrApi.getEmployees(),
-          hrApi.getPositions()
-        ]);
-        setEmployees(allEmployees);
-        setPositions(allPositions);
+        const [allEmployees, allPositions] = await Promise.all([hrApi.getEmployees(), hrApi.getPositions()])
+        setEmployees(allEmployees)
+        setPositions(allPositions)
       }
-      setShowEmployeeDialog(false);
-      setSelectedEmployee(null);
+      setShowEmployeeDialog(false)
+      setSelectedEmployee(null)
     } catch (err: any) {
-      console.error('Employee creation/update error:', err)
-      console.error('Error details:', {
+      console.error("Employee creation/update error:", err)
+      console.error("Error details:", {
         message: err?.message,
         stack: err?.stack,
-        response: err?.response
+        response: err?.response,
       })
-      setEmployeeFormError(err?.message || "Failed to save employee");
+      setEmployeeFormError(err?.message || "Failed to save employee")
     } finally {
-      setIsSubmittingEmployee(false);
+      setIsSubmittingEmployee(false)
     }
   }
 
@@ -600,20 +1046,20 @@ export function HRManagement() {
         setPositions((prev) => prev.map((p) => (p.id === position.id ? position : p)))
       } else {
         position = await hrApi.createPosition(payload)
-        console.log('Created position response:', position) // Debug log
-        
+        console.log("Created position response:", position) // Debug log
+
         // Always reload positions after creation to ensure we have the latest data
-        const allPositions = await hrApi.getPositions();
-        setPositions(allPositions);
+        const allPositions = await hrApi.getPositions()
+        setPositions(allPositions)
       }
       setShowPositionDialog(false)
       setSelectedPosition(null)
     } catch (err: any) {
-      console.error('Position creation/update error:', err)
-      console.error('Error details:', {
+      console.error("Position creation/update error:", err)
+      console.error("Error details:", {
         message: err?.message,
         stack: err?.stack,
-        response: err?.response
+        response: err?.response,
       })
       setPositionFormError(err?.message || "Failed to save position")
     } finally {
@@ -623,26 +1069,26 @@ export function HRManagement() {
 
   // Confirm employee deletion
   async function handleDeleteEmployeeConfirmed() {
-    if (!employeeToDelete) return;
-    setIsDeletingEmployee(true);
-    setDeleteEmployeeError(null);
+    if (!employeeToDelete) return
+    setIsDeletingEmployee(true)
+    setDeleteEmployeeError(null)
     try {
-      await hrApi.deleteEmployee(employeeToDelete.employeeId);
-      setEmployees((prev) => prev.filter((e) => e.employeeId !== employeeToDelete.employeeId));
-      setEmployeeToDelete(null);
+      await hrApi.deleteEmployee(employeeToDelete.employeeId)
+      setEmployees((prev) => prev.filter((e) => e.employeeId !== employeeToDelete.employeeId))
+      setEmployeeToDelete(null)
     } catch (err: any) {
-      setDeleteEmployeeError(err?.message || "Failed to delete employee");
+      setDeleteEmployeeError(err?.message || "Failed to delete employee")
     } finally {
-      setIsDeletingEmployee(false);
+      setIsDeletingEmployee(false)
     }
   }
 
   // Fonction utilitaire pour formater les montants en MAD
   const formatMAD = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'MAD',
-      minimumFractionDigits: 2
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "MAD",
+      minimumFractionDigits: 2,
     }).format(amount)
   }
 
@@ -670,10 +1116,7 @@ export function HRManagement() {
         >
           Exporter les départements (CSV)
         </Button>
-        <Button
-          className="bg-blue-800 hover:bg-blue-900 text-white"
-          onClick={() => exportPositionsToCSV(positions)}
-        >
+        <Button className="bg-blue-800 hover:bg-blue-900 text-white" onClick={() => exportPositionsToCSV(positions)}>
           Exporter les postes (CSV)
         </Button>
       </div>
@@ -707,9 +1150,7 @@ export function HRManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{departmentStats.totalDepartments}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatMAD(departmentStats.totalBudget)} budget total
-            </p>
+            <p className="text-xs text-muted-foreground">{formatMAD(departmentStats.totalBudget)} budget total</p>
           </CardContent>
         </Card>
 
@@ -731,7 +1172,9 @@ export function HRManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {positionStats.avgSalaryRange.min ? `${formatMAD(positionStats.avgSalaryRange.min)} - ${formatMAD(positionStats.avgSalaryRange.max)}` : 'N/A'}
+              {positionStats.avgSalaryRange.min
+                ? `${formatMAD(positionStats.avgSalaryRange.min)} - ${formatMAD(positionStats.avgSalaryRange.max)}`
+                : "N/A"}
             </div>
             <p className="text-xs text-muted-foreground">Fourchette salariale moyenne</p>
           </CardContent>
@@ -739,7 +1182,7 @@ export function HRManagement() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">    
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="employees">Employés</TabsTrigger>
           <TabsTrigger value="departments">Départements</TabsTrigger>
@@ -766,7 +1209,9 @@ export function HRManagement() {
                     <DialogHeader>
                       <DialogTitle>{isEditEmployee ? "Modifier l'employé" : "Ajouter un nouvel employé"}</DialogTitle>
                       <DialogDescription>
-                        {isEditEmployee ? "Mettre à jour les informations de l'employé" : "Saisissez les informations de l'employé"}
+                        {isEditEmployee
+                          ? "Mettre à jour les informations de l'employé"
+                          : "Saisissez les informations de l'employé"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleEmployeeFormSubmit}>
@@ -779,7 +1224,13 @@ export function HRManagement() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                             <div className="space-y-2">
                               <Label htmlFor="fullName">Nom complet</Label>
-                              <Input id="fullName" placeholder="Nom complet" value={employeeForm.fullName} onChange={handleEmployeeFormChange} required />
+                              <Input
+                                id="fullName"
+                                placeholder="Nom complet"
+                                value={employeeForm.fullName}
+                                onChange={handleEmployeeFormChange}
+                                required
+                              />
                             </div>
                             <div className="space-y-2 flex flex-row gap-2 items-end">
                               <div className="flex-1">
@@ -803,37 +1254,79 @@ export function HRManagement() {
                                 </Select>
                               </div>
                             </div>
-                            {!isEditEmployee && (
-                              <React.Fragment key="create-only-fields">
-                                <div className="space-y-2">
-                                  <Label htmlFor="hireDate">Date d'embauche</Label>
-                                  <Input id="hireDate" type="date" value={employeeForm.hireDate} onChange={handleEmployeeFormChange} />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="dateOfBirth">Date de naissance</Label>
-                                  <Input id="dateOfBirth" type="date" value={employeeForm.dateOfBirth} onChange={handleEmployeeFormChange} />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="nationalId">CIN</Label>
-                                  <Input id="nationalId" value={employeeForm.nationalId} onChange={handleEmployeeFormChange} />
-                                </div>
-                              </React.Fragment>
-                            )}
+                            <div className="space-y-2">
+                              <Label htmlFor="hireDate">Date d'embauche</Label>
+                              <Input
+                                id="hireDate"
+                                type="date"
+                                value={employeeForm.hireDate}
+                                onChange={handleEmployeeFormChange}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="dateOfBirth">Date de naissance</Label>
+                              <Input
+                                id="dateOfBirth"
+                                type="date"
+                                value={employeeForm.dateOfBirth}
+                                onChange={handleEmployeeFormChange}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="nationalId">CIN | Passeport (unique*)</Label>
+                              <Input
+                                id="nationalId"
+                                value={employeeForm.nationalId}
+                                onChange={handleEmployeeFormChange}
+                              />
+                            </div>
+                            {/* Nationalité Field - Full width on mobile, half on desktop */}
+                            <div className="space-y-2 ">
+                              <Label htmlFor="nationality">Nationalité</Label>
+                              <Combobox
+                                options={countries.map((c) => ({ value: c.code, label: c.name }))}
+                                value={employeeForm.nationality}
+                                onValueChange={handleNationalityChange}
+                                placeholder="nationalité"
+                                searchPlaceholder="Rechercher un pays"
+                                emptyText="Aucun pays trouvé."
+                                className="w-full min-w-[140px]" /* Added min-width */
+                              />
+                            </div>
                             <div className="space-y-2">
                               <Label htmlFor="phoneNumber">Téléphone</Label>
-                              <Input id="phoneNumber" placeholder="06 12 34 56 78" value={employeeForm.phoneNumber} onChange={handleEmployeeFormChange} />
+                              <Input
+                                id="phoneNumber"
+                                placeholder="06 12 34 56 78"
+                                value={employeeForm.phoneNumber}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="personalEmail">Email personnel</Label>
-                              <Input id="personalEmail" type="email" placeholder="vous@exemple.com" value={employeeForm.personalEmail} onChange={handleEmployeeFormChange} />
+                              <Input
+                                id="personalEmail"
+                                type="email"
+                                placeholder="vous@exemple.com"
+                                value={employeeForm.personalEmail}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="address">Adresse</Label>
-                              <Textarea id="address" placeholder="123 rue Principale, Appt 4B" value={employeeForm.address} onChange={handleEmployeeFormChange} />
+                              <Textarea
+                                id="address"
+                                placeholder="123 rue Principale, Appt 4B"
+                                value={employeeForm.address}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="maritalStatus">Situation familiale</Label>
-                              <Select value={employeeForm.maritalStatus} onValueChange={(v) => handleEmployeeSelectChange("maritalStatus", v)}>
+                              <Select
+                                value={employeeForm.maritalStatus}
+                                onValueChange={(v) => handleEmployeeSelectChange("maritalStatus", v)}
+                              >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner la situation" />
                                 </SelectTrigger>
@@ -847,11 +1340,21 @@ export function HRManagement() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="bankAccountNumber">Numéro de compte bancaire</Label>
-                              <Input id="bankAccountNumber" placeholder="Numéro de compte" value={employeeForm.bankAccountNumber} onChange={handleEmployeeFormChange} />
+                              <Input
+                                id="bankAccountNumber"
+                                placeholder="Numéro de compte"
+                                value={employeeForm.bankAccountNumber}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="bankName">Nom de la banque</Label>
-                              <Input id="bankName" placeholder="Nom de la banque" value={employeeForm.bankName} onChange={handleEmployeeFormChange} />
+                              <Input
+                                id="bankName"
+                                placeholder="Nom de la banque"
+                                value={employeeForm.bankName}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                           </div>
                         </TabsContent>
@@ -859,7 +1362,10 @@ export function HRManagement() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                             <div className="space-y-2">
                               <Label htmlFor="departmentId">Département</Label>
-                              <Select value={employeeForm.departmentId ? employeeForm.departmentId.toString() : ""} onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}>
+                              <Select
+                                value={employeeForm.departmentId ? employeeForm.departmentId.toString() : ""}
+                                onValueChange={(v) => handleEmployeeSelectChange("departmentId", v)}
+                              >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner un département" />
                                 </SelectTrigger>
@@ -874,7 +1380,10 @@ export function HRManagement() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="positionId">Poste</Label>
-                              <Select value={employeeForm.positionId ? employeeForm.positionId.toString() : ""} onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}>
+                              <Select
+                                value={employeeForm.positionId ? employeeForm.positionId.toString() : ""}
+                                onValueChange={(v) => handleEmployeeSelectChange("positionId", v)}
+                              >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner un poste" />
                                 </SelectTrigger>
@@ -891,7 +1400,10 @@ export function HRManagement() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="status">Statut</Label>
-                              <Select value={employeeForm.status} onValueChange={(v) => handleEmployeeSelectChange("status", v)}>
+                              <Select
+                                value={employeeForm.status}
+                                onValueChange={(v) => handleEmployeeSelectChange("status", v)}
+                              >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Sélectionner le statut" />
                                 </SelectTrigger>
@@ -906,18 +1418,36 @@ export function HRManagement() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="currentSalary">Salaire actuel (MAD)</Label>
-                              <Input id="currentSalary" type="number" min="0" step="0.01" placeholder="Entrez le salaire actuel" value={employeeForm.currentSalary} onChange={handleEmployeeFormChange} />
+                              <Input
+                                id="currentSalary"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Entrez le salaire actuel"
+                                value={employeeForm.currentSalary}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                               <Label htmlFor="notes">Notes</Label>
-                              <Textarea id="notes" placeholder="Notes supplémentaires sur l'employé" value={employeeForm.notes} onChange={handleEmployeeFormChange} />
+                              <Textarea
+                                id="notes"
+                                placeholder="Notes supplémentaires sur l'employé"
+                                value={employeeForm.notes}
+                                onChange={handleEmployeeFormChange}
+                              />
                             </div>
                           </div>
                         </TabsContent>
                       </Tabs>
                       {employeeFormError && <div className="text-red-500 text-sm mb-2">{employeeFormError}</div>}
                       <DialogFooter>
-                        <Button variant="outline" type="button" onClick={() => setShowEmployeeDialog(false)} disabled={isSubmittingEmployee}>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => setShowEmployeeDialog(false)}
+                          disabled={isSubmittingEmployee}
+                        >
                           Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingEmployee}>
@@ -991,12 +1521,8 @@ export function HRManagement() {
                         <TableRow key={`${employee.employeeId}-${employee.updatedAt}-${employee.currentSalary}`}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">
-                                {employee.fullName || "Nom non renseigné"}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {employee.employeeId}
-                              </div>
+                              <div className="font-medium">{employee.fullName || "Nom non renseigné"}</div>
+                              <div className="text-sm text-gray-500">{employee.employeeId}</div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1012,7 +1538,12 @@ export function HRManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={statusColors[employee.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}>
+                            <Badge
+                              className={
+                                statusColors[employee.status as keyof typeof statusColors] ||
+                                "bg-gray-100 text-gray-800"
+                              }
+                            >
                               <StatusIcon className="h-3 w-3 mr-1" />
                               {employee.status}
                             </Badge>
@@ -1040,6 +1571,17 @@ export function HRManagement() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEmployeeForDetails(employee)
+                                  setShowEmployeeDetailsDialog(true)
+                                }}
+                                title="Voir la fiche employé"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1083,37 +1625,74 @@ export function HRManagement() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>{isEditDepartment ? "Modifier le département" : "Ajouter un nouveau département"}</DialogTitle>
+                      <DialogTitle>
+                        {isEditDepartment ? "Modifier le département" : "Ajouter un nouveau département"}
+                      </DialogTitle>
                       <DialogDescription>
-                        {isEditDepartment ? "Mettre à jour les informations du département" : "Saisissez les informations du département"}
+                        {isEditDepartment
+                          ? "Mettre à jour les informations du département"
+                          : "Saisissez les informations du département"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleDepartmentFormSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                         <div className="space-y-2">
                           <Label htmlFor="deptName">Nom du département</Label>
-                          <Input id="name" placeholder="Ressources Humaines" value={departmentForm.name} onChange={handleDepartmentFormChange} required />
+                          <Input
+                            id="name"
+                            placeholder="Ressources Humaines"
+                            value={departmentForm.name}
+                            onChange={handleDepartmentFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="deptCode">Code du département</Label>
-                          <Input id="code" placeholder="RH" value={departmentForm.code} onChange={handleDepartmentFormChange} required />
+                          <Input
+                            id="code"
+                            placeholder="RH"
+                            value={departmentForm.code}
+                            onChange={handleDepartmentFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="location">Emplacement</Label>
-                          <Input id="location" placeholder="Bâtiment A, 2ème étage" value={departmentForm.location} onChange={handleDepartmentFormChange} />
+                          <Input
+                            id="location"
+                            placeholder="Bâtiment A, 2ème étage"
+                            value={departmentForm.location}
+                            onChange={handleDepartmentFormChange}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="budget">Budget</Label>
-                          <Input id="budget" type="number" placeholder="500000" value={departmentForm.budget} onChange={handleDepartmentFormChange} />
+                          <Input
+                            id="budget"
+                            type="number"
+                            placeholder="500000"
+                            value={departmentForm.budget}
+                            onChange={handleDepartmentFormChange}
+                          />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="deptDescription">Description</Label>
-                          <Textarea id="description" placeholder="Description du département" value={departmentForm.description} onChange={handleDepartmentFormChange} />
+                          <Textarea
+                            id="description"
+                            placeholder="Description du département"
+                            value={departmentForm.description}
+                            onChange={handleDepartmentFormChange}
+                          />
                         </div>
                       </div>
                       {departmentFormError && <div className="text-red-500 text-sm mb-2">{departmentFormError}</div>}
                       <DialogFooter>
-                        <Button variant="outline" type="button" onClick={() => setShowDepartmentDialog(false)} disabled={isSubmittingDepartment}>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => setShowDepartmentDialog(false)}
+                          disabled={isSubmittingDepartment}
+                        >
                           Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingDepartment}>
@@ -1168,26 +1747,31 @@ export function HRManagement() {
 
                         <div className="flex items-center text-sm">
                           <Users className="h-4 w-4 mr-2 text-gray-400" />
-                          {(department.employees?.length ?? 0)} employés
+                          {department.employees?.length ?? 0} employés
                         </div>
 
                         <div className="pt-2 border-t">
                           <div className="text-sm font-medium">Employés:</div>
                           <div className="mt-1 space-y-1">
                             {(department.employees?.slice(0, 3) ?? []).map((emp: any, index: number) => {
-                              const user = emp.user;
-                              const position = emp.position;
+                              const user = emp.user
+                              const position = emp.position
                               const userDisplay = user
-                                ? `${user.firstName || ""} ${user.lastName || ""} (${user.email || "Aucun email"})`
-                                : "Aucun utilisateur lié";
+                                ? `${user.firstName || ""} ${user.lastName || ""} ({user.email || "Aucun email"})`
+                                : "Aucun utilisateur lié"
                               return (
-                                <div key={emp.employeeId || `emp-${index}`} className="text-xs text-gray-700 dark:text-gray-300">
+                                <div
+                                  key={emp.employeeId || `emp-${index}`}
+                                  className="text-xs text-gray-700 dark:text-gray-300"
+                                >
                                   {userDisplay} - {position?.title ?? "Aucun poste"}
                                 </div>
-                              );
+                              )
                             })}
                             {(department.employees?.length ?? 0) > 3 && (
-                              <div className="text-xs text-gray-500">+{(department.employees?.length ?? 0) - 3} plus</div>
+                              <div className="text-xs text-gray-500">
+                                +{(department.employees?.length ?? 0) - 3} plus
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1219,17 +1803,30 @@ export function HRManagement() {
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>{isEditPosition ? "Modifier le poste" : "Ajouter un nouveau poste"}</DialogTitle>
-                      <DialogDescription>{isEditPosition ? "Mettre à jour les informations du poste" : "Saisissez les informations du poste"}</DialogDescription>
+                      <DialogDescription>
+                        {isEditPosition
+                          ? "Mettre à jour les informations du poste"
+                          : "Saisissez les informations du poste"}
+                      </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handlePositionFormSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                         <div className="space-y-2">
                           <Label htmlFor="title">Intitulé du poste</Label>
-                          <Input id="title" placeholder="Ingénieur Logiciel" value={positionForm.title} onChange={handlePositionFormChange} required />
+                          <Input
+                            id="title"
+                            placeholder="Ingénieur Logiciel"
+                            value={positionForm.title}
+                            onChange={handlePositionFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="level">Niveau</Label>
-                          <Select value={positionForm.level} onValueChange={(v) => handlePositionSelectChange("level", v)}>
+                          <Select
+                            value={positionForm.level}
+                            onValueChange={(v) => handlePositionSelectChange("level", v)}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Sélectionner le niveau" />
                             </SelectTrigger>
@@ -1246,7 +1843,10 @@ export function HRManagement() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="departmentId">Département</Label>
-                          <Select value={positionForm.departmentId} onValueChange={(v) => handlePositionSelectChange("departmentId", v)}>
+                          <Select
+                            value={positionForm.departmentId}
+                            onValueChange={(v) => handlePositionSelectChange("departmentId", v)}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Sélectionner un département" />
                             </SelectTrigger>
@@ -1261,28 +1861,64 @@ export function HRManagement() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="openings">Postes ouverts</Label>
-                          <Input id="openings" type="number" placeholder="2" value={positionForm.openings} onChange={handlePositionFormChange} required />
+                          <Input
+                            id="openings"
+                            type="number"
+                            placeholder="2"
+                            value={positionForm.openings}
+                            onChange={handlePositionFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="minSalary">Salaire min</Label>
-                          <Input id="minSalary" type="number" placeholder="80000" value={positionForm.minSalary} onChange={handlePositionFormChange} required />
+                          <Input
+                            id="minSalary"
+                            type="number"
+                            placeholder="80000"
+                            value={positionForm.minSalary}
+                            onChange={handlePositionFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="maxSalary">Salaire max</Label>
-                          <Input id="maxSalary" type="number" placeholder="120000" value={positionForm.maxSalary} onChange={handlePositionFormChange} required />
+                          <Input
+                            id="maxSalary"
+                            type="number"
+                            placeholder="120000"
+                            value={positionForm.maxSalary}
+                            onChange={handlePositionFormChange}
+                            required
+                          />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="description">Description</Label>
-                          <Textarea id="description" placeholder="Description du poste" value={positionForm.description} onChange={handlePositionFormChange} />
+                          <Textarea
+                            id="description"
+                            placeholder="Description du poste"
+                            value={positionForm.description}
+                            onChange={handlePositionFormChange}
+                          />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label htmlFor="requirements">Exigences</Label>
-                          <Textarea id="requirements" placeholder="Qualifications et expérience requises" value={positionForm.requirements} onChange={handlePositionFormChange} />
+                          <Textarea
+                            id="requirements"
+                            placeholder="Qualifications et expérience requises"
+                            value={positionForm.requirements}
+                            onChange={handlePositionFormChange}
+                          />
                         </div>
                       </div>
                       {positionFormError && <div className="text-red-500 text-sm mb-2">{positionFormError}</div>}
                       <DialogFooter>
-                        <Button variant="outline" type="button" onClick={() => setShowPositionDialog(false)} disabled={isSubmittingPosition}>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => setShowPositionDialog(false)}
+                          disabled={isSubmittingPosition}
+                        >
                           Annuler
                         </Button>
                         <Button type="submit" disabled={isSubmittingPosition}>
@@ -1317,19 +1953,20 @@ export function HRManagement() {
                             <div className="text-sm text-gray-500 max-w-xs truncate">{position.description}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{departments.find((d) => d.id === position.department?.id)?.name ?? ''}</TableCell>
+                        <TableCell>{departments.find((d) => d.id === position.department?.id)?.name ?? ""}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{position.level}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1 text-gray-400" />{formatMAD(Number(position.minSalary) || 0)} - {formatMAD(Number(position.maxSalary) || 0)}
+                            <DollarSign className="h-4 w-4 mr-1 text-gray-400" />
+                            {formatMAD(Number(position.minSalary) || 0)} - {formatMAD(Number(position.maxSalary) || 0)}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Users className="h-4 w-4 mr-2 text-gray-400" />
-                            {(position.employees?.length ?? 0)}
+                            {position.employees?.length ?? 0}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1366,8 +2003,20 @@ export function HRManagement() {
         </TabsContent>
       </Tabs>
 
+      {/* Employee Details Dialog */}
+      <Dialog open={showEmployeeDetailsDialog} onOpenChange={setShowEmployeeDetailsDialog}>
+        {employeeForDetails && (
+          <EmployeeDetails employee={employeeForDetails} onClose={() => setShowEmployeeDetailsDialog(false)} />
+        )}
+      </Dialog>
+
       {/* Employee Delete Confirmation Dialog */}
-      <Dialog open={!!employeeToDelete} onOpenChange={(open) => { if (!open) setEmployeeToDelete(null) }}>
+      <Dialog
+        open={!!employeeToDelete}
+        onOpenChange={(open) => {
+          if (!open) setEmployeeToDelete(null)
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Supprimer l'employé</DialogTitle>
@@ -1388,7 +2037,12 @@ export function HRManagement() {
       </Dialog>
 
       {/* Department Delete Confirmation Dialog */}
-      <Dialog open={!!departmentToDelete} onOpenChange={open => { if (!open) setDepartmentToDelete(null) }}>
+      <Dialog
+        open={!!departmentToDelete}
+        onOpenChange={(open) => {
+          if (!open) setDepartmentToDelete(null)
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Supprimer le département</DialogTitle>
@@ -1404,17 +2058,17 @@ export function HRManagement() {
             <Button
               variant="destructive"
               onClick={async () => {
-                if (!departmentToDelete) return;
-                setIsDeletingDepartment(true);
-                setDeleteDepartmentError(null);
+                if (!departmentToDelete) return
+                setIsDeletingDepartment(true)
+                setDeleteDepartmentError(null)
                 try {
-                  await hrApi.deleteDepartment(departmentToDelete.id);
-                  setDepartments(prev => prev.filter(d => d.id !== departmentToDelete.id));
-                  setDepartmentToDelete(null);
+                  await hrApi.deleteDepartment(departmentToDelete.id)
+                  setDepartments((prev) => prev.filter((d) => d.id !== departmentToDelete.id))
+                  setDepartmentToDelete(null)
                 } catch (err: any) {
-                  setDeleteDepartmentError(err?.message || "Failed to delete department");
+                  setDeleteDepartmentError(err?.message || "Failed to delete department")
                 } finally {
-                  setIsDeletingDepartment(false);
+                  setIsDeletingDepartment(false)
                 }
               }}
               disabled={isDeletingDepartment}
@@ -1425,7 +2079,12 @@ export function HRManagement() {
         </DialogContent>
       </Dialog>
       {/* Position Delete Confirmation Dialog */}
-      <Dialog open={!!positionToDelete} onOpenChange={open => { if (!open) setPositionToDelete(null) }}>
+      <Dialog
+        open={!!positionToDelete}
+        onOpenChange={(open) => {
+          if (!open) setPositionToDelete(null)
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Supprimer le poste</DialogTitle>
@@ -1441,17 +2100,17 @@ export function HRManagement() {
             <Button
               variant="destructive"
               onClick={async () => {
-                if (!positionToDelete) return;
-                setIsDeletingPosition(true);
-                setDeletePositionError(null);
+                if (!positionToDelete) return
+                setIsDeletingPosition(true)
+                setDeletePositionError(null)
                 try {
-                  await hrApi.deletePosition(positionToDelete.id);
-                  setPositions(prev => prev.filter(p => p.id !== positionToDelete.id));
-                  setPositionToDelete(null);
+                  await hrApi.deletePosition(positionToDelete.id)
+                  setPositions((prev) => prev.filter((p) => p.id !== positionToDelete.id))
+                  setPositionToDelete(null)
                 } catch (err: any) {
-                  setDeletePositionError(err?.message || "Failed to delete position");
+                  setDeletePositionError(err?.message || "Failed to delete position")
                 } finally {
-                  setIsDeletingPosition(false);
+                  setIsDeletingPosition(false)
                 }
               }}
               disabled={isDeletingPosition}

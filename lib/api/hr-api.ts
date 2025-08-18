@@ -31,12 +31,20 @@ export interface Employee {
   currentSalary?: string;
   departmentId: number,
   department: {
+    budget: any;
+    location: string;
+    description: string;
     id: number;
     name: string;
     code?: string;
   };
   positionId: number;
   position: {
+    requirements: string;
+    minSalary: any;
+    maxSalary: any;
+    openings: number;
+    description: string;
     id: number;
     title: string;
     level?: string;
@@ -49,6 +57,7 @@ export interface Employee {
   dateOfBirth: string;
   maritalStatus: MaritalStatus;
   nationalId: string;
+  nationality: string;
   createdAt: string;
   updatedAt: string;
   // Add missing fields from API response
@@ -73,6 +82,7 @@ export interface CreateEmployeeRequest {
   dateOfBirth: string;
   maritalStatus: MaritalStatus;
   nationalId: string;
+  nationality: string;
   currentSalary?: string;
   bankAccountNumber?: string;
   bankName?: string;

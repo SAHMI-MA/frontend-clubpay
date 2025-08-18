@@ -1,6 +1,6 @@
 "use client"
 
-import { generatePurchaseOrderPDF, AcquisitionForPDF } from '@/lib/pdf-export-utils'
+
 
 /**
  * Export a list of acquisitions to CSV
@@ -137,6 +137,8 @@ import {
   Ban,
   Briefcase,
 } from "lucide-react"
+import { AcquisitionForPDF } from "@/lib/jsPDF/pdf-export-utils";
+import { generatePurchaseOrderPDF } from "@/lib/jsPDF/PurchaseOrderPDF";
 
 
 

@@ -31,6 +31,7 @@ export async function editSalaryPayment(id: string, body: EditSalaryPaymentBody)
 // lib/api/hr-salary-api.ts
 import { apiConfig } from "../api-config";
 import axios from "axios"
+import { Employee } from "./hr-api";
 
 const axiosInstance = axios.create({
   baseURL: apiConfig.baseUrl,
@@ -39,27 +40,7 @@ const axiosInstance = axios.create({
 export interface SalaryPayment {
   id: string | number;
   employeeId: string;
-  employee?: {
-    id: number;
-    employeeId: string;
-    hireDate: string;
-    status: string;
-    phoneNumber: string;
-    personalEmail: string;
-    address: string;
-    dateOfBirth: string;
-    maritalStatus: string;
-    emergencyContactName: string;
-    emergencyContactPhone: string;
-    emergencyContactRelationship: string;
-    nationalId: string;
-    bankAccountNumber: string;
-    bankName: string;
-    notes: string;
-    createdAt: string;
-    updatedAt: string;
-    currentSalary: string;
-  };
+  employee?: Employee;
   payPeriod: string;
   baseSalary: string;
   overtime: string;

@@ -158,7 +158,6 @@ export interface CreateSalaryPaymentDto {
   periodStart: string;
   periodEnd: string;
   bonus?: number;
-  taxAmount?: number;
   status?: PaymentStatus;
   staffId?: number;
   playerId?: number;

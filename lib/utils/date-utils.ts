@@ -19,6 +19,17 @@ export const parseDate = (dateString: string): Date | null => {
   }
 };
 
+export const calculateAge = (dateOfBirth: string): number => {
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const m = today.getMonth() - birthDate.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age
+  }
+
 /**
  * Format a date string for display
  * @param dateString - The date string to format

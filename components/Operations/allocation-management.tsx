@@ -78,7 +78,7 @@ import {
   CreateAllocationDto,
   Article
 } from "@/lib/api/stock-api"
-import { generateBonDeSortiePDF } from "@/lib/pdf-export-utils";
+import { generateBonDeSortiePDF } from "@/lib/jsPDF/BonDeSortiePDF";
 
 // Types for the allocation form
 interface AllocationFormItem {
@@ -102,6 +102,7 @@ export function AllocationManagement() {
   // Use our custom hooks for data management
   // Export allocation as Bon de Sortie PDF
   const handleExportBonDeSortie = (allocation: Allocation) => {
+    console.log("Allocation Entity: ", allocation)
     try {
       // You should implement generateBonDeSortiePDF similar to generatePurchaseOrderPDF
       generateBonDeSortiePDF(allocation);

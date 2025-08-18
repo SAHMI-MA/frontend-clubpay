@@ -94,11 +94,10 @@ import {
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { formatCurrency } from '@/lib/pdf-utils'
-import { UserOptions } from 'jspdf-autotable';
 
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: UserOptions) => void;
+    autoTable: (options: any) => void;
   }
 }
 import { ToastNotification, useToast } from "@/components/ui/toast-notification"
@@ -1194,7 +1193,6 @@ export function FinancialManagement() {
         periodStart: salaryPaymentForm.periodStart,
         periodEnd: salaryPaymentForm.periodEnd,
         bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
-        taxAmount: salaryPaymentForm.taxAmount ? parseFloat(salaryPaymentForm.taxAmount) : undefined,
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
         createdBy: currentUser.id,

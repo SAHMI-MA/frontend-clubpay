@@ -62,7 +62,7 @@ class AssociationAPIService {
       headers: this.getHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch settings')
-     return response.json()
+    return response.json()
   }
 
   async updateSettings(settings: UpdateAssociationSettingsDto): Promise<AssociationSettings> {
@@ -78,7 +78,7 @@ class AssociationAPIService {
   async uploadLogo(file: File): Promise<AssociationSettings> {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     const response = await fetch(`${this.baseURL}/associations/logo`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.token}` },
@@ -169,6 +169,11 @@ export const navigationGroups = [
         icon: UserCog,
         id: "club-salary-payments",
       },
+      {
+        title: "Finances",
+        icon: CreditCard,
+        id: "financial",
+      }
     ],
   },
   {
@@ -198,11 +203,6 @@ export const navigationGroups = [
         title: "BDC Interne",
         icon: ClipboardList,
         id: "allocation-management",
-      },
-      {
-        title: "Finances",
-        icon: CreditCard,
-        id: "financial",
       },
     ]
   },

@@ -20,12 +20,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Search, Trash2, UserPlus, Users, Calendar, Phone, Mail, Briefcase, Eye} from "lucide-react"
+import { Edit, Search, Trash2, UserPlus, Users, Calendar, Phone, Mail, Briefcase, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllStaff, createStaff, updateStaff, deleteStaff } from "@/lib/redux/staffSlice"
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
 import { Staff, StaffRole, CreateStaffDto, UpdateStaffDto } from "@/lib/types/team-management"
+import { countries } from "@/lib/types/countries"
+import { Combobox } from "../ui/combobox"
 
 /**
  * Export a list of staff to CSV
@@ -63,9 +65,9 @@ export function exportStaffToCSV(staff: Staff[]) {
 
 export function StaffManagement() {
   const dispatch = useAppDispatch()
-  const { staff,error } = useAppSelector((state) => state.staff)
+  const { staff, error } = useAppSelector((state) => state.staff)
   const { teams } = useAppSelector((state) => state.teams)
-  
+
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTeam, setSelectedTeam] = useState("all")
   const [selectedRole, setSelectedRole] = useState("all")
@@ -88,7 +90,7 @@ export function StaffManagement() {
       toast.error(error)
     }
   }, [error])
-  
+
   const [newStaff, setNewStaff] = useState<CreateStaffDto & { selectedTeamId: number }>({
     firstName: "",
     lastName: "",
@@ -99,9 +101,9 @@ export function StaffManagement() {
     qualification: "",
     experience: "",
     rib: "", // Bank account information
+    cin: "", // Staff unique identification
+    nationality: "", // Staff nationality
     staffImageId: undefined, // Staff image ID
-    contractStartDate: "", // Contract start date
-    contractEndDate: "", // Contract end date
     teamId: teams?.[0]?.id || 0,
     // We'll use this for tracking team selection in UI but not send it in the API call
     selectedTeamId: teams?.[0]?.id || 0,
@@ -140,7 +142,7 @@ export function StaffManagement() {
     if (staff.team && staff.team.name) {
       return staff.team.name;
     }
-    
+
     // Fallback if no team is assigned
     return "Aucune équipe assignée";
   }
@@ -172,21 +174,21 @@ export function StaffManagement() {
         lastName: newStaff.lastName,
         role: newStaff.role,
         dateOfBirth: newStaff.dateOfBirth,
+        cin: newStaff.cin,
+        nationality: newStaff.nationality,
         phoneNumber: newStaff.phoneNumber,
         email: newStaff.email,
         qualification: newStaff.qualification,
         experience: newStaff.experience,
         rib: newStaff.rib,
         staffImageId: newStaff.staffImageId,
-        contractStartDate: newStaff.contractStartDate,
-        contractEndDate: newStaff.contractEndDate,
         teamId: newStaff.teamId // Use teamId, not selectedTeamId
       }
-      
+
       await dispatch(createStaff(staffData))
       toast.success("Membre du staff ajouté avec succès!")
       setIsAddDialogOpen(false)
-      
+
       // Reset form
       setNewStaff({
         firstName: "",
@@ -198,8 +200,8 @@ export function StaffManagement() {
         qualification: "",
         experience: "",
         rib: "",
-        contractStartDate: "",
-        contractEndDate: "",
+        cin: "",
+        nationality: "",
         teamId: teams?.[0]?.id || 0,
         selectedTeamId: teams?.[0]?.id || 0,
       })
@@ -301,6 +303,38 @@ export function StaffManagement() {
                     onChange={(e) => setNewStaff({ ...newStaff, lastName: e.target.value })}
                     placeholder="Entrez le nom"
                     required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Increased gap from 4 to 6 */}
+                {/* CIN Field - Full width on mobile, half on desktop */}
+                <div className="space-y-2">
+                  <Label htmlFor="cin">N° CIN | Passeport (unique*)</Label>
+                  <div className="flex gap-4"> {/* Added flex container for CIN and Passport */}
+                    <div className="flex-1"> {/* CIN input takes available space */}
+                      <Input
+                        id="cin"
+                        name="cin"
+                        placeholder="N° CIN | Passeport"
+                        value={newStaff.cin || ""}
+                        onChange={(e) => setNewStaff({ ...newStaff, cin: e.target.value })}
+                        className="w-full" /* Ensure full width */
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nationalité Field - Full width on mobile, half on desktop */}
+                <div className="space-y-2">
+                  <Label htmlFor="nationality">Nationalité</Label>
+                  <Combobox
+                    options={countries.map(c => ({ value: c.code, label: c.name }))}
+                    value={newStaff.nationality}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, nationality: value })}
+                    placeholder="Sélectionner une nationalité..."
+                    searchPlaceholder="Rechercher un pays..."
+                    emptyText="Aucun pays trouvé."
+                    className="w-full min-w-[250px]" /* Added min-width */
                   />
                 </div>
               </div>
@@ -768,13 +802,16 @@ export function StaffManagement() {
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Âge</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">{calculateAge(selectedStaff.dateOfBirth)} ans</p>
                 </div>
+                {/* CIN AND NATIONALITY */}
+
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Téléphone</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.phoneNumber || "—"}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">CIN | Passeport</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.cin || "—"}</p>
                 </div>
+
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.email || "—"}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nationalité</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.nationality || "—"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Équipe</p>
@@ -826,6 +863,38 @@ export function StaffManagement() {
                     onChange={(e) => setEditingStaff({ ...editingStaff, lastName: e.target.value })}
                     placeholder="Entrez le nom"
                     required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Increased gap from 4 to 6 */}
+                {/* CIN Field - Full width on mobile, half on desktop */}
+                <div className="space-y-2">
+                  <Label htmlFor="cin">CIN</Label>
+                  <div className="flex gap-4"> {/* Added flex container for CIN and Passport */}
+                    <div className="flex-1"> {/* CIN input takes available space */}
+                      <Input
+                        id="cin"
+                        name="cin"
+                        placeholder="N° CIN | Passeport"
+                        value={editingStaff.cin || ""}
+                        onChange={(e) => setEditingStaff({ ...editingStaff, cin: e.target.value })}
+                        className="w-full" /* Ensure full width */
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nationalité Field - Full width on mobile, half on desktop */}
+                <div className="space-y-2">
+                  <Label htmlFor="nationality">Nationalité</Label>
+                  <Combobox
+                    options={countries.map(c => ({ value: c.code, label: c.name }))}
+                    value={editingStaff.nationality}
+                    onValueChange={(value) => setEditingStaff({ ...editingStaff, nationality: value })}
+                    placeholder="Sélectionner une nationalité..."
+                    searchPlaceholder="Rechercher un pays..."
+                    emptyText="Aucun pays trouvé."
+                    className="w-full min-w-[250px]" /* Added min-width */
                   />
                 </div>
               </div>
