@@ -28,6 +28,7 @@ import { ClubSalaryPaymentsManagement } from "./Management/club-salary-payments-
 import { StockManagement } from "./Operations/stock-management"
 import { AllocationManagement } from "./Operations/allocation-management"
 import { ProfilePage } from "./profile-page"
+import { AssetInventoryManagement } from "./Operations/assets-inventory-management"
 
 export function SportsManagementApp() {
   const [currentPage, setCurrentPage] = useState("dashboard")
@@ -104,6 +105,8 @@ export function SportsManagementApp() {
         return <AssociationSettings />
       case "profile":
         return <ProfilePage />
+      case "asset-inventory":
+        return <AssetInventoryManagement />
       default:
         return <Dashboard />
     }

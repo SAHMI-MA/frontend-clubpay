@@ -188,7 +188,12 @@ export const navigationGroups = [
         title: "Gestion des fournisseurs",
         icon: Truck,
         id: "suppliers",
-      }
+      },
+      {
+        title: "BDC Interne",
+        icon: ClipboardList,
+        id: "allocation-management",
+      },
     ],
   },
   {
@@ -200,10 +205,10 @@ export const navigationGroups = [
         id: "stock-management",
       },
       {
-        title: "BDC Interne",
-        icon: ClipboardList,
-        id: "allocation-management",
-      },
+        title: "Inventaire des biens",
+        icon: Package,
+        id: "asset-inventory",
+      }
     ]
   },
   {

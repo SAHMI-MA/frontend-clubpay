@@ -20,47 +20,61 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Search, Trash2, UserPlus, Users, Calendar, Phone, Mail, Briefcase, Eye } from "lucide-react"
+import { Edit, Search, Trash2, UserPlus, Users, Calendar, Phone, Mail, Briefcase, Eye, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllStaff, createStaff, updateStaff, deleteStaff } from "@/lib/redux/staffSlice"
 import { fetchAllTeams } from "@/lib/redux/teamSlice"
-import { Staff, StaffRole, CreateStaffDto, UpdateStaffDto } from "@/lib/types/team-management"
+import { type Staff, StaffRole, type CreateStaffDto, type UpdateStaffDto } from "@/lib/types/team-management"
 import { countries } from "@/lib/types/countries"
 import { Combobox } from "../ui/combobox"
+import StaffProfilePDF from "@/lib/jsPDF/StaffProfilePDF"
 
 /**
  * Export a list of staff to CSV
  * @param staff Array of Staff objects
  */
 export function exportStaffToCSV(staff: Staff[]) {
-  const header = ['ID', 'First Name', 'Last Name', 'Role', 'Date of Birth', 'Phone', 'Email', 'Team', 'Qualification', 'Experience', 'Contract Start', 'Contract End'];
-  const rows = staff.map(member => [
+  const header = [
+    "ID",
+    "First Name",
+    "Last Name",
+    "Role",
+    "Date of Birth",
+    "Phone",
+    "Email",
+    "Team",
+    "Qualification",
+    "Experience",
+    "Contract Start",
+    "Contract End",
+  ]
+  const rows = staff.map((member) => [
     member.id,
     member.firstName,
     member.lastName,
     member.role,
     member.dateOfBirth,
-    member.phoneNumber || '',
-    member.email || '',
-    member.team?.name || '',
-    member.qualification || '',
-    member.experience || '',
-    member.contractStartDate || '',
-    member.contractEndDate || ''
-  ]);
+    member.phoneNumber || "",
+    member.email || "",
+    member.team?.name || "",
+    member.qualification || "",
+    member.experience || "",
+    member.contractStartDate || "",
+    member.contractEndDate || "",
+  ])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'staff.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "staff.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 export function StaffManagement() {
@@ -140,11 +154,11 @@ export function StaffManagement() {
   const getTeamName = (staff: Staff) => {
     // Check if staff has a team object
     if (staff.team && staff.team.name) {
-      return staff.team.name;
+      return staff.team.name
     }
 
     // Fallback if no team is assigned
-    return "Aucune équipe assignée";
+    return "Aucune équipe assignée"
   }
 
   const calculateAge = (dateOfBirth: string) => {
@@ -182,7 +196,7 @@ export function StaffManagement() {
         experience: newStaff.experience,
         rib: newStaff.rib,
         staffImageId: newStaff.staffImageId,
-        teamId: newStaff.teamId // Use teamId, not selectedTeamId
+        teamId: newStaff.teamId, // Use teamId, not selectedTeamId
       }
 
       await dispatch(createStaff(staffData))
@@ -255,6 +269,18 @@ export function StaffManagement() {
     }))
     .filter((item) => item.count > 0)
 
+  /**
+   * Generate a professional PDF staff information card
+   * @param staff Staff member object
+   */
+  const generateStaffPDF = (staff: Staff) => {
+    try {
+      StaffProfilePDF({ staff, teamName: getTeamName(staff) || "" })
+    } catch (error) {
+      console.error("Error generating staff PDF:", error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Export Staff CSV Button */}
@@ -306,12 +332,18 @@ export function StaffManagement() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Increased gap from 4 to 6 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {" "}
+                {/* Increased gap from 4 to 6 */}
                 {/* CIN Field - Full width on mobile, half on desktop */}
                 <div className="space-y-2">
                   <Label htmlFor="cin">N° CIN | Passeport (unique*)</Label>
-                  <div className="flex gap-4"> {/* Added flex container for CIN and Passport */}
-                    <div className="flex-1"> {/* CIN input takes available space */}
+                  <div className="flex gap-4">
+                    {" "}
+                    {/* Added flex container for CIN and Passport */}
+                    <div className="flex-1">
+                      {" "}
+                      {/* CIN input takes available space */}
                       <Input
                         id="cin"
                         name="cin"
@@ -323,12 +355,11 @@ export function StaffManagement() {
                     </div>
                   </div>
                 </div>
-
                 {/* Nationalité Field - Full width on mobile, half on desktop */}
                 <div className="space-y-2">
                   <Label htmlFor="nationality">Nationalité</Label>
                   <Combobox
-                    options={countries.map(c => ({ value: c.code, label: c.name }))}
+                    options={countries.map((c) => ({ value: c.code, label: c.name }))}
                     value={newStaff.nationality}
                     onValueChange={(value) => setNewStaff({ ...newStaff, nationality: value })}
                     placeholder="Sélectionner une nationalité..."
@@ -342,7 +373,10 @@ export function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="role">Rôle *</Label>
-                  <Select value={newStaff.role} onValueChange={(value) => setNewStaff({ ...newStaff, role: value as StaffRole })}>
+                  <Select
+                    value={newStaff.role}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, role: value as StaffRole })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un rôle" />
                     </SelectTrigger>
@@ -359,7 +393,13 @@ export function StaffManagement() {
                   <Label htmlFor="team">Équipe *</Label>
                   <Select
                     value={newStaff.selectedTeamId?.toString()}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, selectedTeamId: parseInt(value), teamId: parseInt(value) })}
+                    onValueChange={(value) =>
+                      setNewStaff({
+                        ...newStaff,
+                        selectedTeamId: Number.parseInt(value),
+                        teamId: Number.parseInt(value),
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une équipe" />
@@ -461,7 +501,9 @@ export function StaffManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-l-4 border-l-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Nombre total de staff</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Nombre total de staff
+            </CardTitle>
             <Users className="h-4 w-4 text-blue-800" />
           </CardHeader>
           <CardContent>
@@ -476,9 +518,7 @@ export function StaffManagement() {
             <Calendar className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {roleDistribution.length}
-            </div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{roleDistribution.length}</div>
             <p className="text-xs text-orange-600 mt-1">Rôles différents</p>
           </CardContent>
         </Card>
@@ -490,7 +530,7 @@ export function StaffManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {staff.filter(s => s.experience && s.experience.length > 0).length}
+              {staff.filter((s) => s.experience && s.experience.length > 0).length}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Staff avec expérience</p>
           </CardContent>
@@ -587,7 +627,10 @@ export function StaffManagement() {
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
                                 {staff.staffImage?.url ? (
-                                  <AvatarImage src={staff.staffImage.url} alt={`${staff.firstName} ${staff.lastName}`} />
+                                  <AvatarImage
+                                    src={staff.staffImage.url || "/placeholder.svg"}
+                                    alt={`${staff.firstName} ${staff.lastName}`}
+                                  />
                                 ) : null}
                                 <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                                   {getInitials(staff.firstName, staff.lastName)}
@@ -631,9 +674,7 @@ export function StaffManagement() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <p className="text-sm text-gray-900 dark:text-gray-200">
-                                {staff.experience || "—"}
-                              </p>
+                              <p className="text-sm text-gray-900 dark:text-gray-200">{staff.experience || "—"}</p>
                               {staff.qualification && (
                                 <Badge variant="outline" className="mt-1 border-blue-500 text-blue-500 w-fit">
                                   {staff.qualification}
@@ -651,6 +692,16 @@ export function StaffManagement() {
                               >
                                 <span className="sr-only">Voir les détails</span>
                                 <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => generateStaffPDF(staff)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                                title="Générer PDF"
+                              >
+                                <span className="sr-only">Générer PDF</span>
+                                <FileText className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -724,17 +775,14 @@ export function StaffManagement() {
                 <div className="space-y-4">
                   {staff
                     .filter((staff) => staff.experience && staff.experience.length > 0)
-                    .sort(
-                      (a, b) =>
-                        a.experience!.length - b.experience!.length
-                    )
+                    .sort((a, b) => a.experience!.length - b.experience!.length)
                     .map((staff) => (
                       <div key={staff.id} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
                             {staff.staffImage?.url ? (
                               <AvatarImage
-                                src={staff.staffImage.url}
+                                src={staff.staffImage.url || "/placeholder.svg"}
                                 alt={`${staff.firstName} ${staff.lastName}`}
                               />
                             ) : null}
@@ -752,12 +800,8 @@ export function StaffManagement() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium">
-                            {staff.qualification || "Aucune qualification"}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {getTeamName(staff)}
-                          </p>
+                          <p className="text-sm font-medium">{staff.qualification || "Aucune qualification"}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{getTeamName(staff)}</p>
                         </div>
                       </div>
                     ))}
@@ -779,7 +823,10 @@ export function StaffManagement() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   {selectedStaff.staffImage?.url ? (
-                    <AvatarImage src={selectedStaff.staffImage.url} alt={`${selectedStaff.firstName} ${selectedStaff.lastName}`} />
+                    <AvatarImage
+                      src={selectedStaff.staffImage.url || "/placeholder.svg"}
+                      alt={`${selectedStaff.firstName} ${selectedStaff.lastName}`}
+                    />
                   ) : null}
                   <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg">
                     {getInitials(selectedStaff.firstName, selectedStaff.lastName)}
@@ -800,7 +847,9 @@ export function StaffManagement() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Âge</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{calculateAge(selectedStaff.dateOfBirth)} ans</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">
+                    {calculateAge(selectedStaff.dateOfBirth)} ans
+                  </p>
                 </div>
                 {/* CIN AND NATIONALITY */}
 
@@ -811,19 +860,23 @@ export function StaffManagement() {
 
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nationalité</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.nationality || "—"}</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">
+                    {selectedStaff.nationality || "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Équipe</p>
                   <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {selectedStaff.team ? selectedStaff.team.name : '—'}
+                    {selectedStaff.team ? selectedStaff.team.name : "—"}
                   </p>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Qualification</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">{selectedStaff.qualification || "—"}</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {selectedStaff.qualification || "—"}
+                </p>
               </div>
 
               <div>
@@ -832,6 +885,18 @@ export function StaffManagement() {
               </div>
             </div>
           )}
+          <DialogFooter>
+            <Button
+              onClick={() => selectedStaff && generateStaffPDF(selectedStaff)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Générer PDF
+            </Button>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -866,12 +931,18 @@ export function StaffManagement() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Increased gap from 4 to 6 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {" "}
+                {/* Increased gap from 4 to 6 */}
                 {/* CIN Field - Full width on mobile, half on desktop */}
                 <div className="space-y-2">
                   <Label htmlFor="cin">CIN</Label>
-                  <div className="flex gap-4"> {/* Added flex container for CIN and Passport */}
-                    <div className="flex-1"> {/* CIN input takes available space */}
+                  <div className="flex gap-4">
+                    {" "}
+                    {/* Added flex container for CIN and Passport */}
+                    <div className="flex-1">
+                      {" "}
+                      {/* CIN input takes available space */}
                       <Input
                         id="cin"
                         name="cin"
@@ -883,12 +954,11 @@ export function StaffManagement() {
                     </div>
                   </div>
                 </div>
-
                 {/* Nationalité Field - Full width on mobile, half on desktop */}
                 <div className="space-y-2">
                   <Label htmlFor="nationality">Nationalité</Label>
                   <Combobox
-                    options={countries.map(c => ({ value: c.code, label: c.name }))}
+                    options={countries.map((c) => ({ value: c.code, label: c.name }))}
                     value={editingStaff.nationality}
                     onValueChange={(value) => setEditingStaff({ ...editingStaff, nationality: value })}
                     placeholder="Sélectionner une nationalité..."
@@ -902,7 +972,10 @@ export function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="role">Rôle *</Label>
-                  <Select value={editingStaff.role} onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value as StaffRole })}>
+                  <Select
+                    value={editingStaff.role}
+                    onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value as StaffRole })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un rôle" />
                     </SelectTrigger>
@@ -919,7 +992,7 @@ export function StaffManagement() {
                   <Label htmlFor="team">Équipe *</Label>
                   <Select
                     value={editingStaff.team?.id.toString()}
-                    onValueChange={(value) => setEditingStaff({ ...editingStaff, teamId: parseInt(value) })}
+                    onValueChange={(value) => setEditingStaff({ ...editingStaff, teamId: Number.parseInt(value) })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une équipe" />
