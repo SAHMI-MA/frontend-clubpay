@@ -81,7 +81,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, Download, Upload, RefreshCw, MapPin, DollarSign, Activity } from 'lucide-react'
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, MapPin, DollarSign, Activity } from 'lucide-react'
 import { useStockManagement } from "@/hooks/use-stock-management"
 import { 
   Article, 
@@ -395,14 +395,6 @@ export function StockManagement() {
           <p className="text-gray-600 dark:text-gray-400">Gérer l'inventaire, suivre les mouvements et surveiller les niveaux de stock</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Exporter
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Importer
-          </Button>
           <Button 
             onClick={refreshData} 
             variant="outline" 

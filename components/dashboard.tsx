@@ -321,9 +321,9 @@ export function Dashboard() {
               </div>
             ) : upcomingMatches.length > 0 ? (
               <div className="space-y-4">
-                {upcomingMatches.map((match) => (
+                {upcomingMatches.map((match, index) => (
                   <div
-                    key={`match-${match.id}-${match.dateTime}`}
+                    key={`match-${match.id}-${match.dateTime}-${index}`}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
                     <div>
@@ -379,9 +379,9 @@ export function Dashboard() {
               </div>
             ) : alerts.length > 0 ? (
               <div className="space-y-4">
-                {alerts.map((alert) => (
+                {alerts.map((alert, index) => (
                   <div 
-                    key={`alert-${alert.id}-${alert.createdAt}`}
+                    key={`alert-${alert.id}-${alert.createdAt}-${index}`}
                     className={`flex items-start gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-opacity ${
                       alert.isRead ? 'opacity-60' : ''
                     } ${getAlertColorClass(alert.priority)}`}
@@ -502,9 +502,9 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentActivity.map((activity) => (
+                {recentActivity.map((activity, index) => (
                   <div 
-                    key={activity.id}
+                    key={index}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
                     <div>

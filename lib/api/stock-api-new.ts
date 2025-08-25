@@ -86,6 +86,23 @@ export interface StockMovement {
 }
 
 export interface Allocation {
+  durationType: string;
+  items: Array<{
+    id: number;
+    articleId: number;
+    articleName: string;
+    articleDescription?: string;
+    quantity: number;
+    unitPrice: string;
+    totalValue?: number | null;
+    stockBefore: number;
+    stockAfter: number;
+    notes?: string | null;
+    allocatedAt: string;
+    returnedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   id: number;
   allocationNumber: string;
   articleId: number;
@@ -159,7 +176,7 @@ export const stockApi = {
     category?: string;
     location?: string;
     isActive?: boolean;
-  }): Promise<{ data: Article[]; total: number }> {
+  }): Promise<Article[]> {
     const query = buildQuery(params);
     const res = await fetch(`${BASE_URL}/stock/articles${query}`, {
       headers: await getAuthHeaders(),
@@ -261,9 +278,10 @@ export const allocationApi = {
     allocationType?: string;
     entityType?: string;
     entityId?: number;
-  }): Promise<{ data: Allocation[]; total: number }> {
+  }): Promise<{data:Allocation[], total: number}> {
     const query = buildQuery(params);
-    const res = await fetch(`${BASE_URL}/stock/allocations${query}`, {
+    console.log('Allocation Query: ', query);
+    const res = await fetch(`${BASE_URL}/allocation-requests${query}`, {
       headers: await getAuthHeaders(),
     });
     if (!res.ok) throw await res.json();

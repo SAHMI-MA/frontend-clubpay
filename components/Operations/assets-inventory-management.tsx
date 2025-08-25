@@ -1,22 +1,20 @@
 "use client"
 
 import type React from "react"
+import { useEffect, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Package,
-  Plus,
   Search,
-  Edit,
-  Trash2,
   Eye,
   FileText,
   Monitor,
@@ -24,176 +22,245 @@ import {
   Car,
   Building,
   Wrench,
-  Calendar,
   MapPin,
-  DollarSign,
   BarChart3,
   TrendingUp,
   AlertTriangle,
+  History,
+  User,
+  Clock,
+  RefreshCw,
 } from "lucide-react"
 
-interface Asset {
-  id: number
-  name: string
-  reference: string
-  category: "Informatique" | "Mobilier" | "Véhicule" | "Équipement Sportif" | "Électronique" | "Autre"
-  location: string
-  purchaseDate: string
-  purchasePrice?: number
-  currentValue?: number
-  condition: "Excellent" | "Bon" | "Moyen" | "Mauvais" | "Hors Service"
-  supplier?: string
-  warrantyEndDate?: string
-  serialNumber?: string
-  description?: string
-  maintenanceDate?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-// PDF Generation Function
-
-
-import { useEffect, useState } from "react";
-import assetApi from "../../lib/api/AssetsAPI";
-import generateAssetPDF from "@/lib/jsPDF/AssetsFilePDF"
+// Import types and thunk
+import { fetchAllInventoryItems, InventoryItem, InventoryHistory } from "@/lib/redux/InventorySlice"
+import type { AppDispatch, RootState } from "@/lib/redux/store"
+import { associationAPI, AssociationSettings } from "@/lib/api/association-api"
+import { generateInventoryItemPDF } from "@/lib/jsPDF/InventoryFilePDF"
 
 export function AssetInventoryManagement() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [conditionFilter, setConditionFilter] = useState<string>("all");
-  const [locationFilter, setLocationFilter] = useState<string>("all");
-  const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
-  const [isEditAssetOpen, setIsEditAssetOpen] = useState(false);
-  const [isViewAssetOpen, setIsViewAssetOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const dispatch = useDispatch<AppDispatch>()
 
-  // Fetch assets from API
+  // Fixed: Access inventory state directly as array
+  const inventoryItems: InventoryItem[] = useSelector((state: RootState) => state.inventory || []);
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [activeTab, setActiveTab] = useState("overview")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [locationFilter, setLocationFilter] = useState<string>("all")
+  const [isViewItemOpen, setIsViewItemOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [pdfExportProgress, setPdfExportProgress] = useState({ current: 0, total: 0 })
+  const [showPDFExportDialog, setShowPDFExportDialog] = useState(false)
+  const [clubInfo, setClubInfo] = useState<AssociationSettings | null>(null)
+
   useEffect(() => {
-    async function fetchAssets() {
+    const fetchClubInfo = async () => {
       try {
-        const response = await assetApi.getAssets();
-        setAssets(response.assets);
+        const info = await associationAPI.getSettings()
+        setClubInfo(info)
       } catch (error) {
-        console.error("Failed to fetch assets", error);
+        console.warn('Could not fetch club info, using defaults', error)
       }
     }
-    fetchAssets();
-  }, []);
 
-  // Filter assets
-  const filteredAssets = assets.filter((asset) => {
+    fetchClubInfo()
+  }, [])
+
+  async function handleSingleItemPDF(item: InventoryItem): Promise<void> {
+    try{
+      setIsGeneratingPDF(true);
+      setPdfExportProgress({ current: pdfExportProgress.current + 1, total: pdfExportProgress.total });
+      await generateInventoryItemPDF(item, clubInfo);
+    } catch (error) {
+      console.error('Error generating PDF for item:', item, error);
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfExportProgress({ current: pdfExportProgress.current , total: pdfExportProgress.total + 1 });
+    }
+
+  }
+
+  const PDFExportProgressDialog = () => (
+    <Dialog open={showPDFExportDialog} onOpenChange={setShowPDFExportDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Génération des PDFs
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Progression
+            </span>
+            <span className="text-sm font-medium">
+              {pdfExportProgress.current} / {pdfExportProgress.total}
+            </span>
+          </div>
+          
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ 
+                width: `${pdfExportProgress.total > 0 ? (pdfExportProgress.current / pdfExportProgress.total) * 100 : 0}%` 
+              }}
+            />
+          </div>
+
+          {pdfExportProgress.current === pdfExportProgress.total && pdfExportProgress.total > 0 && (
+            <div className="flex items-center gap-2 text-green-600">
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-sm">Tous les PDFs ont été générés avec succès!</span>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+
+
+  // Fetch inventory items on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        await dispatch(fetchAllInventoryItems()).unwrap()
+      } catch (err: any) {
+        console.error('Error fetching inventory:', err)
+        setError(err?.message || 'Erreur lors du chargement')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Only fetch if we don't have data
+    if (!inventoryItems.length) {
+      fetchData()
+    }
+  }, [dispatch, inventoryItems.length])
+
+  // Debug logging
+  console.log('Inventory state:', { inventoryItems, loading, error })
+
+  // Filter inventory items - add safety check
+  const filteredItems = Array.isArray(inventoryItems) ? inventoryItems.filter((item: InventoryItem) => {
     const matchesSearch =
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || asset.category === categoryFilter
-    const matchesCondition = conditionFilter === "all" || asset.condition === conditionFilter
-    const matchesLocation = locationFilter === "all" || asset.location === locationFilter
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.code?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return matchesSearch && matchesCategory && matchesCondition && matchesLocation
-  })
+    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter
+    const matchesLocation = locationFilter === "all" || item.location === locationFilter
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "active" ? item.isActive : !item.isActive)
 
-  // Get unique locations for filter
-  const uniqueLocations = Array.from(new Set(assets.map((asset) => asset.location)))
+    return matchesSearch && matchesCategory && matchesLocation && matchesStatus
+  }) : []
 
-  // Calculate dashboard stats
-  const totalAssets = assets.length
-  const activeAssets = assets.filter((a) => a.isActive).length
-  const totalValue = assets.reduce((sum, asset) => sum + (Number(asset.currentValue) || 0), 0)
-  const maintenanceNeeded = assets.filter(
-    (a) => a.maintenanceDate && new Date(a.maintenanceDate) < new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-  ).length
+  // Get unique locations for filter - add safety check
+  const uniqueLocations = Array.from(new Set(
+    Array.isArray(inventoryItems)
+      ? inventoryItems
+        .map((item: InventoryItem) => item.location)
+        .filter(Boolean)
+      : []
+  )) as string[]
 
-  // Get category icon
-  const getCategoryIcon = (category: string) => {
-    const icons = {
-      Informatique: Monitor,
-      Mobilier: Building,
-      Véhicule: Car,
-      "Équipement Sportif": Package,
-      Électronique: Smartphone,
-      Autre: Wrench,
-    }
-    return icons[category as keyof typeof icons] || Package
-  }
+  // Get unique categories for filter - add safety check
+  const uniqueCategories = Array.from(new Set(
+    Array.isArray(inventoryItems)
+      ? inventoryItems.map((item: InventoryItem) => item.category)
+      : []
+  )) as string[]
 
-  // Get category color
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      Informatique: "bg-blue-100 text-blue-800",
-      Mobilier: "bg-green-100 text-green-800",
-      Véhicule: "bg-purple-100 text-purple-800",
-      "Équipement Sportif": "bg-orange-100 text-orange-800",
-      Électronique: "bg-red-100 text-red-800",
-      Autre: "bg-gray-100 text-gray-800",
-    }
-    return colors[category as keyof typeof colors] || colors["Autre"]
-  }
+  // Calculate dashboard stats - add safety checks
+  const totalItems = Array.isArray(inventoryItems) ? inventoryItems.length : 0
+  const activeItems = Array.isArray(inventoryItems)
+    ? inventoryItems.filter((item: InventoryItem) => item.isActive).length
+    : 0
+  const allocatedItems = Array.isArray(inventoryItems)
+    ? inventoryItems.filter((item: InventoryItem) =>
+      (Array.isArray(item.allocationHistory) &&
+        item.allocationHistory.some((h: InventoryHistory) => ['In Use', 'Approved'].includes(h.status))) ||
+      (Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0)
+    ).length
+    : 0
+  const pendingAllocations = Array.isArray(inventoryItems)
+    ? inventoryItems.reduce((sum: number, item: InventoryItem) => {
+      const historyPending = Array.isArray(item.allocationHistory)
+        ? item.allocationHistory.filter((h: InventoryHistory) => h.status === 'Pending').length
+        : 0
+      const currentPending = Array.isArray(item.inUserAllocation)
+        ? item.inUserAllocation.filter((h: InventoryHistory) => h.status === 'Pending').length
+        : 0
+      return sum + historyPending + currentPending
+    }, 0)
+    : 0
 
-  // Get condition color
-  const getConditionColor = (condition: string) => {
-    const colors = {
-      Excellent: "bg-green-100 text-green-800",
-      Bon: "bg-blue-100 text-blue-800",
-      Moyen: "bg-yellow-100 text-yellow-800",
-      Mauvais: "bg-red-100 text-red-800",
-      "Hors Service": "bg-gray-100 text-gray-800",
-    }
-    return colors[condition as keyof typeof colors] || colors["Moyen"]
-  }
 
-  // Handle add asset
-  const handleAddAsset = async (assetData: Partial<Asset>) => {
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      const newAsset = await assetApi.createAsset(assetData as any);
-      setAssets((prev) => [...prev, newAsset]);
-      setIsAddAssetOpen(false);
-    } catch (error) {
-      console.error("Failed to add asset", error);
+      await dispatch(fetchAllInventoryItems()).unwrap()
+    } catch (err: any) {
+      console.error('Error refreshing inventory:', err)
+      setError(err?.message || 'Erreur lors du chargement')
+    } finally {
+      setLoading(false)
     }
-  };
-
-  // Handle edit asset
-  const handleEditAsset = (asset: Asset) => {
-    setEditingAsset(asset)
-    setIsEditAssetOpen(true)
   }
 
-  // Handle update asset
-  const handleUpdateAsset = async (assetData: Partial<Asset>) => {
-    if (editingAsset) {
-      try {
-        const updated = await assetApi.updateAsset(editingAsset.id, assetData as any);
-        setAssets((prev) =>
-          prev.map((asset) => (asset.id === editingAsset.id ? updated : asset))
-        );
-        setIsEditAssetOpen(false);
-        setEditingAsset(null);
-      } catch (error) {
-        console.error("Failed to update asset", error);
-      }
-    }
-  };
+  // Handle view item
+  const handleViewItem = (item: InventoryItem) => {
+    setSelectedItem(item)
+    setIsViewItemOpen(true)
+  }
 
-  // Handle delete asset
-  const handleDeleteAsset = async (assetId: number) => {
-    try {
-      await assetApi.deleteAsset(assetId);
-      setAssets((prev) => prev.filter((asset) => asset.id !== assetId));
-    } catch (error) {
-      console.error("Failed to delete asset", error);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2">Chargement de l'inventaire...</span>
+      </div>
+    )
+  }
 
-  // Handle view asset
-  const handleViewAsset = (asset: Asset) => {
-    setSelectedAsset(asset)
-    setIsViewAssetOpen(true)
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-red-600">
+        <AlertTriangle className="h-8 w-8 mr-2" />
+        <span>Erreur lors du chargement: {error}</span>
+        <Button onClick={handleRefresh} className="mt-4" variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </Button>
+      </div>
+    )
+  }
+
+  if (!Array.isArray(inventoryItems) || inventoryItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+        <Package className="h-12 w-12 mb-4 opacity-50" />
+        <span>Aucun équipement trouvé</span>
+        <Button onClick={handleRefresh} className="mt-4" variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualiser
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -202,23 +269,15 @@ export function AssetInventoryManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Inventaire des Biens</h1>
-          <p className="text-muted-foreground">Gérez l'inventaire des biens et équipements</p>
+          <p className="text-muted-foreground">Visualisation et suivi des Biens et allocations</p>
         </div>
-        <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouveau Bien
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Ajouter un Nouveau Bien</DialogTitle>
-            </DialogHeader>
-            <AssetForm onSave={handleAddAsset} onCancel={() => setIsAddAssetOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleRefresh} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Actualiser
+        </Button>
       </div>
+      {/* PDF Export Progress Dialog */}
+      <PDFExportProgressDialog />
 
       {/* Dashboard Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -227,8 +286,8 @@ export function AssetInventoryManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Biens</p>
-                <p className="text-2xl font-bold">{totalAssets}</p>
-                <p className="text-xs text-muted-foreground">{activeAssets} actifs</p>
+                <p className="text-2xl font-bold">{totalItems}</p>
+                <p className="text-xs text-muted-foreground">{activeItems} actifs</p>
               </div>
               <Package className="h-8 w-8 text-blue-600" />
             </div>
@@ -239,14 +298,14 @@ export function AssetInventoryManagement() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Valeur Totale</p>
-                <p className="text-2xl font-bold">{totalValue.toLocaleString()} MAD</p>
+                <p className="text-sm font-medium text-muted-foreground">Biens Alloués</p>
+                <p className="text-2xl font-bold">{allocatedItems}</p>
                 <p className="text-xs text-green-600 flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
-                  Patrimoine
+                  En utilisation
                 </p>
               </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <User className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -255,11 +314,11 @@ export function AssetInventoryManagement() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Maintenance</p>
-                <p className="text-2xl font-bold text-orange-600">{maintenanceNeeded}</p>
-                <p className="text-xs text-muted-foreground">À prévoir</p>
+                <p className="text-sm font-medium text-muted-foreground">Allocations Pendantes</p>
+                <p className="text-2xl font-bold text-orange-600">{pendingAllocations}</p>
+                <p className="text-xs text-muted-foreground">En attente</p>
               </div>
-              <Wrench className="h-8 w-8 text-orange-600" />
+              <Clock className="h-8 w-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -289,9 +348,9 @@ export function AssetInventoryManagement() {
             <BarChart3 className="h-4 w-4" />
             Par Catégorie
           </TabsTrigger>
-          <TabsTrigger value="maintenance" className="flex items-center gap-2">
-            <Wrench className="h-4 w-4" />
-            Maintenance
+          <TabsTrigger value="allocations" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Allocations
           </TabsTrigger>
         </TabsList>
 
@@ -303,7 +362,7 @@ export function AssetInventoryManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Rechercher par nom, référence ou emplacement..."
+                  placeholder="Rechercher par nom, code ou emplacement..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -316,25 +375,21 @@ export function AssetInventoryManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes catégories</SelectItem>
-                <SelectItem value="Informatique">Informatique</SelectItem>
-                <SelectItem value="Mobilier">Mobilier</SelectItem>
-                <SelectItem value="Véhicule">Véhicule</SelectItem>
-                <SelectItem value="Équipement Sportif">Équipement Sportif</SelectItem>
-                <SelectItem value="Électronique">Électronique</SelectItem>
-                <SelectItem value="Autre">Autre</SelectItem>
+                {uniqueCategories.map((category: string) => (
+                  <SelectItem key={category} value={category}>
+                    {category.replace('_', ' ')}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <Select value={conditionFilter} onValueChange={setConditionFilter}>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="État" />
+                <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous états</SelectItem>
-                <SelectItem value="Excellent">Excellent</SelectItem>
-                <SelectItem value="Bon">Bon</SelectItem>
-                <SelectItem value="Moyen">Moyen</SelectItem>
-                <SelectItem value="Mauvais">Mauvais</SelectItem>
-                <SelectItem value="Hors Service">Hors Service</SelectItem>
+                <SelectItem value="all">Tous statuts</SelectItem>
+                <SelectItem value="active">Actif</SelectItem>
+                <SelectItem value="inactive">Inactif</SelectItem>
               </SelectContent>
             </Select>
             <Select value={locationFilter} onValueChange={setLocationFilter}>
@@ -343,7 +398,7 @@ export function AssetInventoryManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous emplacements</SelectItem>
-                {uniqueLocations.map((location) => (
+                {uniqueLocations.map((location: string) => (
                   <SelectItem key={location} value={location}>
                     {location}
                   </SelectItem>
@@ -352,12 +407,12 @@ export function AssetInventoryManagement() {
             </Select>
           </div>
 
-          {/* Assets Table */}
+          {/* Items Table */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Biens ({filteredAssets.length})
+                Biens ({filteredItems.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -366,71 +421,115 @@ export function AssetInventoryManagement() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-2">Nom</th>
-                      <th className="text-left p-2">Référence</th>
+                      <th className="text-left p-2">Code</th>
                       <th className="text-left p-2">Catégorie</th>
                       <th className="text-left p-2">Emplacement</th>
-                      <th className="text-left p-2">Date d'Achat</th>
-                      <th className="text-left p-2">État</th>
-                      <th className="text-left p-2">Valeur</th>
+                      <th className="text-left p-2">Unité</th>
+                      <th className="text-left p-2">Statut</th>
+                      <th className="text-left p-2">Allocations</th>
+                      <th className="text-left p-2">Dernière Allocation</th>
                       <th className="text-left p-2">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAssets.map((asset) => {
-                      const CategoryIcon = getCategoryIcon(asset.category)
+                    {filteredItems.map((item: InventoryItem) => {
+                      const CategoryIcon = getCategoryIcon(item.category)
+                      const activeAllocations = Array.isArray(item.allocationHistory)
+                        ? item.allocationHistory.filter((h: InventoryHistory) =>
+                          ['In Use', 'Approved'].includes(h.status)
+                        ).length
+                        : 0
                       return (
-                        <tr key={asset.id} className="border-b hover:bg-gray-50">
+                        <tr key={item.id} className="border-b hover:bg-gray-50">
                           <td className="p-2">
                             <div className="flex items-center gap-2">
                               <CategoryIcon className="h-4 w-4 text-muted-foreground" />
                               <div>
-                                <p className="font-medium">{asset.name}</p>
-                                {asset.serialNumber && (
-                                  <p className="text-xs text-muted-foreground">S/N: {asset.serialNumber}</p>
-                                )}
+                                <p className="font-medium">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.description}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="p-2 font-mono text-sm">{asset.reference}</td>
+                          <td className="p-2 font-mono text-sm">
+                            {item.code}
+                          </td>
                           <td className="p-2">
-                            <Badge className={getCategoryColor(asset.category)}>{asset.category}</Badge>
+                            <Badge className={getCategoryColor(item.category)}>
+                              {item.category.replace('_', ' ')}
+                            </Badge>
                           </td>
                           <td className="p-2">
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3 text-muted-foreground" />
-                              {asset.location}
+                              {item.location || '-'}
                             </div>
                           </td>
-                          <td className="p-2 text-sm">{new Date(asset.purchaseDate).toLocaleDateString("fr-FR")}</td>
+                          <td className="p-2 text-sm">{item.unit}</td>
                           <td className="p-2">
-                            <Badge className={getConditionColor(asset.condition)}>{asset.condition}</Badge>
+                            <Badge className={item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                              {item.isActive ? 'Actif' : 'Inactif'}
+                            </Badge>
                           </td>
-                          <td className="p-2 font-medium">
-                            {asset.currentValue ? `${asset.currentValue.toLocaleString()} MAD` : "-"}
+                          <td className="p-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {(Array.isArray(item.allocationHistory) ? item.allocationHistory.length : 0) +
+                                  (Array.isArray(item.inUserAllocation) ? item.inUserAllocation.length : 0)}
+                              </span>
+                              {activeAllocations > 0 && (
+                                <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                  {activeAllocations} en cours
+                                </Badge>
+                              )}
+                              {Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0 && (
+                                <Badge className="bg-green-100 text-green-800 text-xs">
+                                  {item.inUserAllocation.length} actuelle(s)
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="font-medium">{item.inUserAllocation.length !== 0 ?
+                                  item.inUserAllocation.sort((a, b) => a.allocatedAt > b.allocatedAt ? -1 : 1)[0]?.entityName : 'N/A'
+                                }</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0
+                                    ? (() => {
+                                      const sorted = item.inUserAllocation.sort((a, b) => a.allocatedAt > b.allocatedAt ? -1 : 1);
+                                      const allocatedAt = sorted[0]?.allocatedAt;
+                                      return allocatedAt
+                                        ? typeof allocatedAt === "string" || typeof allocatedAt === "number"
+                                          ? allocatedAt
+                                          : new Date(allocatedAt).toLocaleDateString('fr-FR')
+                                        : 'N/A';
+                                    })()
+                                    : 'N/A'
+                                  }
+                                </p>
+                              </div>
+                            </div>
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => handleViewAsset(asset)}>
+                              <Button size="sm" variant="ghost" onClick={() => handleViewItem(item)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleEditAsset(asset)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => generateAssetPDF(asset)}
                                 className="text-blue-600 hover:text-blue-700"
+                                onClick={() => handleSingleItemPDF(item)}
+                                disabled={isGeneratingPDF}
+                                title={`Générer PDF pour ${item.name}`}
                               >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-red-600"
-                                onClick={() => handleDeleteAsset(asset.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
+                                {isGeneratingPDF ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FileText className="h-4 w-4" />
+                                )}
                               </Button>
                             </div>
                           </td>
@@ -447,32 +546,35 @@ export function AssetInventoryManagement() {
         {/* Categories Tab */}
         <TabsContent value="categories" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {["Informatique", "Mobilier", "Véhicule", "Équipement Sportif", "Électronique", "Autre"].map((category) => {
-              const categoryAssets = assets.filter((asset) => asset.category === category)
+            {uniqueCategories.map((category: string) => {
+              const categoryItems = inventoryItems.filter((item: InventoryItem) => item.category === category)
               const CategoryIcon = getCategoryIcon(category)
-              const totalCategoryValue = categoryAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0)
+              const allocatedInCategory = categoryItems.filter((item: InventoryItem) =>
+                Array.isArray(item.allocationHistory) &&
+                item.allocationHistory.some((h: InventoryHistory) => ['In Use', 'Approved'].includes(h.status))
+              ).length
 
               return (
                 <Card key={category}>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <CategoryIcon className="h-5 w-5" />
-                      {category}
+                      {category.replace('_', ' ')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Nombre:</span>
-                        <span className="font-medium">{categoryAssets.length}</span>
+                        <span className="font-medium">{categoryItems.length}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Valeur totale:</span>
-                        <span className="font-medium">{totalCategoryValue.toLocaleString()} MAD</span>
+                        <span className="text-sm text-muted-foreground">Alloués:</span>
+                        <span className="font-medium">{allocatedInCategory}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Actifs:</span>
-                        <span className="font-medium">{categoryAssets.filter((a) => a.isActive).length}</span>
+                        <span className="font-medium">{categoryItems.filter((item: InventoryItem) => item.isActive).length}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -482,111 +584,141 @@ export function AssetInventoryManagement() {
           </div>
         </TabsContent>
 
-        {/* Maintenance Tab */}
-        <TabsContent value="maintenance" className="space-y-4">
+        {/* Allocations Tab */}
+        <TabsContent value="allocations" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Wrench className="h-5 w-5" />
-                Suivi de Maintenance
+                <History className="h-5 w-5" />
+                Historique des Allocations
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {assets
-                  .filter((asset) => asset.maintenanceDate || asset.warrantyEndDate)
-                  .map((asset) => {
-                    const needsMaintenance =
-                      asset.maintenanceDate &&
-                      new Date(asset.maintenanceDate) < new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-                    const warrantyExpiring =
-                      asset.warrantyEndDate &&
-                      new Date(asset.warrantyEndDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                {inventoryItems
+                  .filter((item: InventoryItem) =>
+                    (Array.isArray(item.allocationHistory) && item.allocationHistory.length > 0) ||
+                    (Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0)
+                  )
+                  .map((item: InventoryItem) => {
+                    const totalAllocations = (Array.isArray(item.allocationHistory) ? item.allocationHistory.length : 0) +
+                      (Array.isArray(item.inUserAllocation) ? item.inUserAllocation.length : 0)
 
                     return (
-                      <div key={asset.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between">
+                      <div key={item.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <div>
-                              <p className="font-medium">{asset.name}</p>
-                              <p className="text-sm text-muted-foreground">{asset.reference}</p>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">{item.code}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {needsMaintenance && (
-                              <Badge className="bg-orange-100 text-orange-800">
-                                <AlertTriangle className="h-3 w-3 mr-1" />
-                                Maintenance due
-                              </Badge>
-                            )}
-                            {warrantyExpiring && (
-                              <Badge className="bg-red-100 text-red-800">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                Garantie expire
-                              </Badge>
-                            )}
+                          <Badge className="text-xs">
+                            {totalAllocations} allocation(s)
+                          </Badge>
+                        </div>
+
+                        {/* Current Allocations (inUserAllocation) */}
+                        {Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0 && (
+                          <div className="mb-4">
+                            <h5 className="text-sm font-medium text-green-600 mb-2 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              Allocations Actuelles ({item.inUserAllocation.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {item.inUserAllocation.slice(0, 3).map((history: InventoryHistory, index: number) => (
+                                <div key={`current-${index}`} className="flex items-center justify-between text-sm border-l-4 border-green-500 pl-3 bg-green-50">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{history.reference}</span>
+                                    <span className="text-muted-foreground">→ {history.entityName || history.user}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={`text-xs ${getStatusColor(history.status)}`}>
+                                      {history.status === 'In Use' ? 'En Utilisation' : ''}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {history.allocationType} • {history.allocationDuration}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                              {item.inUserAllocation.length > 3 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs text-green-600"
+                                  onClick={() => handleViewItem(item)}
+                                >
+                                  Voir toutes les allocations actuelles ({item.inUserAllocation.length})
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                          {asset.maintenanceDate && (
-                            <div>
-                              <span className="text-muted-foreground">Dernière maintenance:</span>
-                              <span className="ml-2">
-                                {new Date(asset.maintenanceDate).toLocaleDateString("fr-FR")}
-                              </span>
+                        )}
+
+                        {/* Historical Allocations */}
+                        {Array.isArray(item.allocationHistory) && item.allocationHistory.length > 0 && (
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-1">
+                              <History className="h-3 w-3" />
+                              Historique ({item.allocationHistory.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {item.allocationHistory.slice(0, 3).map((history: InventoryHistory, index: number) => (
+                                <div key={`history-${index}`} className="flex items-center justify-between text-sm border-l-2 border-gray-200 pl-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{history.reference}</span>
+                                    <span className="text-muted-foreground">→ {history.entityName || history.user}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={`text-xs ${getStatusColor(history.status)}`}>
+                                      {history.status === "In Use" ? 'En Utilisation' : "Rendu"}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {history.allocationType} • {history.allocationDuration}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                              {item.allocationHistory.length > 3 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs text-blue-600"
+                                  onClick={() => handleViewItem(item)}
+                                >
+                                  Voir tout l'historique ({item.allocationHistory.length})
+                                </Button>
+                              )}
                             </div>
-                          )}
-                          {asset.warrantyEndDate && (
-                            <div>
-                              <span className="text-muted-foreground">Fin de garantie:</span>
-                              <span className="ml-2">
-                                {new Date(asset.warrantyEndDate).toLocaleDateString("fr-FR")}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
-                {assets.filter((asset) => asset.maintenanceDate || asset.warrantyEndDate).length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Wrench className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Aucune information de maintenance disponible</p>
-                  </div>
-                )}
+                {inventoryItems.filter((item: InventoryItem) =>
+                  (Array.isArray(item.allocationHistory) && item.allocationHistory.length > 0) ||
+                  (Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0)
+                ).length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Aucun historique d'allocation disponible</p>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* View Asset Dialog */}
-      {selectedAsset && (
-        <Dialog open={isViewAssetOpen} onOpenChange={setIsViewAssetOpen}>
-          <DialogContent className="max-w-2xl">
+      {/* View Item Dialog */}
+      {selectedItem && (
+        <Dialog open={isViewItemOpen} onOpenChange={setIsViewItemOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Détails du Bien</DialogTitle>
+              <DialogTitle>Détails de l'Équipement</DialogTitle>
             </DialogHeader>
-            <AssetDetails asset={selectedAsset} onGeneratePDF={() => generateAssetPDF(selectedAsset)} />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Edit Asset Dialog */}
-      {editingAsset && (
-        <Dialog open={isEditAssetOpen} onOpenChange={setIsEditAssetOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Modifier le Bien</DialogTitle>
-            </DialogHeader>
-            <AssetForm
-              asset={editingAsset}
-              onSave={handleUpdateAsset}
-              onCancel={() => {
-                setIsEditAssetOpen(false)
-                setEditingAsset(null)
-              }}
-            />
+            <ItemDetails item={selectedItem} />
           </DialogContent>
         </Dialog>
       )}
@@ -594,318 +726,165 @@ export function AssetInventoryManagement() {
   )
 }
 
-// Asset Form Component
-function AssetForm({
-  asset,
-  onSave,
-  onCancel,
-}: {
-  asset?: Asset
-  onSave: (data: Partial<Asset>) => void
-  onCancel: () => void
-}) {
-  const [formData, setFormData] = useState({
-    name: asset?.name || "",
-    reference: asset?.reference || "",
-    category: asset?.category || "Autre",
-    location: asset?.location || "",
-    purchaseDate: asset?.purchaseDate || "",
-    purchasePrice: asset?.purchasePrice || "",
-    currentValue: asset?.currentValue || "",
-    condition: asset?.condition || "Bon",
-    supplier: asset?.supplier || "",
-    warrantyEndDate: asset?.warrantyEndDate || "",
-    serialNumber: asset?.serialNumber || "",
-    description: asset?.description || "",
-    maintenanceDate: asset?.maintenanceDate || "",
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave({
-      ...formData,
-      purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
-      currentValue: formData.currentValue ? Number(formData.currentValue) : undefined,
-    })
-  }
+// Item Details Component
+function ItemDetails({ item }: { item: InventoryItem }) {
+  const CategoryIcon = getCategoryIcon(item.category)
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <CategoryIcon className="h-8 w-8 text-blue-600" />
         <div>
-          <Label htmlFor="name">Nom du bien *</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-            required
-          />
+          <h3 className="text-xl font-bold">{item.name}</h3>
+          <p className="text-muted-foreground">{item.code}</p>
         </div>
-        <div>
-          <Label htmlFor="reference">Référence *</Label>
-          <Input
-            id="reference"
-            value={formData.reference}
-            onChange={(e) => setFormData((prev) => ({ ...prev, reference: e.target.value }))}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="category">Catégorie *</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value as any }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Informatique">Informatique</SelectItem>
-              <SelectItem value="Mobilier">Mobilier</SelectItem>
-              <SelectItem value="Véhicule">Véhicule</SelectItem>
-              <SelectItem value="Équipement Sportif">Équipement Sportif</SelectItem>
-              <SelectItem value="Électronique">Électronique</SelectItem>
-              <SelectItem value="Autre">Autre</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="condition">État *</Label>
-          <Select
-            value={formData.condition}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, condition: value as any }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Excellent">Excellent</SelectItem>
-              <SelectItem value="Bon">Bon</SelectItem>
-              <SelectItem value="Moyen">Moyen</SelectItem>
-              <SelectItem value="Mauvais">Mauvais</SelectItem>
-              <SelectItem value="Hors Service">Hors Service</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="location">Emplacement *</Label>
-          <Input
-            id="location"
-            value={formData.location}
-            onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="purchaseDate">Date d'achat *</Label>
-          <Input
-            id="purchaseDate"
-            type="date"
-            value={formData.purchaseDate}
-            onChange={(e) => setFormData((prev) => ({ ...prev, purchaseDate: e.target.value }))}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="purchasePrice">Prix d'achat (MAD)</Label>
-          <Input
-            id="purchasePrice"
-            type="number"
-            value={formData.purchasePrice}
-            onChange={(e) => setFormData((prev) => ({ ...prev, purchasePrice: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="currentValue">Valeur actuelle (MAD)</Label>
-          <Input
-            id="currentValue"
-            type="number"
-            value={formData.currentValue}
-            onChange={(e) => setFormData((prev) => ({ ...prev, currentValue: e.target.value }))}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="supplier">Fournisseur</Label>
-          <Input
-            id="supplier"
-            value={formData.supplier}
-            onChange={(e) => setFormData((prev) => ({ ...prev, supplier: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="serialNumber">Numéro de série</Label>
-          <Input
-            id="serialNumber"
-            value={formData.serialNumber}
-            onChange={(e) => setFormData((prev) => ({ ...prev, serialNumber: e.target.value }))}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="warrantyEndDate">Fin de garantie</Label>
-          <Input
-            id="warrantyEndDate"
-            type="date"
-            value={formData.warrantyEndDate}
-            onChange={(e) => setFormData((prev) => ({ ...prev, warrantyEndDate: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="maintenanceDate">Dernière maintenance</Label>
-          <Input
-            id="maintenanceDate"
-            type="date"
-            value={formData.maintenanceDate}
-            onChange={(e) => setFormData((prev) => ({ ...prev, maintenanceDate: e.target.value }))}
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          rows={3}
-        />
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
-        </Button>
-        <Button type="submit">{asset ? "Modifier" : "Créer"}</Button>
-      </div>
-    </form>
-  )
-}
-
-// Asset Details Component
-function AssetDetails({
-  asset,
-  onGeneratePDF,
-}: {
-  asset: Asset
-  onGeneratePDF: () => void
-}) {
-  const CategoryIcon = getCategoryIcon(asset.category)
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CategoryIcon className="h-8 w-8 text-blue-600" />
-          <div>
-            <h3 className="text-xl font-bold">{asset.name}</h3>
-            <p className="text-muted-foreground">{asset.reference}</p>
-          </div>
-        </div>
-        <Button onClick={onGeneratePDF} className="gap-2">
-          <FileText className="h-4 w-4" />
-          Générer PDF
-        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Catégorie</Label>
-          <p className="font-medium">{asset.category}</p>
+          <p className="font-medium">{item.category.replace('_', ' ')}</p>
         </div>
         <div>
-          <Label>État</Label>
-          <Badge className={getConditionColor(asset.condition)}>{asset.condition}</Badge>
+          <Label>Unité</Label>
+          <p className="font-medium">{item.unit}</p>
         </div>
         <div>
           <Label>Emplacement</Label>
-          <p className="font-medium">{asset.location}</p>
+          <p className="font-medium">{item.location || '-'}</p>
         </div>
         <div>
-          <Label>Date d'achat</Label>
-          <p className="font-medium">{new Date(asset.purchaseDate).toLocaleDateString("fr-FR")}</p>
+          <Label>Fournisseur</Label>
+          <p className="font-medium">{item.supplier || '-'}</p>
         </div>
-        {asset.purchasePrice && (
-          <div>
-            <Label>Prix d'achat</Label>
-            <p className="font-medium">{asset.purchasePrice.toLocaleString()} MAD</p>
-          </div>
-        )}
-        {asset.currentValue && (
-          <div>
-            <Label>Valeur actuelle</Label>
-            <p className="font-medium">{asset.currentValue.toLocaleString()} MAD</p>
-          </div>
-        )}
-        {asset.supplier && (
-          <div>
-            <Label>Fournisseur</Label>
-            <p className="font-medium">{asset.supplier}</p>
-          </div>
-        )}
-        {asset.serialNumber && (
-          <div>
-            <Label>Numéro de série</Label>
-            <p className="font-medium font-mono">{asset.serialNumber}</p>
-          </div>
-        )}
-        {asset.warrantyEndDate && (
-          <div>
-            <Label>Fin de garantie</Label>
-            <p className="font-medium">{new Date(asset.warrantyEndDate).toLocaleDateString("fr-FR")}</p>
-          </div>
-        )}
-        {asset.maintenanceDate && (
-          <div>
-            <Label>Dernière maintenance</Label>
-            <p className="font-medium">{new Date(asset.maintenanceDate).toLocaleDateString("fr-FR")}</p>
-          </div>
-        )}
+        <div>
+          <Label>Statut</Label>
+          <Badge className={item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+            {item.isActive ? 'Actif' : 'Inactif'}
+          </Badge>
+        </div>
       </div>
 
-      {asset.description && (
+      {item.description && (
         <div>
           <Label>Description</Label>
-          <p className="mt-1 p-3 bg-gray-50 rounded text-sm">{asset.description}</p>
+          <p className="mt-1 p-3 bg-gray-50 rounded text-sm">{item.description}</p>
         </div>
       )}
+
+      {/* Allocation History */}
+      <div>
+        <Label>
+          Historique des Allocations ({
+            (Array.isArray(item.allocationHistory) ? item.allocationHistory.length : 0) +
+            (Array.isArray(item.inUserAllocation) ? item.inUserAllocation.length : 0)
+          })
+        </Label>
+        <div className="mt-2 space-y-3 max-h-64 overflow-y-auto">
+          {/* Current Allocations */}
+          {Array.isArray(item.inUserAllocation) && item.inUserAllocation.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-600">Allocations Actuelles</span>
+              </div>
+              {item.inUserAllocation.map((history, index) => (
+                <div key={`current-${index}`} className="border rounded p-3 border-green-200 bg-green-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{history.reference}</span>
+                    <Badge className={`text-xs ${getStatusColor(history.status)} border-green-300`}>
+                      {history.status === "In Use" ? 'En Utilisation' : "Rendu"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <div>Entité: {history.entityName || history.user}</div>
+                    <div>Type: {history.allocationType}</div>
+                    <div>Durée: {history.allocationDuration}</div>
+                    <div>Alloué le: {new Date(history.allocatedAt).toLocaleDateString('fr-FR')}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Historical Allocations */}
+          {Array.isArray(item.allocationHistory) && item.allocationHistory.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <History className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-600">Historique des Allocations</span>
+              </div>
+              {item.allocationHistory.map((history, index) => (
+                <div key={`history-${index}`} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{history.reference}</span>
+                    <Badge className={`text-xs ${getStatusColor(history.status)}`}>
+                      {history.status === "In Use" ? 'En Utilisation' : "Rendu"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <div>Entité: {history.entityName || history.user}</div>
+                    <div>Type: {history.allocationType}</div>
+                    <div>Durée: {history.allocationDuration}</div>
+                    <div>Alloué le: {new Date(history.allocatedAt).toLocaleDateString('fr-FR')}</div>
+                    {history.returnedAt && (
+                      <div className="col-span-2">Retourné le: {new Date(history.returnedAt).toLocaleDateString('fr-FR')}</div>
+                    )}
+                  </div>
+                  {history.notes && (
+                    <p className="mt-2 text-sm bg-gray-50 p-2 rounded">{history.notes}</p>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+
+          {(!Array.isArray(item.allocationHistory) || item.allocationHistory.length === 0) &&
+            (!Array.isArray(item.inUserAllocation) || item.inUserAllocation.length === 0) && (
+              <p className="text-center text-muted-foreground py-4">
+                Aucun historique d'allocation
+              </p>
+            )}
+        </div>
+      </div>
     </div>
   )
 }
 
-// Helper functions
+// Helper functions (moved outside component to avoid redefinition)
 function getCategoryIcon(category: string) {
-  const icons = {
-    Informatique: Monitor,
-    Mobilier: Building,
-    Véhicule: Car,
-    "Équipement Sportif": Package,
-    Électronique: Smartphone,
-    Autre: Wrench,
+  const icons: Record<string, any> = {
+    "IT_EQUIPMENT": Monitor,
+    "FURNITURE": Building,
+    "VEHICLE": Car,
+    "SPORTS_EQUIPMENT": Package,
+    "ELECTRONICS": Smartphone,
+    "OTHER": Wrench,
   }
-  return icons[category as keyof typeof icons] || Package
+  return icons[category] || Package
 }
 
-function getConditionColor(condition: string) {
-  const colors = {
-    Excellent: "bg-green-100 text-green-800",
-    Bon: "bg-blue-100 text-blue-800",
-    Moyen: "bg-yellow-100 text-yellow-800",
-    Mauvais: "bg-red-100 text-red-800",
-    "Hors Service": "bg-gray-100 text-gray-800",
+function getCategoryColor(category: string) {
+  const colors: Record<string, string> = {
+    "IT_EQUIPMENT": "bg-blue-100 text-blue-800",
+    "FURNITURE": "bg-green-100 text-green-800",
+    "VEHICLE": "bg-purple-100 text-purple-800",
+    "SPORTS_EQUIPMENT": "bg-orange-100 text-orange-800",
+    "ELECTRONICS": "bg-red-100 text-red-800",
+    "OTHER": "bg-gray-100 text-gray-800",
   }
-  return colors[condition as keyof typeof colors] || colors["Moyen"]
+  return colors[category] || colors["OTHER"]
 }
+
+function getStatusColor(status: string) {
+  const colors: Record<string, string> = {
+    "Pending": "bg-yellow-100 text-yellow-800",
+    "Approved": "bg-green-100 text-green-800",
+    "Rejected": "bg-red-100 text-red-800",
+    "In Use": "bg-blue-100 text-blue-800",
+    "Returned": "bg-gray-100 text-gray-800",
+    "Cancelled": "bg-gray-100 text-gray-800",
+  }
+  return colors[status] || colors["Pending"]
+}
+
