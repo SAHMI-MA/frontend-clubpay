@@ -8,7 +8,7 @@ export async function generatePurchaseOrderPDF(acquisition: AcquisitionForPDF): 
   await generator.initialize();
 
   const doc = generator.getDocument();
-  let yPosition = 20;
+  let yPosition = 85; // Adjusted from 20 to 85 to account for top padding
 
   const currentDate = new Date().toLocaleDateString('fr-FR');
 
@@ -18,7 +18,6 @@ export async function generatePurchaseOrderPDF(acquisition: AcquisitionForPDF): 
     acquisition.id.toString().padStart(6, '0'),
     currentDate
   );
-  yPosition = 50;
 
   // Club and Supplier information
   const clubInfoLines = [
@@ -138,7 +137,6 @@ export async function generatePurchaseOrderPDF(acquisition: AcquisitionForPDF): 
   const fileName = `bon-reception-${acquisition.id.toString().padStart(6, '0')}.pdf`;
   doc.save(fileName);
 }
-
 
 const getStatusLabel = (status: string): string => {
   const statusLabels: Record<string, string> = {

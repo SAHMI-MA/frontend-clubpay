@@ -46,7 +46,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
   // Reset text color for content
   doc.setTextColor(0, 0, 0)
 
-  let yPosition = 55
+  let yPosition = 85 // Adjusted from 55 to 85 to account for top padding
 
   // General Information Section
   doc.setFillColor(248, 250, 252)
@@ -55,7 +55,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
   doc.setTextColor(30, 64, 175)
   doc.setFontSize(12)
   doc.setFont("helvetica", "bold")
-  doc.text("INFORMATIONS GÉNÉRALES", 22, yPosition)
+  doc.text("INFORMATIONS GÉNÉRALE", 22, yPosition)
   yPosition += 15
 
   const generalInfo: Array<[string, string]> = [
@@ -119,7 +119,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
       // Check if we need a new page
       if (yPosition > 250) {
         doc.addPage()
-        yPosition = 20
+        yPosition = 85 // Adjusted from 20 to 85 for top padding
       }
 
       const allocationInfo: Array<[string, string]> = [
@@ -161,7 +161,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
     // Check if we need a new page
     if (yPosition > 200) {
       doc.addPage()
-      yPosition = 20
+      yPosition = 85 // Adjusted from 20 to 85 for top padding
     }
 
     doc.setFillColor(248, 250, 252)
@@ -183,7 +183,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
       // Check if we need a new page
       if (yPosition > 250) {
         doc.addPage()
-        yPosition = 20
+        yPosition = 85 // Adjusted from 20 to 85 for top padding
       }
 
       const historyInfo: Array<[string, string]> = [
@@ -230,7 +230,13 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
   doc.setTextColor(30, 64, 175)
   doc.setFontSize(12)
   doc.setFont("helvetica", "bold")
-  // Add footer (with document reference)
+
+  // Ensure enough space before adding footer
+  const pageHeight = doc.internal.pageSize.height;
+  if (yPosition > pageHeight - 80) {
+    doc.addPage();
+    yPosition = 20;
+  }
   generator.addFooter(`FICHE-INVENTAIRE-${item.id}-${new Date().toISOString().split("T")[0]}`)
 
   // Save the PDF
@@ -257,7 +263,7 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
   // Reset text color for content
   doc.setTextColor(0, 0, 0)
 
-  let yPosition = 55
+  let yPosition = 85 // Adjusted from 55 to 85 to account for top padding
 
   // Summary Statistics
   const totalItems = items.length
@@ -351,7 +357,7 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
     // Check if we need a new page
     if (yPosition > 270) {
       doc.addPage()
-      yPosition = 20
+      yPosition = 85 // Adjusted from 20 to 85 for top padding
       
       // Redraw headers on new page
       doc.setFont("helvetica", "bold")
@@ -374,7 +380,12 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
     yPosition += 6
   })
 
-  // Add footer
+  // Ensure enough space before adding footer
+  const pageHeight = doc.internal.pageSize.height;
+  if (yPosition > pageHeight - 80) {
+    doc.addPage();
+    yPosition = 20;
+  }
   generator.addFooter(`RAPPORT-INVENTAIRE-${new Date().toISOString().split("T")[0]}`)
 
   // Save the PDF

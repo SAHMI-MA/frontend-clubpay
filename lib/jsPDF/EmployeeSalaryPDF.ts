@@ -15,7 +15,6 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
 
     const doc = generator.getDocument();
 
-
     const currentDate = new Date().toLocaleDateString('fr-FR');
 
     // Get employee info
@@ -32,7 +31,7 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     // Reset text color to black for the document body
     doc.setTextColor(0, 0, 0);
 
-    let yPos = 60
+    let yPos = 85 // Adjusted from 60 to 85 to account for top padding
 
     // Payment ID and Date section
     doc.setFontSize(14)

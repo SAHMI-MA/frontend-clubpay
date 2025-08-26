@@ -21,6 +21,8 @@ import {
 export interface AssociationSettings {
   id: number
   name: string
+  nameInArabic: string
+  foundedAt: Date
   description: string
   contactEmail: string
   contactPhone: string

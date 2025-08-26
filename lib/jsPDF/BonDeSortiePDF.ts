@@ -9,7 +9,7 @@ export async function generateBonDeSortiePDF(allocation: Allocation): Promise<vo
   await generator.initialize();
 
   const doc = generator.getDocument();
-  let yPosition = 20;
+  let yPosition = 85; // Adjusted from 20 to 85 to account for top padding
 
   const currentDate = allocation.allocationDate ?
     new Date(allocation.allocationDate).toLocaleDateString('fr-FR') :
@@ -21,7 +21,6 @@ export async function generateBonDeSortiePDF(allocation: Allocation): Promise<vo
     String(allocation.allocationNumber || allocation.id),
     currentDate
   );
-  yPosition = 50;
 
   // Club and Entity information
   const clubInfoLines = [
@@ -128,16 +127,21 @@ export async function generateBonDeSortiePDF(allocation: Allocation): Promise<vo
     }
   }
 
-  // Ensure space and add footer/signatures
-  yPosition = generator['ensureSpaceForSignatures'](yPosition);
-  generator['addFooterAndSignatures'](`Bon de sortie N° ${allocation.allocationNumber || allocation.id}`, 'Bénéficiaire');
+  // Ensure space and add footer/signatures using improved PDFGenerator footer logic
+  // If content is too close to the bottom, move footer/signatures to a new page
+  const pageHeight = doc.internal.pageSize.height;
+  if (yPosition > pageHeight - 120) {
+    doc.addPage();
+    yPosition = 20;
+  }
+  yPosition = generator.ensureSpaceForSignatures(yPosition);
+  generator.addSignatures(yPosition, 'Bénéficiaire');
+  generator.addFooter(`Bon de sortie N° ${allocation.allocationNumber || allocation.id}`);
 
   // Save the PDF
   const fileName = `bon-sortie-${allocation.allocationNumber || allocation.id}.pdf`;
   doc.save(fileName);
-}
-
-
+};
 
 // Utility functions
 const getEntityName = (allocation: Allocation): string => {

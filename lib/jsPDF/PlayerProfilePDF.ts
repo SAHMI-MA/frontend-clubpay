@@ -25,7 +25,7 @@ export async function generatePlayerProfilePDF(
     const pageHeight = pdf.internal.pageSize.height;
     const margin = 20;
     const contentWidth = pageWidth - 2 * margin;
-    let yPosition = 20;
+    let yPosition = 85; // Adjusted from 50 to 85 to account for top padding
 
     const currentDate = new Date().toLocaleDateString('fr-FR');
 
@@ -35,7 +35,6 @@ export async function generatePlayerProfilePDF(
         String(player.id),
         currentDate
     );
-    yPosition = 50;
 
     // Player basic info section
     pdf.setTextColor(0, 0, 0)
@@ -156,7 +155,7 @@ export async function generatePlayerProfilePDF(
         // Check if we need a new page
         if (yPosition > 220) {
             pdf.addPage()
-            yPosition = 30
+            yPosition = 85 // Adjusted from 30 to 85 for top padding
         }
 
         pdf.setFontSize(16)
@@ -210,7 +209,7 @@ export async function generatePlayerProfilePDF(
     // Statistics section
     if (yPosition > 200) {
         pdf.addPage()
-        yPosition = 30
+        yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
     pdf.setFontSize(16)
@@ -251,7 +250,7 @@ export async function generatePlayerProfilePDF(
     const remainingSpace = pageHeight - yPosition - 40;
     if (remainingSpace < 40) {
         pdf.addPage();
-        yPosition = 20;
+        yPosition = 85; // Adjusted from 20 to 85 for top padding
     }
 
     // Add manual footer since the utility methods are private

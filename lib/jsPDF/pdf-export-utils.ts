@@ -1,10 +1,11 @@
 import { apiConfig } from '../api-config';
-
 const { jsPDF } = await import('jspdf');
 
 // Interfaces
 export interface ClubInfo {
   name: string;
+  nameInArabic: string;
+  foundedAt: Date | string; // Allow string to handle potential input formats
   address: string;
   contactPhone: string;
   contactEmail: string;
@@ -47,6 +48,8 @@ export interface AcquisitionForPDF {
 // Default club information
 export const DEFAULT_CLUB_INFO: ClubInfo = {
   name: "Club Sportif",
+  nameInArabic: "النادي الرياضي",
+  foundedAt: new Date('2000-01-01'), // Ensure Date object
   address: "123 Rue du Sport, Casablanca, Maroc",
   contactPhone: "+212 5 22 XX XX XX",
   contactEmail: "contact@clubsportif.ma",
@@ -67,7 +70,11 @@ export class PDFGenerator {
 
   constructor(clubInfo: ClubInfo) {
     this.doc = new jsPDF();
-    this.clubInfo = clubInfo;
+    this.clubInfo = {
+      ...clubInfo,
+      // Ensure foundedAt is a Date object
+      foundedAt: typeof clubInfo.foundedAt === 'string' ? new Date(clubInfo.foundedAt) : clubInfo.foundedAt
+    };
     this.pageWidth = this.doc.internal.pageSize.width;
     this.primaryColor = clubInfo.primaryColor || '#1E40AF';
     this.secondaryColor = clubInfo.secondaryColor || '#64748B';
@@ -100,7 +107,7 @@ export class PDFGenerator {
         const blob = await response.blob();
         imageData = await this.blobToBase64(blob);
       }
-      
+
       this.logoImageData = imageData;
     } catch (error) {
       console.warn('Could not load logo:', error);
@@ -189,7 +196,6 @@ export class PDFGenerator {
   ): number {
     const columnWidth = (this.pageWidth - 3 * this.margin) / 2;
 
-    // Section titles
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
@@ -198,7 +204,6 @@ export class PDFGenerator {
 
     yPosition += 8;
 
-    // Section content
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'normal');
 
@@ -219,15 +224,18 @@ export class PDFGenerator {
     this.addLine(yPosition - 5);
     yPosition += 5;
 
+    // Draw header background
     this.doc.setFillColor(this.accentColor);
     this.doc.rect(this.margin, yPosition - 2, this.pageWidth - 2 * this.margin, 8, 'F');
 
+    // Draw header text
     this.doc.setTextColor(this.primaryColor);
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(title, this.margin + 2, yPosition + 4);
 
-    return yPosition + 15;
+    // Add extra bottom padding after header
+    return yPosition + 24; // Increased from 14 to 24 for more padding
   }
 
   private addDetailsSection(details: Array<[string, string]>, yPosition: number): number {
@@ -261,9 +269,8 @@ export class PDFGenerator {
     return yPosition + 35;
   }
 
-  // Public method to check if we need space for signatures
   public ensureSpaceForSignatures(currentY: number): number {
-    const remainingSpace = this.doc.internal.pageSize.height - currentY - 80; // Extra space for signatures
+    const remainingSpace = this.doc.internal.pageSize.height - currentY - 80;
     if (remainingSpace < 80) {
       this.doc.addPage();
       return 20;
@@ -271,9 +278,7 @@ export class PDFGenerator {
     return currentY;
   }
 
-  // Public method to add signatures section
   public addSignatures(yPosition: number, beneficiaryLabel: string = 'Bénéficiaire'): number {
-    // Signature section
     this.doc.setFontSize(10);
     this.doc.setTextColor(this.secondaryColor);
     this.doc.setFont('helvetica', 'normal');
@@ -282,13 +287,11 @@ export class PDFGenerator {
     this.doc.setDrawColor(this.secondaryColor);
     this.doc.setLineWidth(0.5);
 
-    // Left signature box
     this.doc.rect(this.margin, yPosition + 5, 80, 25);
     this.doc.text('Responsable Club:', this.margin + 2, yPosition + 15);
     this.doc.text('Date:', this.margin + 2, yPosition + 20);
     this.doc.text('Signature:', this.margin + 2, yPosition + 25);
 
-    // Right signature box
     this.doc.rect(this.pageWidth - this.margin - 80, yPosition + 5, 80, 25);
     this.doc.text(`${beneficiaryLabel}:`, this.pageWidth - this.margin - 78, yPosition + 15);
     this.doc.text('Date:', this.pageWidth - this.margin - 78, yPosition + 20);
@@ -297,47 +300,54 @@ export class PDFGenerator {
     return yPosition + 35;
   }
 
-  // Public method to add footer with club info and confidential notice
   public addFooter(documentNumber: string): void {
     const pageHeight = this.doc.internal.pageSize.height;
-    const footerStartY = pageHeight - 50;
+    const currentY = this.doc.getCurrentPageInfo().y || 0;
+    const minFooterSpace = 50; // Minimum space required for footer
+    const footerStartY = pageHeight - minFooterSpace;
 
-    // Confidential notice
+    // Ensure footer doesn't overlap with content
+    if (currentY > footerStartY - minFooterSpace) {
+      this.doc.addPage();
+      this.addFooter(documentNumber); // Recursively add footer on new page
+      return;
+    }
+
+    // Move confidential lines to extreme right
     this.doc.setFontSize(8);
     this.doc.setTextColor(100, 100, 100);
     this.doc.setFont('helvetica', 'italic');
-
     const confidentialLines = [
       `Document généré par le système ${this.clubInfo.name}`,
       'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
       'Conforme aux dispositions légales en vigueur'
     ];
-
+    const maxLineWidth = confidentialLines.reduce((max, line) => Math.max(max, this.doc.getTextWidth(line)), 0);
+    const rightX = this.pageWidth - this.margin - maxLineWidth;
     confidentialLines.forEach((line, index) => {
-      this.doc.text(line, this.margin, footerStartY + (index * 4));
+      this.doc.text(line, rightX, footerStartY + (index * 4));
     });
 
-    // Club information
-    const clubInfoY = footerStartY + 15;
+  // Add file name below confidential lines
+  const fileName = documentNumber.replace(/[^a-zA-Z0-9-]/g, '-'); // Sanitize filename
+  this.doc.setTextColor(0, 0, 0);
+  this.doc.setFont('helvetica', 'bold');
+  this.doc.text(fileName, rightX, footerStartY + confidentialLines.length * 4 + 4);
+
+    // Add separating line
+    this.addLine(footerStartY + confidentialLines.length * 4 + 10);
+
+    // Add centered club info below the line
+    const clubInfoText = `${this.clubInfo.name} - ${this.clubInfo.address} - ${this.clubInfo.contactPhone} - ${this.clubInfo.contactEmail}`;
+    const clubInfoWidth = this.doc.getTextWidth(clubInfoText);
+    const clubInfoX = (this.pageWidth - clubInfoWidth) / 2;
     this.doc.setFontSize(9);
     this.doc.setTextColor(0, 0, 0);
-
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text(this.clubInfo.name, this.margin, clubInfoY);
-
     this.doc.setFont('helvetica', 'normal');
-    this.doc.text(this.clubInfo.address, this.margin, clubInfoY + 5);
-    this.doc.text(`${this.clubInfo.contactPhone} - ${this.clubInfo.contactEmail}`, this.margin, clubInfoY + 10);
-
-    // Document reference at bottom
-    this.doc.setFontSize(8);
-    this.doc.setTextColor(this.secondaryColor);
-    this.doc.text(documentNumber, this.margin, this.doc.internal.pageSize.height - 5);
+    this.doc.text(clubInfoText, clubInfoX, footerStartY + confidentialLines.length * 4 + 14);
   }
 
-  // Legacy method for backward compatibility - now calls separate methods
   private addFooterAndSignatures(documentNumber: string, beneficiaryLabel: string = 'Bénéficiaire'): void {
-    // This method is kept for backward compatibility but now uses the separated methods
     const yPosition = this.ensureSpaceForSignatures(20);
     this.addSignatures(yPosition, beneficiaryLabel);
     this.addFooter(documentNumber);
@@ -351,16 +361,13 @@ export class PDFGenerator {
     await this.loadLogo();
   }
 
-  // Method to create header with logo - call this when generating PDFs
   public async createHeader(documentTitle: string, documentNumber: string, date: string): Promise<void> {
     await this.addHeader(documentTitle, documentNumber, date);
   }
 }
 
-// Export utility functions for external use
 export async function loadClubLogo(): Promise<string | null> {
   try {
-    // Placeholder for actual logo loading implementation
     return null;
   } catch (error) {
     console.warn('Could not load club logo:', error);

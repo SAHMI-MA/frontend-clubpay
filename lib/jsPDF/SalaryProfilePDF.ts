@@ -17,7 +17,6 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
 
     const doc = generator.getDocument();
 
-
     const currentDate = new Date().toLocaleDateString('fr-FR');
     
     // Get recipient info
@@ -41,7 +40,7 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     // Reset text color to black for the document body
     doc.setTextColor(0, 0, 0);
 
-    let yPos = 60
+    let yPos = 85 // Adjusted from 60 to 85 to account for top padding
 
     // Payment ID and Date section
     doc.setFontSize(14)

@@ -19,6 +19,8 @@ import { authUtils } from '@/lib/redux/auth-utils';
 interface AssociationSettings {
   id: number
   name: string
+  nameInArabic?: string
+  foundedAt: Date
   description: string
   contactEmail: string
   contactPhone: string
@@ -143,24 +145,6 @@ class AssociationAPI {
     
     // The backend returns the full updated settings object
     return result
-  }
-  
-  private getCurrentSettings(): AssociationSettings {
-    // Return a minimal settings object that can be merged
-    return {
-      id: 1,
-      name: '',
-      description: '',
-      contactEmail: '',
-      contactPhone: '',
-      address: '',
-      primaryColor: '#1E3A8A',
-      secondaryColor: '#F97316',
-      tagline: '',
-      logoUrl: undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
   }
 
   async deleteLogo(): Promise<AssociationSettings> {
@@ -544,12 +528,14 @@ export function AssociationSettings() {
   // Settings state
   const [settings, setSettings] = useState<AssociationSettings | null>(null)
   const [associationName, setAssociationName] = useState("")
+  const [associationNameInArabic, setAssociationNameInArabic] = useState<string>('نادي المدينة لكرة القدم')
+  const [foundedAt, setFoundedAt] = useState<Date>(new Date('1900-01-01'))
   const [associationDescription, setAssociationDescription] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
   const [address, setAddress] = useState("")
   const [primaryColor, setPrimaryColor] = useState("#1E3A8A")
-  const [secondaryColor, setSecondaryColor] = useState("#F97316")
+  const [secondaryColor, setSecondaryColor] = useState("#FFFFFF")
   const [tagline, setTagline] = useState("")
   
   // Custom tagline setter
@@ -634,6 +620,8 @@ export function AssociationSettings() {
       
       // Use synchronous updates to avoid async issues
       if (settings.name) setAssociationName(settings.name);
+      if (settings.nameInArabic) setAssociationNameInArabic(settings.nameInArabic);
+      if (settings.foundedAt) setFoundedAt(new Date(settings.foundedAt));
       if (settings.description) setAssociationDescription(settings.description);
       if (settings.contactEmail) setContactEmail(settings.contactEmail);
       if (settings.contactPhone) setContactPhone(settings.contactPhone);
@@ -768,6 +756,8 @@ export function AssociationSettings() {
       const validationErrors = [];
       
       if (!associationName.trim()) validationErrors.push("Nom de l'association requis");
+      if (!associationNameInArabic.trim()) validationErrors.push("Nom de l'association (Arabe) requis");
+      if (!foundedAt) validationErrors.push("Date de fondation requise");
       if (!associationDescription.trim()) validationErrors.push("Description requise");
       if (!contactEmail.trim()) validationErrors.push("Email de contact requis");
       if (!contactEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) validationErrors.push("Email de contact invalide");
@@ -784,6 +774,8 @@ export function AssociationSettings() {
       
       const settingsToUpdate = {
         name: associationName.trim(),
+        nameInArabic: associationNameInArabic.trim(),
+        foundedAt: foundedAt,
         description: associationDescription.trim(),
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
@@ -1221,6 +1213,24 @@ export function AssociationSettings() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="associationNameInArabic">Nom de l'association (Arabe)</Label>
+                  <Input
+                    id="associationNameInArabic"
+                    value={associationNameInArabic}
+                    onChange={(e) => setAssociationNameInArabic(e.target.value)}
+                    placeholder="Nom de l'association (Arabe)..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="foundedAt">Date de fondation</Label>
+                  <Input
+                    id="foundedAt"
+                    type="date"
+                    value={foundedAt.toISOString().split('T')[0]}
+                    onChange={(e) => setFoundedAt(new Date(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="contactEmail">Email de contact</Label>
                   <Input
                     id="contactEmail"
@@ -1363,7 +1373,7 @@ export function AssociationSettings() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="secondaryColor">Couleur secondaire</Label>
+                    <Label htmlFor="secondaryColor">Couleur de la police</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id="secondaryColor"

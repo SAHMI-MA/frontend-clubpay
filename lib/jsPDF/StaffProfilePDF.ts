@@ -27,7 +27,7 @@ export default async function StaffProfilePDF({staff, teamName}: StaffProfilePDF
     // Reset text color to black for the document body
     doc.setTextColor(0, 0, 0);
 
-    let yPosition = 55
+    let yPosition = 85 // Adjusted from 55 to 85 to account for top padding
 
     // Staff member name and role
     doc.setFontSize(16)

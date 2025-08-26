@@ -23,7 +23,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
         currentDate
     );
 
-    let yPosition = 60
+    let yPosition = 85 // Adjusted from 60 to 85 to account for top padding
 
     // Employee basic info section
     pdf.setTextColor(0, 0, 0)
@@ -127,7 +127,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     // Professional information section
     if (yPosition > 200) {
         pdf.addPage()
-        yPosition = 30
+        yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
     pdf.setFontSize(16)
@@ -177,7 +177,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     // Financial information section
     if (yPosition > 220) {
         pdf.addPage()
-        yPosition = 30
+        yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
     pdf.setFontSize(16)
