@@ -4,6 +4,7 @@ import { Employee } from "../api/hr-api"
 import { associationAPI } from "../api/association-api"
 import { DEFAULT_CLUB_INFO, PDFGenerator } from "./pdf-export-utils"
 
+
 export async function GenerateEmployeeProfilePDF(employee: Employee) {
     const clubInfo = await associationAPI.getSettings() || DEFAULT_CLUB_INFO;
     const generator = new PDFGenerator(clubInfo);
@@ -235,6 +236,14 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
         pdf.setFont("helvetica", "normal")
         const notesLines = pdf.splitTextToSize(employee.notes, contentWidth)
         pdf.text(notesLines, margin, yPosition)
+        yPosition += notesLines.length * 5
+    }
+
+    // FIXED: Ensure enough space before adding footer (same as inventory PDF)
+    const pageHeight = pdf.internal.pageSize.height;
+    if (yPosition > pageHeight - 80) {
+        pdf.addPage();
+        yPosition = 20;
     }
 
     // Add footer using PDFGenerator utility (without signatures)

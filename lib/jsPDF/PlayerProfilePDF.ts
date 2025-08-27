@@ -246,46 +246,15 @@ export async function generatePlayerProfilePDF(
     pdf.text(`${successRate}%`, leftColumn + 35, yPosition)
     yPosition += 20
 
-    // Check if we need space for footer and signatures
-    const remainingSpace = pageHeight - yPosition - 40;
-    if (remainingSpace < 40) {
+    // FIXED: Use centralized footer instead of manual footer
+    // Ensure enough space before adding footer (same pattern as other PDFs)
+    if (yPosition > pageHeight - 80) {
         pdf.addPage();
-        yPosition = 85; // Adjusted from 20 to 85 for top padding
+        yPosition = 20;
     }
 
-    // Add manual footer since the utility methods are private
-    const footerStartY = pageHeight - 40;
-
-    // Confidential notice
-    pdf.setFontSize(8);
-    pdf.setTextColor(100, 100, 100);
-    pdf.setFont('helvetica', 'italic');
-
-    const confidentialLines = [
-        `Document généré par le système ${clubInfo.name}`,
-        'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
-        'Conforme aux dispositions légales en vigueur'
-    ];
-
-    confidentialLines.forEach((line, index) => {
-        pdf.text(line, margin, footerStartY + (index * 4));
-    });
-
-    // Club information
-    const clubInfoY = footerStartY + 15;
-    pdf.setFontSize(9);
-    pdf.setTextColor(0, 0, 0);
-
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(clubInfo.name, margin, clubInfoY);
-
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(clubInfo.address, margin, clubInfoY + 5);
-    pdf.text(`${clubInfo.contactPhone} - ${clubInfo.contactEmail}`, margin, clubInfoY + 10);
-
-    // Document reference at bottom
-    pdf.setFontSize(8);
-    pdf.text(`FICHE-JOUEUR-${player.id}-${new Date().toISOString().split("T")[0]}`, margin, pageHeight - 5);
+    // Use the centralized footer from PDFGenerator
+    generator.addFooter(`FICHE-JOUEUR-${player.id}-${new Date().toISOString().split("T")[0]}`);
 
     // Save the PDF
     pdf.save(`Fiche_Joueur_${player.firstName}_${player.lastName}_${new Date().toISOString().split("T")[0]}.pdf`)
