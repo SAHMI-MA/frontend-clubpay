@@ -24,6 +24,7 @@ export interface AssociationSettings {
   nameInArabic: string
   foundedAt: Date
   description: string
+  legalIdentifiers: string
   contactEmail: string
   contactPhone: string
   address: string

@@ -3,6 +3,7 @@ const { jsPDF } = await import('jspdf');
 
 // Interfaces
 export interface ClubInfo {
+  legalIdentifiers: string;
   name: string;
   nameInArabic: string;
   foundedAt: Date | string; // Allow string to handle potential input formats
@@ -11,6 +12,7 @@ export interface ClubInfo {
   contactEmail: string;
   website?: string;
   logoUrl?: string;
+  headerUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
 }
@@ -47,14 +49,16 @@ export interface AcquisitionForPDF {
 
 // Default club information
 export const DEFAULT_CLUB_INFO: ClubInfo = {
-  name: "Club Sportif",
-  nameInArabic: "النادي الرياضي",
+  name: "Info.com",
+  nameInArabic: "إنفو.كوم",
   foundedAt: new Date('2000-01-01'), // Ensure Date object
-  address: "123 Rue du Sport, Casablanca, Maroc",
-  contactPhone: "+212 5 22 XX XX XX",
-  contactEmail: "contact@clubsportif.ma",
-  website: "www.clubsportif.ma",
-  logoUrl: undefined
+  address: "123 Stadium Road, CasaBlanca",
+  contactPhone: "1234567890",
+  contactEmail: "base@info.com",
+  website: "www.info.com",
+  logoUrl: undefined,
+  headerUrl: undefined,
+  legalIdentifiers: ''
 };
 
 // Common PDF utilities
@@ -67,13 +71,14 @@ export class PDFGenerator {
   private secondaryColor: string;
   private accentColor: string = '#F8FAFC';
   private logoImageData: string | null = null;
+  private headerImageData: string | null = null;
 
   constructor(clubInfo: ClubInfo) {
     this.doc = new jsPDF();
     this.clubInfo = {
       ...clubInfo,
       // Ensure foundedAt is a Date object
-      foundedAt: typeof clubInfo.foundedAt === 'string' ? new Date(clubInfo.foundedAt) : clubInfo.foundedAt
+      foundedAt: typeof clubInfo.foundedAt === 'string' ? new Date(clubInfo.foundedAt) : clubInfo.foundedAt,
     };
     this.pageWidth = this.doc.internal.pageSize.width;
     this.primaryColor = clubInfo.primaryColor || '#1E40AF';
@@ -115,21 +120,6 @@ export class PDFGenerator {
     }
   }
 
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject('Failed to convert logo to base64');
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
   private addLogoToHeader(): void {
     if (this.logoImageData) {
       try {
@@ -144,24 +134,51 @@ export class PDFGenerator {
     }
   }
 
-  private addDefaultLogo(): void {
-    // Create a simple default logo
-    this.doc.setFillColor(255, 255, 255);
-    this.doc.circle(25, 20, 12, 'F');
-    
-    // Add border to the circle
-    this.doc.setDrawColor(200, 200, 200);
-    this.doc.setLineWidth(1);
-    this.doc.circle(25, 20, 12, 'S');
-    
-    // Add "LOGO" text
-    this.doc.setTextColor(100, 100, 100);
-    this.doc.setFontSize(8);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text('LOGO', 20, 22);
+  private async loadHeader(): Promise<void> {
+    if (!this.clubInfo?.headerUrl) {
+      this.headerImageData = null;
+      return;
+    }
+
+    try {
+      let headerUrl = this.clubInfo.headerUrl;
+      if (!/^https?:\/\//.test(headerUrl) && !/^data:image\/(png|jpg|jpeg);base64,/.test(headerUrl)) {
+        headerUrl = apiConfig.baseUrl + (headerUrl.startsWith('/') ? headerUrl : `/${headerUrl}`);
+      }
+
+      let imageData = headerUrl;
+      if (!/^data:image\/(png|jpg|jpeg);base64,/.test(headerUrl)) {
+        const response = await fetch(headerUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch header: ${response.status}`);
+        }
+        const blob = await response.blob();
+        imageData = await this.blobToBase64(blob);
+      }
+
+      this.headerImageData = imageData;
+    } catch (error) {
+      console.warn('Could not load header:', error);
+      this.headerImageData = null;
+    }
   }
 
-  private async addHeader(documentTitle: string, documentNumber: string, date: string): Promise<void> {
+  private blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject('Failed to convert image to base64');
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private addDefaultHeader(documentTitle: string, documentNumber: string, date: string): void {
     // Header background
     this.doc.setFillColor(this.primaryColor);
     this.doc.rect(0, 0, this.pageWidth, 40, 'F');
@@ -185,6 +202,58 @@ export class PDFGenerator {
     // Date in top right
     this.doc.setFontSize(10);
     this.doc.text(`Date: ${date}`, this.pageWidth - 60, 20);
+  }
+
+  private addHeaderImage(): void {
+    if (this.headerImageData) {
+      try {
+        this.doc.addImage(this.headerImageData, 'PNG', 0, 0, this.pageWidth, 40); // Full width, 40px height
+      } catch (error) {
+        console.warn('Error adding header image:', error);
+      }
+    }
+  }
+
+  private addTitle(documentTitle: string, yPosition: number): number {
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFontSize(16);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text(documentTitle, this.margin, yPosition);
+    return yPosition + 10;
+  }
+
+  private addDefaultLogo(): void {
+    // Create a simple default logo
+    this.doc.setFillColor(255, 255, 255);
+    this.doc.circle(25, 20, 12, 'F');
+    
+    // Add border to the circle
+    this.doc.setDrawColor(200, 200, 200);
+    this.doc.setLineWidth(1);
+    this.doc.circle(25, 20, 12, 'S');
+    
+    // Add "LOGO" text
+    this.doc.setTextColor(100, 100, 100);
+    this.doc.setFontSize(8);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text('LOGO', 20, 22);
+  }
+
+  private async addHeader(documentTitle: string, documentNumber: string, date: string): Promise<void> {
+    await this.loadHeader();
+    if (this.headerImageData) {
+      this.addHeaderImage();
+      // Add title below the header
+      let yPosition = 50; // Start below the 40px header with some padding
+      yPosition = this.addTitle(documentTitle, yPosition);
+
+      // Add document number and date
+      this.doc.setFontSize(10);
+      this.doc.text(`N° ${documentNumber}`, this.margin, yPosition);
+      this.doc.text(`Date: ${date}`, this.pageWidth - 60, yPosition, { align: 'right' });
+    } else {
+      this.addDefaultHeader(documentTitle, documentNumber, date);
+    }
   }
 
   private addTwoColumnSection(
@@ -269,6 +338,86 @@ export class PDFGenerator {
     return yPosition + 35;
   }
 
+  private addSection(title: string, content: string, yPosition: number): number {
+    this.doc.setTextColor(this.primaryColor);
+    this.doc.setFontSize(14);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text(title, this.margin, yPosition);
+    yPosition += 10;
+
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFontSize(10);
+    this.doc.setFont('helvetica', 'normal');
+    const lines = this.doc.splitTextToSize(content, this.pageWidth - 2 * this.margin);
+    this.doc.text(lines, this.margin, yPosition);
+    yPosition += lines.length * 5 + 10;
+
+    return yPosition;
+  }
+
+   public addFooter(documentNumber: string): void {
+    const pageHeight = this.doc.internal.pageSize.height;
+    const currentY = this.doc.getCurrentPageInfo().y || 0;
+    const minFooterSpace = 50; // Minimum space required for footer
+    const footerStartY = pageHeight - minFooterSpace;
+
+    // Ensure footer doesn't overlap with content
+    if (currentY > footerStartY - minFooterSpace) {
+      this.doc.addPage();
+      this.addFooter(documentNumber); // Recursively add footer on new page
+      return;
+    }
+
+    // Move confidential lines to extreme right
+    this.doc.setFontSize(8);
+    this.doc.setTextColor(100, 100, 100);
+    this.doc.setFont('helvetica', 'italic');
+    const confidentialLines = [
+      `Document généré par le système ${this.clubInfo.name}`,
+      'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
+      'Conforme aux dispositions légales en vigueur'
+    ];
+    const maxLineWidth = confidentialLines.reduce((max, line) => Math.max(max, this.doc.getTextWidth(line)), 0);
+    const rightX = this.pageWidth - this.margin - maxLineWidth;
+    confidentialLines.forEach((line, index) => {
+      this.doc.text(line, rightX, footerStartY + (index * 4));
+    });
+
+    // Add file name below confidential lines
+    const fileName = documentNumber.replace(/[^a-zA-Z0-9-]/g, '-'); // Sanitize filename
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text(fileName, rightX, footerStartY + confidentialLines.length * 4 + 4);
+
+    // Add separating line
+    this.addLine(footerStartY + confidentialLines.length * 4 + 10);
+
+    // Add vertically stacked club info below the line, centered
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.setFont('helvetica', 'normal');
+    const clubInfoLines = [
+      this.clubInfo.name,
+      this.clubInfo.address,
+      this.clubInfo.contactPhone + " - " + this.clubInfo.contactEmail,
+      this.clubInfo.legalIdentifiers || ''
+    ];
+    clubInfoLines.forEach((line, index) => {
+      this.doc.text(
+      line,
+      this.pageWidth / 2,
+      footerStartY + confidentialLines.length * 4 + 14 + (index * 5),
+      { align: 'center' }
+      );
+    });
+  }
+
+  private addFooterAndSignatures(documentNumber: string, beneficiaryLabel: string = 'Bénéficiaire'): void {
+    const yPosition = this.ensureSpaceForSignatures(20);
+    this.addSignatures(yPosition, beneficiaryLabel);
+    this.addFooter(documentNumber);
+  }
+
   public ensureSpaceForSignatures(currentY: number): number {
     const remainingSpace = this.doc.internal.pageSize.height - currentY - 80;
     if (remainingSpace < 80) {
@@ -300,69 +449,23 @@ export class PDFGenerator {
     return yPosition + 35;
   }
 
-  public addFooter(documentNumber: string): void {
-    const pageHeight = this.doc.internal.pageSize.height;
-    const currentY = this.doc.getCurrentPageInfo().y || 0;
-    const minFooterSpace = 50; // Minimum space required for footer
-    const footerStartY = pageHeight - minFooterSpace;
-
-    // Ensure footer doesn't overlap with content
-    if (currentY > footerStartY - minFooterSpace) {
-      this.doc.addPage();
-      this.addFooter(documentNumber); // Recursively add footer on new page
-      return;
-    }
-
-    // Move confidential lines to extreme right
-    this.doc.setFontSize(8);
-    this.doc.setTextColor(100, 100, 100);
-    this.doc.setFont('helvetica', 'italic');
-    const confidentialLines = [
-      `Document généré par le système ${this.clubInfo.name}`,
-      'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
-      'Conforme aux dispositions légales en vigueur'
-    ];
-    const maxLineWidth = confidentialLines.reduce((max, line) => Math.max(max, this.doc.getTextWidth(line)), 0);
-    const rightX = this.pageWidth - this.margin - maxLineWidth;
-    confidentialLines.forEach((line, index) => {
-      this.doc.text(line, rightX, footerStartY + (index * 4));
-    });
-
-  // Add file name below confidential lines
-  const fileName = documentNumber.replace(/[^a-zA-Z0-9-]/g, '-'); // Sanitize filename
-  this.doc.setTextColor(0, 0, 0);
-  this.doc.setFont('helvetica', 'bold');
-  this.doc.text(fileName, rightX, footerStartY + confidentialLines.length * 4 + 4);
-
-    // Add separating line
-    this.addLine(footerStartY + confidentialLines.length * 4 + 10);
-
-    // Add centered club info below the line
-    const clubInfoText = `${this.clubInfo.name} - ${this.clubInfo.address} - ${this.clubInfo.contactPhone} - ${this.clubInfo.contactEmail}`;
-    const clubInfoWidth = this.doc.getTextWidth(clubInfoText);
-    const clubInfoX = (this.pageWidth - clubInfoWidth) / 2;
-    this.doc.setFontSize(9);
-    this.doc.setTextColor(0, 0, 0);
-    this.doc.setFont('helvetica', 'normal');
-    this.doc.text(clubInfoText, clubInfoX, footerStartY + confidentialLines.length * 4 + 14);
-  }
-
-  private addFooterAndSignatures(documentNumber: string, beneficiaryLabel: string = 'Bénéficiaire'): void {
-    const yPosition = this.ensureSpaceForSignatures(20);
-    this.addSignatures(yPosition, beneficiaryLabel);
-    this.addFooter(documentNumber);
-  }
-
   public getDocument() {
     return this.doc;
   }
 
   public async initialize(): Promise<void> {
-    await this.loadLogo();
+    await Promise.all([this.loadLogo(), this.loadHeader()]);
   }
 
   public async createHeader(documentTitle: string, documentNumber: string, date: string): Promise<void> {
     await this.addHeader(documentTitle, documentNumber, date);
+  }
+
+  public addContent(content: { title: string; text: string }[], yPosition: number): number {
+    content.forEach(section => {
+      yPosition = this.addSection(section.title, section.text, yPosition);
+    });
+    return yPosition;
   }
 }
 
