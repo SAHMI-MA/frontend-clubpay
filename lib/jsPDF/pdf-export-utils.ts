@@ -239,8 +239,18 @@ export class PDFGenerator {
     this.doc.text('LOGO', 20, 22);
   }
 
+  private documentTitle: string = '';
+  private documentNumber: string = '';
+  private documentDate: string = '';
+
   private async addHeader(documentTitle: string, documentNumber: string, date: string): Promise<void> {
+    // Store document info for use in other pages
+    this.documentTitle = documentTitle;
+    this.documentNumber = documentNumber;
+    this.documentDate = date;
+    
     await this.loadHeader();
+    
     if (this.headerImageData) {
       this.addHeaderImage();
       // Add title below the header
@@ -254,6 +264,22 @@ export class PDFGenerator {
     } else {
       this.addDefaultHeader(documentTitle, documentNumber, date);
     }
+  }
+
+  private addHeaderToCurrentPage(): void {
+    if (this.documentTitle) {
+      if (this.headerImageData) {
+        this.addHeaderImage();
+      } else {
+        this.addDefaultHeader(this.documentTitle, this.documentNumber, this.documentDate);
+      }
+    }
+  }
+
+  public addNewPageWithHeader(): number {
+    this.doc.addPage();
+    this.addHeaderToCurrentPage();
+    return this.headerImageData ? 60 : 50; // Return Y position after header
   }
 
   private addTwoColumnSection(
@@ -311,13 +337,27 @@ export class PDFGenerator {
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFontSize(10);
 
+    const pageHeight = this.doc.internal.pageSize.height;
+    const footerSpace = 60; // Space reserved for footer
+
     details.forEach(([label, value]) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - footerSpace) {
+        yPosition = this.addNewPageWithHeader();
+      }
+
       this.doc.setFont('helvetica', 'bold');
       this.doc.text(label, this.margin + 5, yPosition);
       this.doc.setFont('helvetica', 'normal');
 
       const maxWidth = this.pageWidth - this.margin - 80;
       const splitText = this.doc.splitTextToSize(value, maxWidth);
+      
+      // Check if the text will fit on current page
+      if (yPosition + (splitText.length * 5) > pageHeight - footerSpace) {
+        yPosition = this.addNewPageWithHeader();
+      }
+      
       this.doc.text(splitText, this.margin + 40, yPosition);
       yPosition += splitText.length * 5;
     });
@@ -339,6 +379,14 @@ export class PDFGenerator {
   }
 
   private addSection(title: string, content: string, yPosition: number): number {
+    const pageHeight = this.doc.internal.pageSize.height;
+    const footerSpace = 60;
+    
+    // Check if title will fit
+    if (yPosition + 20 > pageHeight - footerSpace) {
+      yPosition = this.addNewPageWithHeader();
+    }
+    
     this.doc.setTextColor(this.primaryColor);
     this.doc.setFontSize(14);
     this.doc.setFont('helvetica', 'bold');
@@ -349,6 +397,12 @@ export class PDFGenerator {
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'normal');
     const lines = this.doc.splitTextToSize(content, this.pageWidth - 2 * this.margin);
+    
+    // Check if content will fit
+    if (yPosition + (lines.length * 5) > pageHeight - footerSpace) {
+      yPosition = this.addNewPageWithHeader();
+    }
+    
     this.doc.text(lines, this.margin, yPosition);
     yPosition += lines.length * 5 + 10;
 
@@ -356,20 +410,79 @@ export class PDFGenerator {
   }
 
    public addFooter(documentNumber: string): void {
+    console.log(documentNumber);
     const pageHeight = this.doc.internal.pageSize.height;
-    const currentY = this.doc.getCurrentPageInfo().y || 0;
-    const minFooterSpace = 50; // Minimum space required for footer
+    const minFooterSpace = 45; // Reduced footer space
     const footerStartY = pageHeight - minFooterSpace;
+    const totalPages = this.doc.internal.getNumberOfPages();
+    const currentPage = this.doc.internal.getCurrentPageInfo().pageNumber;
 
-    // Ensure footer doesn't overlap with content
-    if (currentY > footerStartY - minFooterSpace) {
-      this.doc.addPage();
-      this.addFooter(documentNumber); // Recursively add footer on new page
-      return;
+    // Add header and footer to all pages
+    for (let i = 1; i <= totalPages; i++) {
+      this.doc.setPage(i);
+      
+      // Add header to each page (except the first one which already has it)
+      if (i > 1) {
+        this.addHeaderToCurrentPage();
+      }
+
+      // Clear any content that might overlap with footer area
+      this.doc.setFillColor(255, 255, 255);
+      this.doc.rect(0, footerStartY - 5, this.pageWidth, minFooterSpace + 5, 'F');
+
+      // Add page number
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(100, 100, 100);
+      this.doc.text(`Page ${i}/${totalPages}`, this.margin, footerStartY);
+
+      // Confidential text right-aligned
+      this.doc.setFontSize(7);
+      this.doc.setTextColor(100, 100, 100);
+      this.doc.setFont('helvetica', 'italic');
+      const confidentialLines = [
+        `Document généré par le système ${this.clubInfo.name}`,
+        'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
+        'Conforme aux dispositions légales en vigueur'
+      ];
+      
+      confidentialLines.forEach((line, index) => {
+        this.doc.text(line, this.pageWidth - this.margin, footerStartY + (index * 3), { align: 'right' });
+      });
+
+      // Add just the date below confidential lines
+      const currentDate = new Date().toLocaleDateString('fr-FR');
+      this.doc.setTextColor(0, 0, 0);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.text(currentDate, this.pageWidth - this.margin, footerStartY + confidentialLines.length * 3 + 3, { align: 'right' });
+
+      // Add separating line
+      this.addLine(footerStartY + confidentialLines.length * 3 + 6);
+
+      // Add vertically stacked club info below the line, centered with reduced spacing
+      this.doc.setFontSize(7);
+      this.doc.setTextColor(0, 0, 0);
+      this.doc.setFont('helvetica', 'normal');
+      const clubInfoLines = [
+        this.clubInfo.name,
+        this.clubInfo.address,
+        this.clubInfo.contactPhone + " - " + this.clubInfo.contactEmail,
+        this.clubInfo.legalIdentifiers || ''
+      ];
+      clubInfoLines.forEach((line, index) => {
+        this.doc.text(
+          line,
+          this.pageWidth / 2,
+          footerStartY + confidentialLines.length * 3 + 8 + (index * 3),
+          { align: 'center' }
+        );
+      });
     }
+    
+    // Return to the original page
+    this.doc.setPage(currentPage);
 
-    // Move confidential lines to extreme right
-    this.doc.setFontSize(8);
+    // Confidential text right-aligned
+    this.doc.setFontSize(7);
     this.doc.setTextColor(100, 100, 100);
     this.doc.setFont('helvetica', 'italic');
     const confidentialLines = [
@@ -377,23 +490,22 @@ export class PDFGenerator {
       'Ce document est confidentiel. Toute reproduction ou diffusion est interdite sans autorisation écrite du club.',
       'Conforme aux dispositions légales en vigueur'
     ];
-    const maxLineWidth = confidentialLines.reduce((max, line) => Math.max(max, this.doc.getTextWidth(line)), 0);
-    const rightX = this.pageWidth - this.margin - maxLineWidth;
+    
     confidentialLines.forEach((line, index) => {
-      this.doc.text(line, rightX, footerStartY + (index * 4));
+      this.doc.text(line, this.pageWidth - this.margin, footerStartY + (index * 3), { align: 'right' });
     });
 
-    // Add file name below confidential lines
-    const fileName = documentNumber.replace(/[^a-zA-Z0-9-]/g, '-'); // Sanitize filename
+    // Add just the date below confidential lines
+    const currentDate = new Date().toLocaleDateString('fr-FR');
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFont('helvetica', 'bold');
-    this.doc.text(fileName, rightX, footerStartY + confidentialLines.length * 4 + 4);
+    this.doc.text(currentDate, this.pageWidth - this.margin, footerStartY + confidentialLines.length * 3 + 3, { align: 'right' });
 
     // Add separating line
-    this.addLine(footerStartY + confidentialLines.length * 4 + 10);
+    this.addLine(footerStartY + confidentialLines.length * 3 + 6);
 
-    // Add vertically stacked club info below the line, centered
-    this.doc.setFontSize(9);
+    // Add vertically stacked club info below the line, centered with reduced spacing
+    this.doc.setFontSize(7);
     this.doc.setTextColor(0, 0, 0);
     this.doc.setFont('helvetica', 'normal');
     const clubInfoLines = [
@@ -404,10 +516,10 @@ export class PDFGenerator {
     ];
     clubInfoLines.forEach((line, index) => {
       this.doc.text(
-      line,
-      this.pageWidth / 2,
-      footerStartY + confidentialLines.length * 4 + 14 + (index * 5),
-      { align: 'center' }
+        line,
+        this.pageWidth / 2,
+        footerStartY + confidentialLines.length * 3 + 8 + (index * 3),
+        { align: 'center' }
       );
     });
   }
@@ -421,8 +533,7 @@ export class PDFGenerator {
   public ensureSpaceForSignatures(currentY: number): number {
     const remainingSpace = this.doc.internal.pageSize.height - currentY - 80;
     if (remainingSpace < 80) {
-      this.doc.addPage();
-      return 20;
+      return this.addNewPageWithHeader();
     }
     return currentY;
   }
