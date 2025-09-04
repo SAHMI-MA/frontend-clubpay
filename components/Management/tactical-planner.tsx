@@ -44,61 +44,62 @@ interface TacticalPlannerProps {
   match: Match
   isOpen: boolean
   onClose: () => void
+  availablePlayers: Player[]
 }
 
 const formations: Formation[] = [
   {
     id: "4-4-2",
-    name: "4-4-2 Classic",
-    description: "Balanced formation with strong midfield presence",
+    name: "4-4-2 Classique",
+    description: "Formation équilibrée avec une forte présence au milieu",
     positions: [
-      { x: 50, y: 85, role: "GK" }, // Goalkeeper
-      { x: 15, y: 65, role: "LB" }, // Left Back
-      { x: 35, y: 65, role: "CB" }, // Center Back
-      { x: 65, y: 65, role: "CB" }, // Center Back
-      { x: 85, y: 65, role: "RB" }, // Right Back
-      { x: 15, y: 45, role: "LM" }, // Left Midfielder
-      { x: 35, y: 45, role: "CM" }, // Center Midfielder
-      { x: 65, y: 45, role: "CM" }, // Center Midfielder
-      { x: 85, y: 45, role: "RM" }, // Right Midfielder
-      { x: 35, y: 20, role: "ST" }, // Striker
-      { x: 65, y: 20, role: "ST" }, // Striker
+      { x: 50, y: 85, role: "GB" }, // Gardien de but
+      { x: 15, y: 65, role: "DG" }, // Défenseur Gauche
+      { x: 35, y: 65, role: "DC" }, // Défenseur Central
+      { x: 65, y: 65, role: "DC" }, // Défenseur Central
+      { x: 85, y: 65, role: "DD" }, // Défenseur Droit
+      { x: 15, y: 45, role: "MG" }, // Milieu Gauche
+      { x: 35, y: 45, role: "MC" }, // Milieu Central
+      { x: 65, y: 45, role: "MC" }, // Milieu Central
+      { x: 85, y: 45, role: "MD" }, // Milieu Droit
+      { x: 35, y: 20, role: "AT" }, // Attaquant
+      { x: 65, y: 20, role: "AT" }, // Attaquant
     ],
   },
   {
     id: "4-3-3",
-    name: "4-3-3 Attacking",
-    description: "Offensive formation with wide attacking play",
+    name: "4-3-3 Offensif",
+    description: "Formation offensive avec un jeu d'attaque large",
     positions: [
-      { x: 50, y: 85, role: "GK" }, // Goalkeeper
-      { x: 15, y: 65, role: "LB" }, // Left Back
-      { x: 35, y: 65, role: "CB" }, // Center Back
-      { x: 65, y: 65, role: "CB" }, // Center Back
-      { x: 85, y: 65, role: "RB" }, // Right Back
-      { x: 25, y: 50, role: "CM" }, // Left Center Midfielder
-      { x: 50, y: 50, role: "CM" }, // Center Midfielder
-      { x: 75, y: 50, role: "CM" }, // Right Center Midfielder
-      { x: 15, y: 20, role: "LW" }, // Left Winger
-      { x: 50, y: 15, role: "ST" }, // Striker
-      { x: 85, y: 20, role: "RW" }, // Right Winger
+      { x: 50, y: 85, role: "GB" }, // Gardien de but
+      { x: 15, y: 65, role: "DG" }, // Défenseur Gauche
+      { x: 35, y: 65, role: "DC" }, // Défenseur Central
+      { x: 65, y: 65, role: "DC" }, // Défenseur Central
+      { x: 85, y: 65, role: "DD" }, // Défenseur Droit
+      { x: 25, y: 50, role: "MC" }, // Milieu Centre Gauche
+      { x: 50, y: 50, role: "MC" }, // Milieu Central
+      { x: 75, y: 50, role: "MC" }, // Milieu Centre Droit
+      { x: 15, y: 20, role: "AG" }, // Ailier Gauche
+      { x: 50, y: 15, role: "AT" }, // Attaquant
+      { x: 85, y: 20, role: "AD" }, // Ailier Droit
     ],
   },
   {
     id: "3-5-2",
-    name: "3-5-2 Wing-backs",
-    description: "Formation with attacking wing-backs and strong midfield",
+    name: "3-5-2 Pistons",
+    description: "Formation avec pistons offensifs et milieu renforcé",
     positions: [
-      { x: 50, y: 85, role: "GK" }, // Goalkeeper
-      { x: 25, y: 65, role: "CB" }, // Left Center Back
-      { x: 50, y: 65, role: "CB" }, // Center Back
-      { x: 75, y: 65, role: "CB" }, // Right Center Back
-      { x: 10, y: 45, role: "LWB" }, // Left Wing Back
-      { x: 30, y: 45, role: "CM" }, // Left Center Midfielder
-      { x: 50, y: 45, role: "CM" }, // Center Midfielder
-      { x: 70, y: 45, role: "CM" }, // Right Center Midfielder
-      { x: 90, y: 45, role: "RWB" }, // Right Wing Back
-      { x: 35, y: 20, role: "ST" }, // Striker
-      { x: 65, y: 20, role: "ST" }, // Striker
+      { x: 50, y: 85, role: "GB" }, // Gardien de but
+      { x: 25, y: 65, role: "DC" }, // Défenseur Central Gauche
+      { x: 50, y: 65, role: "DC" }, // Défenseur Central
+      { x: 75, y: 65, role: "DC" }, // Défenseur Central Droit
+      { x: 10, y: 45, role: "PG" }, // Piston Gauche
+      { x: 30, y: 45, role: "MC" }, // Milieu Centre Gauche
+      { x: 50, y: 45, role: "MC" }, // Milieu Central
+      { x: 70, y: 45, role: "MC" }, // Milieu Centre Droit
+      { x: 90, y: 45, role: "PD" }, // Piston Droit
+      { x: 35, y: 20, role: "AT" }, // Attaquant
+      { x: 65, y: 20, role: "AT" }, // Attaquant
     ],
   },
   {
@@ -121,12 +122,11 @@ const formations: Formation[] = [
   },
 ]
 
-export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps) {
+export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: TacticalPlannerProps) {
   const dispatch = useAppDispatch()
   
   // Redux state
   const { participations} = useAppSelector((state) => state.matches)
-  const { players: availablePlayers } = useAppSelector((state) => state.players)
   
   // Local state
   const [selectedFormation, setSelectedFormation] = useState("4-4-2")
@@ -150,10 +150,21 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
     return [...startingIds, ...subIds]
   }
 
-  // Filter available players (only include players from the selected team and exclude already assigned ones)
-  const availablePlayersFiltered = availablePlayers.filter(
-    (player) => player.teamId === match.team.id && !getAssignedPlayerIds().includes(player.id)
-  )
+  // Debug logging for available players
+  useEffect(() => {
+    console.log('TacticalPlanner - Available Players:', availablePlayers)
+    console.log('TacticalPlanner - Match:', match)
+  }, [availablePlayers, match])
+
+  // Filter available players (only exclude already assigned ones)
+  const availablePlayersFiltered = availablePlayers.filter((player) => {
+    const isAssigned = getAssignedPlayerIds().includes(player.id);
+    console.log('Filtering player:', player.firstName, player.lastName,
+                'teamId:', player.teamId,
+                'team:', player.team,
+                'is assigned:', isAssigned);
+    return !isAssigned;
+  })
 
   // Reset state when match changes and load existing participations
   useEffect(() => {
@@ -179,7 +190,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
     // Find players for starters and assign them to positions (only from selected team)
     const newStartingXI: { [positionIndex: number]: Player } = {}
     starters.forEach((participation, index) => {
-      const player = availablePlayers.find(p => p.id === participation.player.id && p.teamId === match.team.id)
+      const player = availablePlayers.find(p => p.id === participation.player.id && p.team?.id === match.team.id)
       if (player && index < currentFormation.positions.length) {
         newStartingXI[index] = player
       }
@@ -356,7 +367,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
 
       // First, remove all existing participations for this match
       if (participations.length > 0) {
-        toast.info("Clearing existing squad assignments...")
+        toast.info("Effacement des assignations existantes...")
         for (const participation of participations) {
           await dispatch(removePlayerFromMatch({
             matchId: match.id,
@@ -365,15 +376,15 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
         }
       }
 
-      // Add all starting XI players with match bonus or default
+      // Add all starting XI players with full bonus
       if (Object.keys(startingXI).length > 0) {
-        toast.info("Assigning starting XI...")
+        toast.info("Attribution des titulaires...")
         for (const [, player] of Object.entries(startingXI)) {
           const participationData: CreateMatchParticipationDto = {
             playerId: player.id,
             role: "Starter",
-            bonus: match.bonus || 500, // Use match bonus or default bonus for starters
-            percentage: 100 // 100% for starters
+            bonus: match.bonus || 500, // Use match bonus or default bonus
+            percentage: 100 // Full percentage for all participants
           }
 
           const result = await dispatch(addPlayerToMatch({
@@ -387,15 +398,15 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
         }
       }
 
-      // Add all substitute players with half match bonus or default
+      // Add all substitute players with full bonus
       if (substitutes.length > 0) {
-        toast.info("Assigning substitutes...")
+        toast.info("Attribution des remplaçants...")
         for (const player of substitutes) {
           const participationData: CreateMatchParticipationDto = {
             playerId: player.id,
             role: "Substitute",
-            bonus: match.bonus ? match.bonus * 0.5 : 250, // Half of match bonus or default for substitutes
-            percentage: 50 // 50% for substitutes
+            bonus: match.bonus || 500, // Full bonus for all participants
+            percentage: 100 // Full percentage for all participants
           }
 
           const result = await dispatch(addPlayerToMatch({
@@ -409,10 +420,38 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
         }
       }
 
-      toast.success(`Tactical plan saved! ${Object.keys(startingXI).length} starters and ${substitutes.length} substitutes assigned.`)
+      // Add non-participating players with reduced bonus
+      const nonParticipatingPlayers = availablePlayers.filter(player => {
+        const isStarting = Object.values(startingXI).some(p => p.id === player.id);
+        const isSubstitute = substitutes.some(p => p.id === player.id);
+        return !isStarting && !isSubstitute;
+      });
+
+      if (nonParticipatingPlayers.length > 0) {
+        toast.info(`Attribution de prime réduite à ${nonParticipatingPlayers.length} joueurs non-participants...`)
+        for (const player of nonParticipatingPlayers) {
+          const participationData: CreateMatchParticipationDto = {
+            playerId: player.id,
+            role: "Bench",
+            bonus: match.bonus ? match.bonus * 0.5 : 250, // 50% bonus for non-participants
+            percentage: 50 // 50% for non-participants
+          }
+
+          const result = await dispatch(addPlayerToMatch({
+            matchId: match.id,
+            participationData
+          }))
+
+          if (addPlayerToMatch.rejected.match(result)) {
+            console.warn(`Failed to assign bonus to non-participating player ${player.firstName} ${player.lastName}`)
+          }
+        }
+      }
+
+      toast.success(`Plan tactique sauvegardé ! ${Object.keys(startingXI).length} titulaires, ${substitutes.length} remplaçants, et ${nonParticipatingPlayers.length} joueurs non-participants assignés.`)
       onClose()
     } catch (error) {
-      toast.error(`Error saving tactical plan: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Erreur lors de la sauvegarde du plan tactique : ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
       console.error(error)
     } finally {
       setIsSaving(false)
@@ -424,11 +463,11 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
       <DialogContent className="w-full max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Tactical Planning - {match.nomMatch} vs {match.opposition}
+            Plan Tactique - {match.nomMatch} vs {match.opposition}
           </DialogTitle>
           <DialogDescription>
-            Select formation and assign players to their tactical positions. 
-            {participations.length > 0 && ` Current squad: ${participations.filter(p => p.role === "Starter").length} starters, ${participations.filter(p => p.role === "Substitute").length} substitutes.`}
+            Sélectionnez la formation et assignez les joueurs à leurs positions tactiques. 
+            {participations.length > 0 && ` Équipe actuelle : ${participations.filter(p => p.role === "Starter").length} titulaires, ${participations.filter(p => p.role === "Substitute").length} remplaçants.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -436,7 +475,7 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
           {/* Available Players */}
           <div className="lg:col-span-1 xl:col-span-3 space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Available Players ({availablePlayersFiltered.length})</h3>
+              <h3 className="text-lg font-semibold mb-2">Joueurs Disponibles ({availablePlayersFiltered.length})</h3>
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {availablePlayersFiltered.length > 0 ? (
                   availablePlayersFiltered.map((player) => (
@@ -461,8 +500,8 @@ export function TacticalPlanner({ match, isOpen, onClose }: TacticalPlannerProps
                 ) : (
                   <div className="text-center text-gray-500 py-8">
                     <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">All players have been assigned</p>
-                    <p className="text-xs">Remove players from positions to see them here</p>
+                    <p className="text-sm">Tous les joueurs ont été assignés</p>
+                    <p className="text-xs">Retirez des joueurs des positions pour les voir ici</p>
                   </div>
                 )}
               </div>

@@ -84,6 +84,7 @@ export function MatchManagement() {
   } = useSelector((state: RootState) => state.matches)
   
   // Get players from Redux store
+  const { players } = useSelector((state: RootState) => state.players)
 
   // Get auth state to check if user is logged in
   const { isAuthenticated, user, token } = useSelector((state: RootState) => state.auth)
@@ -362,12 +363,19 @@ export function MatchManagement() {
     setIsDeleteDialogOpen(true)
   }
 
-  const handleOpenTacticalPlanner = (match: Match) => {
+  const handleOpenTacticalPlanner = async (match: Match) => {
+    console.log('Opening tactical planner for match:', match)
     setSelectedMatchForTactical(match)
     setIsTacticalPlannerOpen(true)
     dispatch(setSelectedMatch(match.id))
-    // Load participations for this match
-    dispatch(fetchMatchParticipations(match.id))
+    
+    // Load both participations and players
+    await Promise.all([
+      dispatch(fetchMatchParticipations(match.id)),
+      dispatch(fetchAllPlayers())
+    ])
+    
+    console.log('Loaded data for tactical planner')
   }
 
   const handleRemovePlayerFromMatch = async (participationId: number, matchId: number) => {
@@ -1122,14 +1130,31 @@ export function MatchManagement() {
 
       {/* Tactical Planner Dialog */}
       {selectedMatchForTactical && (
-        <TacticalPlanner
-          match={selectedMatchForTactical}
-          isOpen={isTacticalPlannerOpen}
-          onClose={() => {
-            setIsTacticalPlannerOpen(false)
-            setSelectedMatchForTactical(null)
-          }}
-        />
+        <>
+          {console.log('Debug - Selected Match:', selectedMatchForTactical)}
+          {console.log('Debug - Selected Team:', selectedMatchForTactical.team)}
+          {console.log('Debug - All Players:', players)}
+          {console.log('Debug - Players for team:', players.filter(player => {
+            console.log('Checking player:', player.firstName, player.lastName, 
+                      'teamId:', player.teamId, 
+                      'team object:', player.team,
+                      'matches team?:', player.teamId === selectedMatchForTactical.team?.id);
+            return player.teamId === selectedMatchForTactical.team?.id;
+          }))}
+          <TacticalPlanner
+            match={selectedMatchForTactical}
+            isOpen={isTacticalPlannerOpen}
+            onClose={() => {
+              setIsTacticalPlannerOpen(false)
+              setSelectedMatchForTactical(null)
+            }}
+            availablePlayers={players.filter(player => {
+              // Include players that belong to the team or have the team in their team object
+              const teamId = selectedMatchForTactical.team?.id;
+              return player.teamId === teamId || player.team?.id === teamId;
+            })}
+          />
+        </>
       )}
     </div>
   )
