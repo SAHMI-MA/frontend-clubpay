@@ -377,6 +377,20 @@ export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
                       </p>
                     </div>
                     <div>
+                      <p className="font-medium text-muted-foreground">Prime de signature</p>
+                      {(player.contract as any).signatureBonus ? (
+                        <p className="font-semibold text-blue-600">{formatCurrency((player.contract as any).signatureBonus)}</p>
+                      ) : (
+                        <p className="text-gray-400 text-xs">Aucune prime</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">Bonus de performance</p>
+                      <Badge variant={(player.contract as any).hasBonus ? "default" : "secondary"}>
+                        {(player.contract as any).hasBonus ? "Inclus" : "Non inclus"}
+                      </Badge>
+                    </div>
+                    <div>
                       <p className="font-medium text-muted-foreground">Statut</p>
                       <Badge variant={(player.contract as any).status === "ACTIVE" ? "default" : "secondary"}>
                         {(player.contract as any).status === "ACTIVE"

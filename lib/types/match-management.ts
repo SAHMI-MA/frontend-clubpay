@@ -8,6 +8,8 @@ export interface Match {
   dateTime: string | Date; // Match date and time
   formation?: string; // Formation used in this match
   bonus?: number; // NEW: Default participation bonus for this match
+  status?: 'Scheduled' | 'Completed' | 'Cancelled'; // NEW: Match status
+  result?: string; // NEW: Match result (e.g., "1-1")
   team: {
     id: number;
     name: string;
@@ -63,6 +65,8 @@ export interface CreateMatchDto {
   dateTime: string;
   formation?: string; // Formation for the match
   bonus?: number; // NEW: Default participation bonus for this match
+  status?: 'Scheduled' | 'Completed' | 'Cancelled'; // NEW: Match status
+  result?: string; // NEW: Match result
   teamId: number;
 }
 
@@ -73,6 +77,8 @@ export interface UpdateMatchDto {
   dateTime?: string;
   formation?: string; // Formation for the match
   bonus?: number; // NEW: Default participation bonus for this match
+  status?: 'Scheduled' | 'Completed' | 'Cancelled'; // NEW: Match status
+  result?: string; // NEW: Match result
   teamId?: number;
 }
 

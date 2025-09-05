@@ -96,9 +96,15 @@ export function MatchManagement() {
   const [isEditMatchDialogOpen, setIsEditMatchDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isTacticalPlannerOpen, setIsTacticalPlannerOpen] = useState(false)
+  const [isQuickStatusDialogOpen, setIsQuickStatusDialogOpen] = useState(false)
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null)
   const [selectedMatchForView, setSelectedMatchForView] = useState<Match | null>(null)
   const [selectedMatchForTactical, setSelectedMatchForTactical] = useState<Match | null>(null)
+  const [selectedMatchForQuickEdit, setSelectedMatchForQuickEdit] = useState<Match | null>(null)
+  const [quickEditForm, setQuickEditForm] = useState({
+    status: "Scheduled" as 'Scheduled' | 'Completed' | 'Cancelled',
+    result: ""
+  })
   
   // Form states
   const [matchForm, setMatchForm] = useState({
@@ -107,7 +113,9 @@ export function MatchManagement() {
     opposition: "",
     dateTime: "",
     formation: "", // Formation for the match
-    bonus: "", // NEW: Default participation bonus for this match
+    bonus: "", // Default participation bonus for this match
+    status: "Scheduled" as 'Scheduled' | 'Completed' | 'Cancelled', // Match status
+    result: "", // Match result
     teamId: ""
   })
   
@@ -117,7 +125,9 @@ export function MatchManagement() {
     opposition: "",
     dateTime: "",
     formation: "", // Formation for the match
-    bonus: "", // NEW: Default participation bonus for this match
+    bonus: "", // Default participation bonus for this match
+    status: "Scheduled" as 'Scheduled' | 'Completed' | 'Cancelled', // Match status
+    result: "", // Match result
     teamId: ""
   })
   
@@ -186,8 +196,10 @@ export function MatchManagement() {
       city: "",
       opposition: "",
       dateTime: "",
-      formation: "", // Formation for the match
-      bonus: "", // NEW: Default participation bonus for this match
+      formation: "",
+      bonus: "",
+      status: "Scheduled",
+      result: "",
       teamId: ""
     })
     setEditMatchForm({
@@ -195,8 +207,10 @@ export function MatchManagement() {
       city: "",
       opposition: "",
       dateTime: "",
-      formation: "", // Formation for the match
-      bonus: "", // NEW: Default participation bonus for this match
+      formation: "",
+      bonus: "",
+      status: "Scheduled",
+      result: "",
       teamId: ""
     })
     setParticipationForm({
@@ -216,21 +230,39 @@ export function MatchManagement() {
   }
 
   const getStatusColor = (match: Match) => {
-    const matchDate = new Date(match.dateTime)
-    const now = new Date()
-    
-    if (matchDate > now) {
+    if (match.status === 'Completed') {
+      return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+    } else if (match.status === 'Cancelled') {
+      return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+    } else if (match.status === 'Scheduled') {
       return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
     } else {
-      return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      // Fallback to date-based logic if status is not set
+      const matchDate = new Date(match.dateTime)
+      const now = new Date()
+      
+      if (matchDate > now) {
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+      } else {
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      }
     }
   }
 
   const getMatchStatus = (match: Match) => {
-    const matchDate = new Date(match.dateTime)
-    const now = new Date()
-    
-    return matchDate > now ? "Programmé" : "Terminé"
+    if (match.status === 'Completed') {
+      return "Terminé"
+    } else if (match.status === 'Cancelled') {
+      return "Annulé"
+    } else if (match.status === 'Scheduled') {
+      return "Programmé"
+    } else {
+      // Fallback to date-based logic if status is not set
+      const matchDate = new Date(match.dateTime)
+      const now = new Date()
+      
+      return matchDate > now ? "Programmé" : "Terminé"
+    }
   }
 
   const getParticipationColor = (role: string) => {
@@ -266,8 +298,10 @@ export function MatchManagement() {
         city: matchForm.city,
         opposition: matchForm.opposition,
         dateTime: dateTimeISO,
-        formation: matchForm.formation, // Formation for the match
-        bonus: matchForm.bonus ? parseFloat(matchForm.bonus) : undefined, // NEW: Default participation bonus for this match
+        formation: matchForm.formation,
+        bonus: matchForm.bonus ? parseFloat(matchForm.bonus) : undefined,
+        status: matchForm.status,
+        result: matchForm.result || undefined,
         teamId: parseInt(matchForm.teamId)
       }
 
@@ -316,8 +350,10 @@ export function MatchManagement() {
       city: match.city,
       opposition: match.opposition,
       dateTime: new Date(match.dateTime).toISOString().slice(0, 16), // Format for datetime-local input
-      formation: match.formation || "", // Formation for the match
-      bonus: match.bonus?.toString() || "", // NEW: Default participation bonus for this match
+      formation: match.formation || "",
+      bonus: match.bonus?.toString() || "",
+      status: match.status || "Scheduled",
+      result: match.result || "",
       teamId: match.team.id.toString()
     })
     setIsEditMatchDialogOpen(true)
@@ -334,8 +370,10 @@ export function MatchManagement() {
         city: editMatchForm.city,
         opposition: editMatchForm.opposition,
         dateTime: dateTimeISO,
-        formation: editMatchForm.formation, // Formation for the match
-        bonus: editMatchForm.bonus ? parseFloat(editMatchForm.bonus) : undefined, // NEW: Default participation bonus for this match
+        formation: editMatchForm.formation,
+        bonus: editMatchForm.bonus ? parseFloat(editMatchForm.bonus) : undefined,
+        status: editMatchForm.status,
+        result: editMatchForm.result || undefined,
         teamId: parseInt(editMatchForm.teamId)
       }
 
@@ -376,6 +414,44 @@ export function MatchManagement() {
     ])
     
     console.log('Loaded data for tactical planner')
+  }
+
+  const openQuickStatusEdit = (match: Match) => {
+    setSelectedMatchForQuickEdit(match)
+    setQuickEditForm({
+      status: match.status || "Scheduled",
+      result: match.result || ""
+    })
+    setIsQuickStatusDialogOpen(true)
+  }
+
+  const closeQuickStatusEdit = () => {
+    setIsQuickStatusDialogOpen(false)
+    setSelectedMatchForQuickEdit(null)
+    setQuickEditForm({
+      status: "Scheduled",
+      result: ""
+    })
+  }
+
+  const handleQuickStatusUpdate = () => {
+    if (!selectedMatchForQuickEdit) return
+
+    const updateData: UpdateMatchDto = {
+      status: quickEditForm.status,
+      result: quickEditForm.result
+    }
+
+    dispatch(updateMatch({ matchId: selectedMatchForQuickEdit.id, matchData: updateData }))
+      .unwrap()
+      .then(() => {
+        closeQuickStatusEdit()
+        toast.success("Statut du match mis à jour avec succès!")
+      })
+      .catch((error) => {
+        console.error('Erreur lors de la mise à jour du match:', error)
+        toast.error("Erreur lors de la mise à jour du match")
+      })
   }
 
   const handleRemovePlayerFromMatch = async (participationId: number, matchId: number) => {
@@ -578,6 +654,35 @@ export function MatchManagement() {
                   className="col-span-3" 
                 />
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="status" className="text-right">
+                  Statut
+                </Label>
+                <Select value={matchForm.status} onValueChange={(value) => setMatchForm({...matchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled'})}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Scheduled">Programmé</SelectItem>
+                    <SelectItem value="Completed">Terminé</SelectItem>
+                    <SelectItem value="Cancelled">Annulé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {matchForm.status === 'Completed' && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="result" className="text-right">
+                    Résultat
+                  </Label>
+                  <Input 
+                    id="result" 
+                    placeholder="ex : 2-1"
+                    value={matchForm.result}
+                    onChange={(e) => setMatchForm({...matchForm, result: e.target.value})}
+                    className="col-span-3" 
+                  />
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button 
@@ -682,6 +787,7 @@ export function MatchManagement() {
                       <TableHead>Ville</TableHead>
                       <TableHead>Équipe</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead>Résultat</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -719,6 +825,13 @@ export function MatchManagement() {
                             <Badge className={getStatusColor(match)}>{status}</Badge>
                           </TableCell>
                           <TableCell>
+                            {match.result ? (
+                              <span className="font-semibold text-green-600">{match.result}</span>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
@@ -727,6 +840,15 @@ export function MatchManagement() {
                               >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Voir
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditMatch(match)}
+                                className="text-orange-600 hover:text-orange-700"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Modifier
                               </Button>
                               <Button
                                 size="sm"
@@ -740,10 +862,11 @@ export function MatchManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleEditMatch(match)}
+                                onClick={() => openQuickStatusEdit(match)}
+                                className="text-green-600 hover:text-green-700"
                               >
                                 <Edit className="h-4 w-4 mr-1" />
-                                Modifier
+                                Statut
                               </Button>
                               <Button
                                 size="sm"
@@ -950,10 +1073,18 @@ export function MatchManagement() {
               <div>
                 <Label className="text-sm font-medium text-gray-600">Statut</Label>
                 <Badge className={getStatusColor(selectedMatchForView)}>
-                  {new Date(selectedMatchForView.dateTime) > new Date() ? 'À venir' : 
-                   new Date(selectedMatchForView.dateTime).toDateString() === new Date().toDateString() ? 'Aujourd\'hui' : 'Terminé'}
+                  {selectedMatchForView.status === 'Scheduled' ? 'Programmé' :
+                   selectedMatchForView.status === 'Completed' ? 'Terminé' :
+                   selectedMatchForView.status === 'Cancelled' ? 'Annulé' :
+                   new Date(selectedMatchForView.dateTime) > new Date() ? 'À venir' : 'Terminé'}
                 </Badge>
               </div>
+              {selectedMatchForView.result && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Résultat</Label>
+                  <p className="text-sm font-semibold">{selectedMatchForView.result}</p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1057,6 +1188,35 @@ export function MatchManagement() {
                 className="col-span-3"
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-status" className="text-right">
+                Statut
+              </Label>
+              <Select value={editMatchForm.status} onValueChange={(value) => setEditMatchForm({...editMatchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled'})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Scheduled">Programmé</SelectItem>
+                  <SelectItem value="Completed">Terminé</SelectItem>
+                  <SelectItem value="Cancelled">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editMatchForm.status === 'Completed' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-result" className="text-right">
+                  Résultat
+                </Label>
+                <Input
+                  id="edit-result"
+                  placeholder="ex : 2-1"
+                  value={editMatchForm.result}
+                  onChange={(e) => setEditMatchForm({...editMatchForm, result: e.target.value})}
+                  className="col-span-3"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button 
@@ -1130,32 +1290,72 @@ export function MatchManagement() {
 
       {/* Tactical Planner Dialog */}
       {selectedMatchForTactical && (
-        <>
-          {console.log('Debug - Selected Match:', selectedMatchForTactical)}
-          {console.log('Debug - Selected Team:', selectedMatchForTactical.team)}
-          {console.log('Debug - All Players:', players)}
-          {console.log('Debug - Players for team:', players.filter(player => {
-            console.log('Checking player:', player.firstName, player.lastName, 
-                      'teamId:', player.teamId, 
-                      'team object:', player.team,
-                      'matches team?:', player.teamId === selectedMatchForTactical.team?.id);
-            return player.teamId === selectedMatchForTactical.team?.id;
-          }))}
-          <TacticalPlanner
-            match={selectedMatchForTactical}
-            isOpen={isTacticalPlannerOpen}
-            onClose={() => {
-              setIsTacticalPlannerOpen(false)
-              setSelectedMatchForTactical(null)
-            }}
-            availablePlayers={players.filter(player => {
-              // Include players that belong to the team or have the team in their team object
-              const teamId = selectedMatchForTactical.team?.id;
-              return player.teamId === teamId || player.team?.id === teamId;
-            })}
-          />
-        </>
+        <TacticalPlanner
+          match={selectedMatchForTactical}
+          isOpen={isTacticalPlannerOpen}
+          onClose={() => {
+            setIsTacticalPlannerOpen(false)
+            setSelectedMatchForTactical(null)
+          }}
+          availablePlayers={players.filter(player => {
+            // Include players that belong to the team or have the team in their team object
+            const teamId = selectedMatchForTactical.team?.id;
+            return player.teamId === teamId || player.team?.id === teamId;
+          })}
+        />
       )}
+
+      {/* Quick Status Edit Dialog */}
+      <Dialog open={isQuickStatusDialogOpen} onOpenChange={closeQuickStatusEdit}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier le statut du match</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Statut
+              </Label>
+              <Select
+                value={quickEditForm.status}
+                onValueChange={(value) => setQuickEditForm(prev => ({ ...prev, status: value as 'Scheduled' | 'Completed' | 'Cancelled' }))}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Sélectionner le statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Scheduled">Programmé</SelectItem>
+                  <SelectItem value="Completed">Terminé</SelectItem>
+                  <SelectItem value="Cancelled">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="result" className="text-right">
+                Résultat
+              </Label>
+              <Input
+                id="result"
+                value={quickEditForm.result}
+                onChange={(e) => setQuickEditForm(prev => ({ ...prev, result: e.target.value }))}
+                placeholder="Ex: 2-1"
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeQuickStatusEdit}>
+              Annuler
+            </Button>
+            <Button type="button" onClick={handleQuickStatusUpdate}>
+              Sauvegarder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

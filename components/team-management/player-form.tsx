@@ -56,7 +56,7 @@ export function PlayerForm({
     position: "",
     playerNumber: undefined,
     rib: "",
-    playerStatus: "ACTIVE",
+    playerStatus: "ACTIVE" as "ACTIVE" | "INJURED" | "SUSPENDED" | "RETIRED",
     teamId: undefined,
     ImageId: null,
     cin: "",
@@ -102,6 +102,8 @@ export function PlayerForm({
   // Prefill form if player is provided (edit mode) or preselected team
   useEffect(() => {
     if (player && isEditing) {
+      console.log('Prefilling form with player data:', player);
+      console.log('Player status from API:', player.playerStatus);
       setFormData({
         firstName: player.firstName,
         lastName: player.lastName,
@@ -221,6 +223,7 @@ export function PlayerForm({
           teamId: formData.teamId !== undefined && formData.teamId !== null ? Number(formData.teamId) : null,
         };
 
+        console.log('Creating player with data:', playerData);
         await dispatch(createPlayer(playerData as CreatePlayerDto)).unwrap();
         toast.success("Joueur créé avec succès");
       } else if (isEditing && player) {
@@ -229,6 +232,9 @@ export function PlayerForm({
           teamId: formData.teamId !== undefined && formData.teamId !== null ? Number(formData.teamId) : null,
         };
 
+        console.log('Updating player with data:', playerData);
+        console.log('Player status type:', typeof playerData.playerStatus, 'Value:', playerData.playerStatus);
+        
         await dispatch(
           updatePlayer({ id: player.id, playerData: playerData as UpdatePlayerDto })
         ).unwrap();
@@ -397,16 +403,20 @@ export function PlayerForm({
             <div className="space-y-2">
               <Label htmlFor="playerStatus">Statut du joueur</Label>
               <Select
-                value={formData.playerStatus || "ACTIVE"}
-                onValueChange={(value) => setFormData(prev => ({
-                  ...prev,
-                  playerStatus: value as 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'
-                }))}
+                value={formData.playerStatus || "none"}
+                onValueChange={(value) => {
+                  console.log('Player status selected:', value);
+                  setFormData(prev => ({
+                    ...prev,
+                    playerStatus: value as 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'
+                  }));
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner le statut" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none" disabled defaultChecked>Sélectionner un statut</SelectItem>
                   <SelectItem value="ACTIVE">Actif</SelectItem>
                   <SelectItem value="INJURED">Blessé</SelectItem>
                   <SelectItem value="SUSPENDED">Suspendu</SelectItem>

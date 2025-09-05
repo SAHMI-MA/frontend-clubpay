@@ -1528,7 +1528,7 @@ export function AssociationSettings() {
                             )}
                           </Button>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Obligatoire : 2480x3508px (A4 à 300 DPI), PNG, JPG ou JPEG (Max 10Mo)
+                            Obligatoire : 1211x289px (A4 à 300 DPI), PNG, JPG ou JPEG (Max 10Mo)
                           </p>
                           {error && (
                             <p className="text-sm text-red-500">

@@ -793,16 +793,33 @@ export function ContractManagement() {
                       placeholder="85000"
                     />
                   </div>
+
+                  {/* Has Bonus checkbox */}
                   <div>
-                    <Label htmlFor="signatureBonus">Prime de signature</Label>
-                    <Input
-                      id="signatureBonus"
-                      type="number"
-                      value={contractForm.signatureBonus}
-                      onChange={(e) => setContractForm({ ...contractForm, signatureBonus: e.target.value })}
-                      placeholder="15000"
-                    />
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="hasBonus"
+                        checked={contractForm.hasBonus || false}
+                        onChange={(e) => setContractForm({ ...contractForm, hasBonus: e.target.checked })}
+                      />
+                      <Label htmlFor="hasBonus">Inclure des primes dans le contrat</Label>
+                    </div>
                   </div>
+
+                  {/* Signature Bonus - only shown if hasBonus is true */}
+                  {contractForm.hasBonus && (
+                    <div>
+                      <Label htmlFor="signatureBonus">Prime de signature (MAD)</Label>
+                      <Input
+                        id="signatureBonus"
+                        type="number"
+                        value={contractForm.signatureBonus}
+                        onChange={(e) => setContractForm({ ...contractForm, signatureBonus: e.target.value })}
+                        placeholder="15000"
+                      />
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="startDate">Date de début</Label>
                     <Input
@@ -1838,40 +1855,91 @@ export function ContractManagement() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Contract</DialogTitle>
-            <DialogDescription>Edit contract details and save changes.</DialogDescription>
+            <DialogTitle>Modifier le contrat</DialogTitle>
+            <DialogDescription>Modifiez les détails du contrat et sauvegardez les changements.</DialogDescription>
           </DialogHeader>
           {editForm && (
             <div className="space-y-4">
-              <Input
-                value={editForm.title}
-                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                placeholder="Title"
-              />
-              <Input
-                type="number"
-                value={editForm.salary}
-                onChange={e => setEditForm({ ...editForm, salary: e.target.value })}
-                placeholder="Salary"
-              />
-              <Input
-                type="date"
-                value={editForm.startDate ? editForm.startDate.slice(0, 10) : ''}
-                onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
-              />
-              <Input
-                type="date"
-                value={editForm.endDate ? editForm.endDate.slice(0, 10) : ''}
-                onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
-              />
-              <Textarea
-                value={editForm.description || ''}
-                onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                placeholder="Description"
-              />
+              <div>
+                <Label htmlFor="edit-title">Titre du contrat</Label>
+                <Input
+                  id="edit-title"
+                  value={editForm.title}
+                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Titre du contrat"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-salary">Salaire mensuel (MAD)</Label>
+                <Input
+                  id="edit-salary"
+                  type="number"
+                  value={editForm.salary}
+                  onChange={e => setEditForm({ ...editForm, salary: e.target.value })}
+                  placeholder="Salaire en MAD"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-startDate">Date de début</Label>
+                  <Input
+                    id="edit-startDate"
+                    type="date"
+                    value={editForm.startDate ? editForm.startDate.slice(0, 10) : ''}
+                    onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-endDate">Date de fin</Label>
+                  <Input
+                    id="edit-endDate"
+                    type="date"
+                    value={editForm.endDate ? editForm.endDate.slice(0, 10) : ''}
+                    onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Has Bonus and Signature Bonus fields */}
+              <div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-hasBonus"
+                    checked={editForm.hasBonus || false}
+                    onChange={e => setEditForm({ ...editForm, hasBonus: e.target.checked })}
+                  />
+                  <Label htmlFor="edit-hasBonus">Inclure des primes dans le contrat</Label>
+                </div>
+              </div>
+
+              {editForm.hasBonus && (
+                <div>
+                  <Label htmlFor="edit-signatureBonus">Prime de signature (MAD)</Label>
+                  <Input
+                    id="edit-signatureBonus"
+                    type="number"
+                    value={editForm.signatureBonus || ''}
+                    onChange={e => setEditForm({ ...editForm, signatureBonus: e.target.value })}
+                    placeholder="Montant de la prime de signature"
+                  />
+                </div>
+              )}
+              
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editForm.description || ''}
+                  onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="Description du contrat"
+                />
+              </div>
               {/* File upload for edit */}
               <div>
-                <Label>Contract File (PDF, DOCX, etc.)</Label>
+                <Label>Fichier de contrat (PDF, DOCX, etc.)</Label>
                 <div className="flex gap-2 items-center">
                   <Input
                     type="file"
@@ -1890,7 +1958,7 @@ export function ContractManagement() {
                   <Button type="button" onClick={async () => {
                     setEditFileUploadError(null);
                     if (!editFile) {
-                      setEditFileUploadError('Please select a file to upload.');
+                      setEditFileUploadError('Veuillez sélectionner un fichier à télécharger.');
                       return;
                     }
                     setEditFileUploading(true);
@@ -1908,18 +1976,18 @@ export function ContractManagement() {
                       const fileData = JSON.parse(responseText);
                       setEditUploadedFileId(fileData.id);
                     } catch (err: any) {
-                      setEditFileUploadError('File upload failed: ' + (err.message || err));
+                      setEditFileUploadError('Échec du téléchargement: ' + (err.message || err));
                     }
                     setEditFileUploading(false);
                   }} disabled={!editFile || editFileUploading || !!editUploadedFileId}>
-                    {editFileUploading ? 'Uploading...' : editUploadedFileId ? 'Uploaded' : 'Upload File'}
+                    {editFileUploading ? 'Téléchargement...' : editUploadedFileId ? 'Téléchargé' : 'Télécharger'}
                   </Button>
                 </div>
                 {editFile && !editUploadedFileId && (
-                  <div className="text-xs text-gray-600 mt-1">Selected: {editFile.name}</div>
+                  <div className="text-xs text-gray-600 mt-1">Sélectionné: {editFile.name}</div>
                 )}
                 {editUploadedFileId && (
-                  <div className="text-xs text-green-600 mt-1">Uploaded</div>
+                  <div className="text-xs text-green-600 mt-1">Téléchargé avec succès</div>
                 )}
                 {editFileUploadError && (
                   <div className="text-xs text-red-600 mt-1">{editFileUploadError}</div>
@@ -1928,7 +1996,7 @@ export function ContractManagement() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Annuler</Button>
             <Button onClick={async () => {
               if (!contractToEdit) return;
               try {
@@ -1993,7 +2061,7 @@ export function ContractManagement() {
                 const errorMessage = error?.message || "Erreur lors de la mise à jour du contrat"
                 showToast(errorMessage, "error", "Erreur")
               }
-            }}>Save</Button>
+            }}>Sauvegarder</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

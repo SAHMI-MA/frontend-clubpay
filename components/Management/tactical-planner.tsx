@@ -53,71 +53,251 @@ const formations: Formation[] = [
     name: "4-4-2 Classique",
     description: "Formation équilibrée avec une forte présence au milieu",
     positions: [
-      { x: 50, y: 85, role: "GB" }, // Gardien de but
-      { x: 15, y: 65, role: "DG" }, // Défenseur Gauche
-      { x: 35, y: 65, role: "DC" }, // Défenseur Central
-      { x: 65, y: 65, role: "DC" }, // Défenseur Central
-      { x: 85, y: 65, role: "DD" }, // Défenseur Droit
-      { x: 15, y: 45, role: "MG" }, // Milieu Gauche
-      { x: 35, y: 45, role: "MC" }, // Milieu Central
-      { x: 65, y: 45, role: "MC" }, // Milieu Central
-      { x: 85, y: 45, role: "MD" }, // Milieu Droit
-      { x: 35, y: 20, role: "AT" }, // Attaquant
-      { x: 65, y: 20, role: "AT" }, // Attaquant
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 15, y: 45, role: "MG" }, { x: 35, y: 45, role: "MC" }, { x: 65, y: 45, role: "MC" }, { x: 85, y: 45, role: "MD" },
+      { x: 35, y: 20, role: "AT" }, { x: 65, y: 20, role: "AT" },
     ],
   },
   {
-    id: "4-3-3",
-    name: "4-3-3 Offensif",
-    description: "Formation offensive avec un jeu d'attaque large",
+    id: "4-4-2-losange",
+    name: "4-4-2 Losange",
+    description: "Formation en losange au milieu de terrain",
     positions: [
-      { x: 50, y: 85, role: "GB" }, // Gardien de but
-      { x: 15, y: 65, role: "DG" }, // Défenseur Gauche
-      { x: 35, y: 65, role: "DC" }, // Défenseur Central
-      { x: 65, y: 65, role: "DC" }, // Défenseur Central
-      { x: 85, y: 65, role: "DD" }, // Défenseur Droit
-      { x: 25, y: 50, role: "MC" }, // Milieu Centre Gauche
-      { x: 50, y: 50, role: "MC" }, // Milieu Central
-      { x: 75, y: 50, role: "MC" }, // Milieu Centre Droit
-      { x: 15, y: 20, role: "AG" }, // Ailier Gauche
-      { x: 50, y: 15, role: "AT" }, // Attaquant
-      { x: 85, y: 20, role: "AD" }, // Ailier Droit
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 20, y: 50, role: "MG" }, { x: 50, y: 55, role: "MDC" }, { x: 50, y: 35, role: "MOC" }, { x: 80, y: 50, role: "MD" },
+      { x: 35, y: 20, role: "AT" }, { x: 65, y: 20, role: "AT" },
+    ],
+  },
+  {
+    id: "4-2-3-1",
+    name: "4-2-3-1 Moderne",
+    description: "Formation moderne avec milieux défensifs et milieu offensif",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 35, y: 55, role: "MDC" }, { x: 65, y: 55, role: "MDC" },
+      { x: 15, y: 35, role: "AG" }, { x: 50, y: 35, role: "MOC" }, { x: 85, y: 35, role: "AD" },
+      { x: 50, y: 15, role: "AT" },
+    ],
+  },
+  {
+    id: "4-3-3-equilibre",
+    name: "4-3-3 Équilibré",
+    description: "Formation équilibrée avec trois milieux",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 25, y: 50, role: "MC" }, { x: 50, y: 50, role: "MC" }, { x: 75, y: 50, role: "MC" },
+      { x: 15, y: 20, role: "AG" }, { x: 50, y: 15, role: "AT" }, { x: 85, y: 20, role: "AD" },
+    ],
+  },
+  {
+    id: "4-3-3-offensif",
+    name: "4-3-3 Offensif",
+    description: "Formation offensive avec ailiers hauts",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 25, y: 50, role: "MC" }, { x: 50, y: 50, role: "MC" }, { x: 75, y: 50, role: "MC" },
+      { x: 10, y: 25, role: "AG" }, { x: 50, y: 15, role: "AT" }, { x: 90, y: 25, role: "AD" },
+    ],
+  },
+  {
+    id: "4-5-1",
+    name: "4-5-1 Compact",
+    description: "Formation compacte avec cinq milieux",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 10, y: 45, role: "MG" }, { x: 30, y: 45, role: "MC" }, { x: 50, y: 45, role: "MC" }, { x: 70, y: 45, role: "MC" }, { x: 90, y: 45, role: "MD" },
+      { x: 50, y: 20, role: "AT" },
+    ],
+  },
+  {
+    id: "4-1-4-1",
+    name: "4-1-4-1 Contrôle",
+    description: "Formation de contrôle avec sentinelle",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 50, y: 55, role: "MDC" },
+      { x: 15, y: 40, role: "MG" }, { x: 35, y: 40, role: "MC" }, { x: 65, y: 40, role: "MC" }, { x: 85, y: 40, role: "MD" },
+      { x: 50, y: 20, role: "AT" },
+    ],
+  },
+  {
+    id: "4-2-2-2",
+    name: "4-2-2-2 Double pivot",
+    description: "Formation avec double pivot défensif",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 35, y: 55, role: "MDC" }, { x: 65, y: 55, role: "MDC" },
+      { x: 25, y: 35, role: "MOC" }, { x: 75, y: 35, role: "MOC" },
+      { x: 35, y: 15, role: "AT" }, { x: 65, y: 15, role: "AT" },
+    ],
+  },
+  {
+    id: "4-1-2-1-2",
+    name: "4-1-2-1-2 Resserré",
+    description: "Formation resserrée dans l'axe",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 50, y: 55, role: "MDC" },
+      { x: 35, y: 40, role: "MC" }, { x: 65, y: 40, role: "MC" },
+      { x: 50, y: 25, role: "MOC" },
+      { x: 35, y: 10, role: "AT" }, { x: 65, y: 10, role: "AT" },
+    ],
+  },
+  {
+    id: "4-1-2-3",
+    name: "4-1-2-3 Dynamique",
+    description: "Formation dynamique avec attaque à trois",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 50, y: 55, role: "MDC" },
+      { x: 35, y: 40, role: "MC" }, { x: 65, y: 40, role: "MC" },
+      { x: 20, y: 20, role: "AG" }, { x: 50, y: 15, role: "AT" }, { x: 80, y: 20, role: "AD" },
     ],
   },
   {
     id: "3-5-2",
     name: "3-5-2 Pistons",
-    description: "Formation avec pistons offensifs et milieu renforcé",
+    description: "Formation avec pistons offensifs",
     positions: [
-      { x: 50, y: 85, role: "GB" }, // Gardien de but
-      { x: 25, y: 65, role: "DC" }, // Défenseur Central Gauche
-      { x: 50, y: 65, role: "DC" }, // Défenseur Central
-      { x: 75, y: 65, role: "DC" }, // Défenseur Central Droit
-      { x: 10, y: 45, role: "PG" }, // Piston Gauche
-      { x: 30, y: 45, role: "MC" }, // Milieu Centre Gauche
-      { x: 50, y: 45, role: "MC" }, // Milieu Central
-      { x: 70, y: 45, role: "MC" }, // Milieu Centre Droit
-      { x: 90, y: 45, role: "PD" }, // Piston Droit
-      { x: 35, y: 20, role: "AT" }, // Attaquant
-      { x: 65, y: 20, role: "AT" }, // Attaquant
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 10, y: 45, role: "PG" }, { x: 30, y: 45, role: "MC" }, { x: 50, y: 45, role: "MC" }, { x: 70, y: 45, role: "MC" }, { x: 90, y: 45, role: "PD" },
+      { x: 35, y: 20, role: "AT" }, { x: 65, y: 20, role: "AT" },
     ],
   },
   {
-    id: "4-2-3-1",
-    name: "4-2-3-1 Modern",
-    description: "Modern formation with defensive midfielders and attacking midfielder",
+    id: "3-4-3",
+    name: "3-4-3 Large",
+    description: "Formation large avec trois défenseurs",
     positions: [
-      { x: 50, y: 85, role: "GK" }, // Goalkeeper
-      { x: 15, y: 65, role: "LB" }, // Left Back
-      { x: 35, y: 65, role: "CB" }, // Center Back
-      { x: 65, y: 65, role: "CB" }, // Center Back
-      { x: 85, y: 65, role: "RB" }, // Right Back
-      { x: 35, y: 55, role: "CDM" }, // Defensive Midfielder
-      { x: 65, y: 55, role: "CDM" }, // Defensive Midfielder
-      { x: 15, y: 35, role: "LW" }, // Left Winger
-      { x: 50, y: 35, role: "CAM" }, // Attacking Midfielder
-      { x: 85, y: 35, role: "RW" }, // Right Winger
-      { x: 50, y: 15, role: "ST" }, // Striker
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 20, y: 45, role: "MC" }, { x: 40, y: 45, role: "MC" }, { x: 60, y: 45, role: "MC" }, { x: 80, y: 45, role: "MC" },
+      { x: 15, y: 20, role: "AG" }, { x: 50, y: 15, role: "AT" }, { x: 85, y: 20, role: "AD" },
+    ],
+  },
+  {
+    id: "3-4-1-2",
+    name: "3-4-1-2 Créatif",
+    description: "Formation créative avec meneur de jeu",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 20, y: 45, role: "MC" }, { x: 40, y: 45, role: "MC" }, { x: 60, y: 45, role: "MC" }, { x: 80, y: 45, role: "MC" },
+      { x: 50, y: 25, role: "MOC" },
+      { x: 35, y: 10, role: "AT" }, { x: 65, y: 10, role: "AT" },
+    ],
+  },
+  {
+    id: "3-6-1",
+    name: "3-6-1 Densité",
+    description: "Formation dense au milieu de terrain",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 15, y: 45, role: "MC" }, { x: 30, y: 45, role: "MC" }, { x: 45, y: 45, role: "MC" }, { x: 55, y: 45, role: "MC" }, { x: 70, y: 45, role: "MC" }, { x: 85, y: 45, role: "MC" },
+      { x: 50, y: 15, role: "AT" },
+    ],
+  },
+  {
+    id: "3-2-4-1",
+    name: "3-2-4-1 Progressif",
+    description: "Formation progressive vers l'attaque",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 35, y: 50, role: "MDC" }, { x: 65, y: 50, role: "MDC" },
+      { x: 15, y: 30, role: "MG" }, { x: 35, y: 30, role: "MC" }, { x: 65, y: 30, role: "MC" }, { x: 85, y: 30, role: "MD" },
+      { x: 50, y: 10, role: "AT" },
+    ],
+  },
+  {
+    id: "3-1-4-2",
+    name: "3-1-4-2 Transition",
+    description: "Formation de transition défense-attaque",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 50, y: 50, role: "MDC" },
+      { x: 20, y: 35, role: "MG" }, { x: 40, y: 35, role: "MC" }, { x: 60, y: 35, role: "MC" }, { x: 80, y: 35, role: "MD" },
+      { x: 35, y: 15, role: "AT" }, { x: 65, y: 15, role: "AT" },
+    ],
+  },
+  {
+    id: "5-3-2",
+    name: "5-3-2 Bloc bas",
+    description: "Formation défensive en bloc bas",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 10, y: 65, role: "DG" }, { x: 30, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 70, y: 65, role: "DC" }, { x: 90, y: 65, role: "DD" },
+      { x: 25, y: 45, role: "MC" }, { x: 50, y: 45, role: "MC" }, { x: 75, y: 45, role: "MC" },
+      { x: 35, y: 20, role: "AT" }, { x: 65, y: 20, role: "AT" },
+    ],
+  },
+  {
+    id: "5-4-1",
+    name: "5-4-1 Défensif",
+    description: "Formation très défensive",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 10, y: 65, role: "DG" }, { x: 30, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 70, y: 65, role: "DC" }, { x: 90, y: 65, role: "DD" },
+      { x: 20, y: 45, role: "MC" }, { x: 40, y: 45, role: "MC" }, { x: 60, y: 45, role: "MC" }, { x: 80, y: 45, role: "MC" },
+      { x: 50, y: 20, role: "AT" },
+    ],
+  },
+  {
+    id: "5-2-3",
+    name: "5-2-3 Contre-attaque",
+    description: "Formation de contre-attaque rapide",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 10, y: 65, role: "DG" }, { x: 30, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 70, y: 65, role: "DC" }, { x: 90, y: 65, role: "DD" },
+      { x: 35, y: 50, role: "MDC" }, { x: 65, y: 50, role: "MDC" },
+      { x: 20, y: 25, role: "AG" }, { x: 50, y: 15, role: "AT" }, { x: 80, y: 25, role: "AD" },
+    ],
+  },
+  {
+    id: "4-2-4",
+    name: "4-2-4 Direct",
+    description: "Formation d'attaque directe",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 15, y: 65, role: "DG" }, { x: 35, y: 65, role: "DC" }, { x: 65, y: 65, role: "DC" }, { x: 85, y: 65, role: "DD" },
+      { x: 35, y: 50, role: "MDC" }, { x: 65, y: 50, role: "MDC" },
+      { x: 15, y: 25, role: "AG" }, { x: 35, y: 15, role: "AT" }, { x: 65, y: 15, role: "AT" }, { x: 85, y: 25, role: "AD" },
+    ],
+  },
+  {
+    id: "3-2-5",
+    name: "3-2-5 Projection",
+    description: "Formation de projection offensive",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 35, y: 50, role: "MDC" }, { x: 65, y: 50, role: "MDC" },
+      { x: 10, y: 25, role: "AG" }, { x: 30, y: 20, role: "AT" }, { x: 50, y: 15, role: "AT" }, { x: 70, y: 20, role: "AT" }, { x: 90, y: 25, role: "AD" },
+    ],
+  },
+  {
+    id: "3-2-2-3",
+    name: "3-2-2-3 Hybride",
+    description: "Formation hybride adaptable",
+    positions: [
+      { x: 50, y: 85, role: "GB" },
+      { x: 25, y: 65, role: "DC" }, { x: 50, y: 65, role: "DC" }, { x: 75, y: 65, role: "DC" },
+      { x: 35, y: 50, role: "MDC" }, { x: 65, y: 50, role: "MDC" },
+      { x: 25, y: 35, role: "MOC" }, { x: 75, y: 35, role: "MOC" },
+      { x: 20, y: 15, role: "AG" }, { x: 50, y: 10, role: "AT" }, { x: 80, y: 15, role: "AD" },
     ],
   },
 ]
@@ -156,14 +336,17 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
     console.log('TacticalPlanner - Match:', match)
   }, [availablePlayers, match])
 
-  // Filter available players (only exclude already assigned ones)
+  // Filter available players (exclude assigned ones and injured/suspended players)
   const availablePlayersFiltered = availablePlayers.filter((player) => {
     const isAssigned = getAssignedPlayerIds().includes(player.id);
+    const isUnavailable = player.playerStatus === 'INJURED' || player.playerStatus === 'SUSPENDED';
+    
     console.log('Filtering player:', player.firstName, player.lastName,
-                'teamId:', player.teamId,
-                'team:', player.team,
-                'is assigned:', isAssigned);
-    return !isAssigned;
+                'status:', player.playerStatus,
+                'is assigned:', isAssigned,
+                'is unavailable:', isUnavailable);
+    
+    return !isAssigned && !isUnavailable;
   })
 
   // Reset state when match changes and load existing participations

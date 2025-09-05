@@ -201,7 +201,7 @@ export interface UpdatePlayerDto {
   position?: string;
   playerNumber?: number; // NEW: Jersey/shirt number
   rib?: string; // NEW: Bank account information
-  playerStatus?: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status
+  playerStatus: 'ACTIVE' | 'INJURED' | 'SUSPENDED' | 'RETIRED'; // NEW: Player status
   teamId?: number | null; // Allow both undefined and null for clarity
   ImageId?: number | null;
 }

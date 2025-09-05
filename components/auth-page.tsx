@@ -10,7 +10,9 @@ import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { loginUser } from "@/lib/redux/authThunks"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle } from "lucide-react"
+import { Shield, Eye, EyeOff, Moon, Sun, AlertCircle, Loader2 } from "lucide-react"
+import { associationAPI, type AssociationSettings } from "@/lib/api/association-api"
+import { apiConfig } from "@/lib/api-config"
 
 interface AuthPageProps {
   onLogin: (userData: { name: string; email: string; role: string }) => void
@@ -23,9 +25,46 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [loginError, setLoginError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [associationSettings, setAssociationSettings] = useState<AssociationSettings | null>(null)
+  const [settingsLoading, setSettingsLoading] = useState(true)
   
   const dispatch = useAppDispatch();
   const { loading, isAuthenticated, user } = useAppSelector(state => state.auth);
+  
+  // Load association settings on component mount
+  useEffect(() => {
+    const loadAssociationSettings = async () => {
+      try {
+        setSettingsLoading(true)
+        const settings = await associationAPI.getSettings()
+        setAssociationSettings(settings)
+      } catch (error) {
+        console.error("Failed to load association settings:", error)
+        // Set fallback values if API fails
+        setAssociationSettings({
+          id: 0,
+          name: "Système",
+          nameInArabic: "",
+          tagline: "Système de gestion",
+          logoUrl: undefined,
+          foundedAt: new Date(),
+          description: "",
+          legalIdentifiers: "",
+          contactEmail: "",
+          contactPhone: "",
+          address: "",
+          primaryColor: "#1e40af",
+          secondaryColor: "#3b82f6",
+          createdAt: "",
+          updatedAt: ""
+        })
+      } finally {
+        setSettingsLoading(false)
+      }
+    }
+
+    loadAssociationSettings()
+  }, [])
   
   useEffect(() => {
     setIsLoading(loading);
@@ -83,12 +122,45 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-blue-800 rounded-full">
-              <Shield className="h-8 w-8 text-white" />
-            </div>
+            {settingsLoading ? (
+              <div className="p-3 bg-blue-800 rounded-full">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              </div>
+            ) : associationSettings?.logoUrl ? (
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-white shadow-lg">
+                <img
+                  src={`${apiConfig.baseUrl}${associationSettings.logoUrl}`}
+                  alt={`Logo ${associationSettings.name}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to shield icon if image fails to load
+                    e.currentTarget.style.display = 'none'
+                    e.currentTarget.parentElement!.innerHTML = `
+                      <div class="p-3 bg-blue-800 rounded-full w-14 h-14 flex items-center justify-center">
+                        <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M9 12l2 2 4-4"/>
+                          <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                          <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                          <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"/>
+                          <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"/>
+                        </svg>
+                      </div>
+                    `
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-800 rounded-full">
+                <Shield className="h-8 w-8 text-white" />
+              </div>
+            )}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Système</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Système</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {settingsLoading ? "Chargement..." : associationSettings?.name || "Système"}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            {settingsLoading ? "Préparation de l'interface..." : associationSettings?.tagline || "Système de gestion"}
+          </p>
         </div>
 
         <Tabs defaultValue="login" className="space-y-4">
