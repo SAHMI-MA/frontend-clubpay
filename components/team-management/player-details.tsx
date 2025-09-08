@@ -21,17 +21,34 @@ interface PlayerDetailsProps {
   onEditPlayer: (player: Player) => void
 }
 
-export function PlayerDetails({ player, onEditPlayer }: PlayerDetailsProps) {
+export function PlayerDetails({ player: initialPlayer, onEditPlayer }: PlayerDetailsProps) {
   const dispatch = useAppDispatch()
   const [activeTab, setActiveTab] = useState("info")
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
   const { teams } = useAppSelector((state) => state.teams)
+  const { selectedPlayer } = useAppSelector((state) => state.players)
+  
+  // Use the selected player from Redux if available, otherwise use the initial player
+  const player = selectedPlayer || initialPlayer
 
   // Fetch detailed player data when viewing
   useEffect(() => {
-    dispatch(fetchPlayerById(player.id))
-  }, [player.id, dispatch])
+    dispatch(fetchPlayerById(initialPlayer.id))
+  }, [initialPlayer.id, dispatch])
+
+  // Debug logging to check if data is loaded
+  useEffect(() => {
+    if (player) {
+      console.log('Player data for details:', {
+        id: player.id,
+        name: `${player.firstName} ${player.lastName}`,
+        matchParticipations: player.matchParticipations?.length || 0,
+        objectiveProgress: player.objectiveProgress?.length || 0,
+        completedObjectives: player.objectiveProgress?.filter(p => p.completedAt)?.length || 0
+      })
+    }
+  }, [player])
 
   // Enhanced PDF generation with better formatting
   const generatePDF = async () => {

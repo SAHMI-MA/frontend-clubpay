@@ -101,6 +101,7 @@ export function MatchManagement() {
   const [selectedMatchForView, setSelectedMatchForView] = useState<Match | null>(null)
   const [selectedMatchForTactical, setSelectedMatchForTactical] = useState<Match | null>(null)
   const [selectedMatchForQuickEdit, setSelectedMatchForQuickEdit] = useState<Match | null>(null)
+  const [activeTab, setActiveTab] = useState("matches")
   const [quickEditForm, setQuickEditForm] = useState({
     status: "Scheduled" as 'Scheduled' | 'Completed' | 'Cancelled',
     result: ""
@@ -139,9 +140,7 @@ export function MatchManagement() {
   })
 
   // Load data on component mount
-  useEffect(() => {
-    console.log('🚀 Match Management: Loading initial data...');
-    
+  useEffect(() => {    
     const loadData = async () => {
       try {
         console.log('📡 Dispatching fetchAllMatches...');
@@ -414,6 +413,13 @@ export function MatchManagement() {
     ])
     
     console.log('Loaded data for tactical planner')
+  }
+
+  const handleSelectMatchForParticipations = (match: Match) => {
+    console.log('Selecting match for participations view:', match)
+    dispatch(setSelectedMatch(match.id))
+    dispatch(fetchMatchParticipations(match.id))
+    setActiveTab("squads") // Switch to the squads tab
   }
 
   const openQuickStatusEdit = (match: Match) => {
@@ -746,17 +752,22 @@ export function MatchManagement() {
             <Target className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalBonuses.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {totalBonuses >= 1000000 
+              ? `${(totalBonuses/1000000).toFixed(1)}M MAD`
+              : totalBonuses >= 1000
+              ? `${(totalBonuses/1000).toFixed(1)}K MAD` 
+              : `${totalBonuses.toFixed(2)} MAD`}
+            </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total attribué</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="matches" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="matches">Matchs</TabsTrigger>
           <TabsTrigger value="squads">Affectations d'équipe</TabsTrigger>
-          <TabsTrigger value="bonuses">Primes de match</TabsTrigger>
         </TabsList>
 
         <TabsContent value="matches" className="space-y-4">
@@ -782,6 +793,7 @@ export function MatchManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Match</TableHead>
                       <TableHead>Date & Heure</TableHead>
                       <TableHead>Ville</TableHead>
@@ -792,7 +804,7 @@ export function MatchManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMatches.map((match) => {
+                    {filteredMatches.map((match, index) => {
                       const { date, time } = formatDateTime(match.dateTime)
                       const status = getMatchStatus(match)
                       return (
@@ -800,6 +812,7 @@ export function MatchManagement() {
                           key={match.id}
                           className={selectedMatchId === match.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}
                         >
+                          <TableCell>{index + 1}</TableCell>
                           <TableCell className="font-medium">
                             <div>
                               <div className="font-semibold">{match.nomMatch}</div>
@@ -862,6 +875,16 @@ export function MatchManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                onClick={() => handleSelectMatchForParticipations(match)}
+                                className="text-purple-600 hover:text-purple-700"
+                                title="Voir les affectations d'équipe pour ce match"
+                              >
+                                <Users className="h-4 w-4 mr-1" />
+                                Équipe
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={() => openQuickStatusEdit(match)}
                                 className="text-green-600 hover:text-green-700"
                               >
@@ -903,19 +926,70 @@ export function MatchManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Quick access to tactical planner */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-blue-900">Utiliser le planificateur tactique</h3>
-                      <p className="text-sm text-blue-700">
-                        Cliquez sur « Tactique » sur un match pour utiliser notre planificateur tactique glisser-déposer. 
-                        Assignez 11 titulaires (100% de prime) et jusqu'à 5 remplaçants (50% de prime) avec gestion de la formation.
-                      </p>
-                    </div>
-                    <Target className="h-8 w-8 text-blue-600" />
-                  </div>
+                {/* Match Selection for Participations */}
+                <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Label htmlFor="match-select" className="text-sm font-medium whitespace-nowrap">
+                    Sélectionner un match:
+                  </Label>
+                  <Select 
+                    value={selectedMatchId?.toString() || ""} 
+                    onValueChange={(value) => {
+                      if (value) {
+                        const matchId = parseInt(value)
+                        const match = matches.find(m => m.id === matchId)
+                        if (match) {
+                          handleSelectMatchForParticipations(match)
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Choisir un match pour voir les affectations..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {matches.map((match) => (
+                        <SelectItem key={match.id} value={match.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{match.nomMatch}</span>
+                            <span className="text-gray-500">vs {match.opposition}</span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(match.dateTime).toLocaleDateString('fr-FR')}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                
+                {/* Show selected match info */}
+                {selectedMatchId && (() => {
+                  const selectedMatch = matches.find(m => m.id === selectedMatchId)
+                  return selectedMatch ? (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                            {selectedMatch.nomMatch} vs {selectedMatch.opposition}
+                          </h4>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            {new Date(selectedMatch.dateTime).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })} - {selectedMatch.city}
+                          </p>
+                        </div>
+                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                          {participations.length} participant{participations.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </div>
+                  ) : null
+                })()}
 
                 {/* Current Participations Table */}
                 <div className="rounded-md border">
@@ -931,7 +1005,16 @@ export function MatchManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {participations.map((participation) => (
+                      {loading.participations ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <div className="flex flex-col items-center space-y-2">
+                              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                              <p>Chargement des affectations...</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : participations.map((participation) => (
                         <TableRow key={participation.id}>
                           <TableCell className="font-medium">
                             {participation.player 
@@ -941,10 +1024,9 @@ export function MatchManagement() {
                           </TableCell>
                           <TableCell>
                             {(() => {
-                              // Since we don't have matchId directly, we need to find it from context
-                              // For now, we'll show "Current Match" or we could pass it as prop
-                              return selectedMatchForView ? 
-                                `${selectedMatchForView.nomMatch} vs ${selectedMatchForView.opposition}` : 
+                              const selectedMatch = matches.find(m => m.id === selectedMatchId)
+                              return selectedMatch ? 
+                                `${selectedMatch.nomMatch} vs ${selectedMatch.opposition}` : 
                                 "Détails du match"
                             })()}
                           </TableCell>
@@ -969,9 +1051,8 @@ export function MatchManagement() {
                               variant="outline"
                               className="text-red-600 hover:text-red-700"
                               onClick={() => {
-                                // We need to get matchId from context since it's not in participation
-                                if (selectedMatchForView) {
-                                  handleRemovePlayerFromMatch(participation.id, selectedMatchForView.id)
+                                if (selectedMatchId) {
+                                  handleRemovePlayerFromMatch(participation.id, selectedMatchId)
                                 }
                               }}
                             >
@@ -980,13 +1061,22 @@ export function MatchManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {participations.length === 0 && (
+                      {!loading.participations && participations.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                             <div className="flex flex-col items-center space-y-2">
                               <Users className="h-12 w-12 text-gray-400" />
-                              <p>Aucune affectation d'équipe trouvée</p>
-                              <p className="text-sm">Utilisez le bouton « Tactique » sur les matchs pour affecter les joueurs via notre planificateur tactique</p>
+                              {selectedMatchId ? (
+                                <>
+                                  <p>Aucune affectation trouvée pour ce match</p>
+                                  <p className="text-sm">Utilisez le bouton « Tactique » pour affecter les joueurs via notre planificateur tactique</p>
+                                </>
+                              ) : (
+                                <>
+                                  <p>Sélectionnez un match pour voir les affectations d'équipe</p>
+                                  <p className="text-sm">Choisissez un match dans la liste déroulante ci-dessus</p>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -994,27 +1084,6 @@ export function MatchManagement() {
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bonuses" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Primes de match</CardTitle>
-              <CardDescription>Configurer et suivre les primes basées sur la performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Définissez des critères de prime selon la performance du match, les buts, passes décisives et autres métriques.
-                </p>
-                <Button className="bg-blue-800 hover:bg-blue-900 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Configurer les primes
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -1296,12 +1365,25 @@ export function MatchManagement() {
           onClose={() => {
             setIsTacticalPlannerOpen(false)
             setSelectedMatchForTactical(null)
+            // Refresh participations for the selected match if there's one
+            if (selectedMatchId) {
+              dispatch(fetchMatchParticipations(selectedMatchId))
+            }
           }}
-          availablePlayers={players.filter(player => {
-            // Include players that belong to the team or have the team in their team object
+          availablePlayers={(() => {
+            // Filter players that belong to the team
             const teamId = selectedMatchForTactical.team?.id;
-            return player.teamId === teamId || player.team?.id === teamId;
-          })}
+            const filteredPlayers = players.filter(player => {
+              return player.teamId === teamId || player.team?.id === teamId;
+            });
+            
+            // Remove duplicates by player ID
+            const uniquePlayers = filteredPlayers.filter((player, index, self) => 
+              index === self.findIndex(p => p.id === player.id)
+            );
+            
+            return uniquePlayers;
+          })()}
         />
       )}
 

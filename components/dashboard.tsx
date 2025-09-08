@@ -120,9 +120,6 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tableau de bord</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Bienvenue ! Voici l'activité de votre association.
-          </p>
           {lastUpdated && (
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
               Dernière mise à jour : {new Date(lastUpdated).toLocaleString('fr-FR')}
@@ -192,7 +189,7 @@ export function Dashboard() {
 
         <Card className="border-l-4 border-l-cyan-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Masse salariale</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Masse salariale payée</CardTitle>
             <Building2 className="h-4 w-4 text-cyan-400" />
           </CardHeader>
           <CardContent>

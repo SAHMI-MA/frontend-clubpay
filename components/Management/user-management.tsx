@@ -779,6 +779,7 @@ export function UserManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>#</TableHead>
                         <TableHead>Nom</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Rôles</TableHead>
@@ -795,8 +796,9 @@ export function UserManagement() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredUsers.map((user) => (
+                        filteredUsers.map((user, index) => (
                           <TableRow key={user.id}>
+                            <TableCell className="font-medium">{index + 1}</TableCell>
                             <TableCell className="font-medium">{`${user.firstName} ${user.lastName}`}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>

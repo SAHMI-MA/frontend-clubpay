@@ -605,6 +605,7 @@ export function StaffManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Membre du staff</TableHead>
                       <TableHead>Rôle</TableHead>
                       <TableHead>Équipe</TableHead>
@@ -621,8 +622,9 @@ export function StaffManagement() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStaff.map((staff) => (
+                      filteredStaff.map((staff, index) => (
                         <TableRow key={staff.id}>
+                          <TableCell>{index + 1}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">

@@ -44,9 +44,9 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
 
     try {
       await dispatch(deleteTeam(teamToDelete.id)).unwrap()
-      toast.success("Team deleted successfully")
+      toast.success("Équipe supprimée avec succès")
     } catch (error) {
-      toast.error("Failed to delete team" + (error instanceof Error ? error.message : "Unknown error"))
+      toast.error("Échec de la suppression de l'équipe" + (error instanceof Error ? error.message : "Erreur inconnue"))
     } finally {
       setIsDeleteDialogOpen(false)
       setTeamToDelete(null)
@@ -112,7 +112,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4 text-blue-600" />
-                    <span>{team.numberOfStaff || 0} Staff</span>
+                    <span>{team.numberOfStaff || 0} Personnel</span>
                   </div>
                 </div>
               </div>
@@ -150,15 +150,15 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Team List</CardTitle>
-          <CardDescription>Manage your teams and their details</CardDescription>
+          <CardTitle>Liste des équipes</CardTitle>
+          <CardDescription>Gérez vos équipes et leurs détails</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search teams..."
+                placeholder="Rechercher des équipes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -170,10 +170,11 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>#</TableHead>
+                  <TableHead>Équipe</TableHead>
+                  <TableHead>Catégorie</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Players</TableHead>
+                  <TableHead>Joueurs</TableHead>
                   <TableHead>Budget</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -182,12 +183,13 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                 {filteredTeams.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-10 text-gray-500">
-                      No teams found
+                      Aucune équipe trouvée
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTeams.map((team) => (
+                  filteredTeams.map((team, index) => (
                     <TableRow key={team.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <TeamAvatar team={team} size="sm" />
@@ -279,17 +281,17 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the team &quot;{teamToDelete?.name}&quot;? This action cannot be undone.
+              Êtes-vous sûr de vouloir supprimer l'équipe &quot;{teamToDelete?.name}&quot; ? Cette action ne peut pas être annulée.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Annuler
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

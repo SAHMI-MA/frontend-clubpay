@@ -685,6 +685,7 @@ Vérifiez la console pour plus de détails.`;
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead>Allocation #</TableHead>
                     <TableHead>Article</TableHead>
                     <TableHead>Type</TableHead>
@@ -696,8 +697,9 @@ Vérifiez la console pour plus de détails.`;
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAllocations.map((allocation) => (
+                  {filteredAllocations.map((allocation, index) => (
                     <TableRow key={allocation.id}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="font-medium">{allocation.allocationNumber}</TableCell>
                       <TableCell>
                         <div>

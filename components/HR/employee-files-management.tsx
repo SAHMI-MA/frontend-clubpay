@@ -120,9 +120,7 @@ export function EmployeeFilesManagement() {
 
   // Store selected files before upload
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
   const [employees, setEmployees] = useState<Employee[]>([]);
-
   const filteredFiles = files.filter((file) => {
     // Use nested employee data for name search, safely
     const employeeName =
@@ -594,6 +592,7 @@ export function EmployeeFilesManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>#</TableHead>
                   <TableHead>ID Fichier</TableHead>
                   <TableHead>Employé</TableHead>
                   <TableHead>Nom du fichier</TableHead>
@@ -605,12 +604,14 @@ export function EmployeeFilesManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredFiles.map((file) => (
+                {filteredFiles.map((file, index) => (
                   <TableRow key={file.id}>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{file.id}</TableCell>
                     <TableCell>
                       <div>
                         <div className="text-sm text-gray-500">{file.employeeId}</div>
+                        <div className="font-medium">{file.employee?.fullName || 'Nom inconnu'}</div>
                       </div>
                     </TableCell>
                     <TableCell>

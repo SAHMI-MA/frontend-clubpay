@@ -1018,6 +1018,7 @@ export function ContractManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Personne</TableHead>
                     <TableHead>Poste/Rôle</TableHead>
@@ -1065,8 +1066,9 @@ export function ContractManagement() {
                       return Number(b.id) - Number(a.id);
                     });
                     
-                    return allContracts.map((contract) => (
+                    return allContracts.map((contract, index) => (
                       <TableRow key={`${contract.contractType}-${contract.id}`}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell>
                           <Badge className={contract.contractType === "player" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}>
                             {contract.contractType === "player" ? "Joueur" : "Staff"}
@@ -1308,6 +1310,7 @@ export function ContractManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead>Joueur</TableHead>
                     <TableHead>Poste</TableHead>
                     <TableHead>Titre du contrat</TableHead>
@@ -1319,8 +1322,9 @@ export function ContractManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPlayerContracts.map((contract) => (
+                  {filteredPlayerContracts.map((contract, index) => (
                     <TableRow key={contract.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         {contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : 'Inconnu')}
                       </TableCell>
@@ -1559,6 +1563,7 @@ export function ContractManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead>Membre du staff</TableHead>
                     <TableHead>Département</TableHead>
                     <TableHead>Rôle</TableHead>
@@ -1570,8 +1575,9 @@ export function ContractManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaffContracts.map((contract) => (
+                  {filteredStaffContracts.map((contract, index) => (
                     <TableRow key={contract.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         {contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : 'Inconnu')}
                       </TableCell>

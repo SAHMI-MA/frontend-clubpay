@@ -691,6 +691,7 @@ export function ClubSalaryPaymentsManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>#</TableHead>
                   <TableHead>Date de paiement</TableHead>
                   <TableHead>Bénéficiaire</TableHead>
                   <TableHead>Période</TableHead>
@@ -718,7 +719,7 @@ export function ClubSalaryPaymentsManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSalaryPayments.map((payment) => {
+                  filteredSalaryPayments.map((payment, index) => {
                     // Use recipient details directly from API response if available
                     // Fall back to our local state if not available
                     const playerInfo =
@@ -733,6 +734,7 @@ export function ClubSalaryPaymentsManagement() {
 
                     return (
                       <TableRow key={payment.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">

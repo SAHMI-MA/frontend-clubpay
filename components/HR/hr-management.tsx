@@ -1504,6 +1504,7 @@ export function HRManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Employé</TableHead>
                       <TableHead>Département</TableHead>
                       <TableHead>Poste</TableHead>
@@ -1515,10 +1516,11 @@ export function HRManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredEmployees.map((employee) => {
+                    {filteredEmployees.map((employee, index) => {
                       const StatusIcon = statusIcons[employee.status as keyof typeof statusIcons] || AlertCircle
                       return (
                         <TableRow key={`${employee.employeeId}-${employee.updatedAt}-${employee.currentSalary}`}>
+                          <TableCell>{index + 1}</TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">{employee.fullName || "Nom non renseigné"}</div>
@@ -1935,6 +1937,7 @@ export function HRManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Poste</TableHead>
                       <TableHead>Département</TableHead>
                       <TableHead>Niveau</TableHead>
@@ -1945,8 +1948,9 @@ export function HRManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {positions.map((position) => (
+                    {positions.map((position, index) => (
                       <TableRow key={position.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{position.title}</div>

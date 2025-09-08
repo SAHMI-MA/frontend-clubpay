@@ -15,7 +15,6 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { logoutUser } from "@/lib/redux/authThunks"
 import { PlayerManagement } from "./Management/player-management"
 import { StaffManagement } from "./team-management/staff-management"
-import { CategoryManagement } from "./team-management/category-management"
 import { RentalSupplierManagement } from "./Operations/rental-supplies-management"
 import { SupplierManagement } from "./Operations/supplier-management"
 import { ContractManagement } from "./Management/contract-management"
@@ -69,8 +68,6 @@ export function SportsManagementApp() {
         return <UserManagement />
       case "clubs":
         return <TeamManagement />
-      case "categories":
-        return <CategoryManagement />
       case "players":
         return <PlayerManagement />
       case "staff":

@@ -588,6 +588,7 @@ export function SupplierManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>#</TableHead>
                   <TableHead>Fournisseur</TableHead>
                   <TableHead>Catégorie</TableHead>
                   <TableHead>Contact</TableHead>
@@ -600,8 +601,9 @@ export function SupplierManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSuppliers.map((supplier) => (
+                {filteredSuppliers.map((supplier, index) => (
                   <TableRow key={supplier.id}>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">

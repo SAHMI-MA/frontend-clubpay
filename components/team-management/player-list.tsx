@@ -1,79 +1,114 @@
-"use client";
+"use client"
 
-import { useState} from "react";
-import { Player, Team } from "@/lib/types/team-management";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Search, Trash2, Eye, User, UserCircle } from "lucide-react";
+import { useState } from "react"
+import type { Player } from "@/lib/types/team-management"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Edit, Eye, Search, Users, Trash2 } from "lucide-react"
+import { getPositionDisplayName } from "@/lib/utils"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAppDispatch } from "@/lib/redux/hooks";
-import { deletePlayer, fetchAllPlayers } from "@/lib/redux/playerSlice";
+import { deletePlayer, fetchAllPlayers } from "@/lib/redux/playerSlice"
 import { toast } from "sonner";
-import { getPositionDisplayName } from "@/lib/utils";
-import { PlayerAvatar } from "./player-avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface PlayerListProps {
-  players: Player[];
-  teams?: Team[];
-  teamId?: number; // If provided, will only show players from this team
-  onViewDetails?: (player: Player) => void;
-  onEditPlayer?: (player: Player) => void;
-  onAddNew?: () => void;
-  isSimplified?: boolean; // For dashboard view
-  isReadOnly?: boolean; // For view-only mode, no edit/delete
+  players: (Player & { displayNumber?: number })[]
+  teams: any[]
+  onViewDetails: (player: Player) => void
+  onEditPlayer: (player: Player) => void
+  onDeletePlayer?: (player: Player) => void
+  isSimplified?: boolean
+  showNumbering?: boolean
 }
 
-export function PlayerList({ 
-  players, 
-  teams, 
-  teamId,
-  onViewDetails, 
+export function PlayerList({
+  players,
+  teams,
+  onViewDetails,
   onEditPlayer,
-  onAddNew,
   isSimplified = false,
-  isReadOnly = false
+  showNumbering = false,
 }: PlayerListProps) {
   const dispatch = useAppDispatch();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [positionFilter, setPositionFilter] = useState("all");
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedTeam, setSelectedTeam] = useState("all")
+  const [selectedPosition, setSelectedPosition] = useState("all")
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Get unique positions for filter
-  const positions = Array.from(new Set(players.filter(p => p.position).map(p => p.position)))
+  // Filter players based on search and filters
+  const filteredPlayers = players.filter((player) => {
+    const fullName = `${player.firstName} ${player.lastName}`.toLowerCase()
+    const matchesSearch =
+      fullName.includes(searchTerm.toLowerCase()) ||
+      player.playerNumber?.toString().includes(searchTerm) ||
+      player.playerCode?.toLowerCase().includes(searchTerm.toLowerCase())
 
-  // Filter players based on search term and position
-  const filteredPlayers = players.filter(player => {
-    const matchesSearch = !searchTerm || 
-      player.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      player.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (player.team?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesTeam = selectedTeam === "all" || (player.team && player.team.id.toString() === selectedTeam)
+    const matchesPosition = selectedPosition === "all" || player.position === selectedPosition
 
-    const matchesPosition = positionFilter === "all" || player.position === positionFilter
-    const matchesTeam = !teamId || player.teamId === teamId
-
-    return matchesSearch && matchesPosition && matchesTeam
+    return matchesSearch && matchesTeam && matchesPosition
   })
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  }
+
+  const calculateAge = (dateOfBirth: string) => {
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      case "INJURED":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+      case "SUSPENDED":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      case "RETIRED":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+      default:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "Actif"
+      case "INJURED":
+        return "Blessé"
+      case "SUSPENDED":
+        return "Suspendu"
+      case "RETIRED":
+        return "Retraité"
+      default:
+        return "Actif"
+    }
+  }
+
+  const positions = ["GOALKEEPER", "DEFENDER", "MIDFIELDER", "FORWARD"]
 
   const handleDeleteClick = (player: Player) => {
     setPlayerToDelete(player);
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
+    const confirmDelete = async () => {
     if (!playerToDelete) return;
-
     try {
       await dispatch(deletePlayer(playerToDelete.id)).unwrap();
       toast.success("Joueur supprimé avec succès");
@@ -87,192 +122,155 @@ export function PlayerList({
     }
   };
 
-  // Calculate age from date of birth
-  const calculateAge = (dateOfBirth: string): number => {
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // Find team name by ID or from player's team object
-  const getTeamName = (player: Player): string => {
-    // If player has a team object directly, use that
-    if (player.team && player.team.name) {
-      return player.team.name;
-    }
-    
-    // Otherwise fall back to finding by teamId
-    const teamId = player.teamId;
-    if (teamId === undefined || teamId === null || !teams) return "Aucune équipe";
-    
-    const team = teams.find((t) => t.id === teamId);
-    return team ? team.name : "Équipe inconnue";
-  };
-
   return (
-    <>
-      <Card className={isSimplified ? "shadow-none border-0" : "shadow-md"}>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Liste des joueurs
+        </CardTitle>
+        <CardDescription>
+          {filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? "s" : ""} trouvé
+          {filteredPlayers.length !== 1 ? "s" : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {!isSimplified && (
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <UserCircle className="h-5 w-5 text-blue-800" />
-              Liste des joueurs
-            </CardTitle>
-            {!isReadOnly && onAddNew && (
-              <Button 
-                onClick={onAddNew} 
-                className="bg-blue-800 hover:bg-blue-900 text-white"
-                size="sm"
-              >
-                Enregistrer un nouveau joueur
-              </Button>
-            )}
-          </CardHeader>
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Rechercher par nom, numéro ou code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filtrer par équipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les équipes</SelectItem>
+                {teams.map((team) => (
+                  <SelectItem key={team.id} value={team.id.toString()}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filtrer par poste" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les postes</SelectItem>
+                {positions.map((position) => (
+                  <SelectItem key={position} value={position}>
+                    {getPositionDisplayName(position)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
-        <CardContent>
-          {!isSimplified && (
-            <div className="flex flex-col sm:flex-row gap-4 mb-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Rechercher des joueurs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-              <Select value={positionFilter} onValueChange={setPositionFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrer par poste" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les postes</SelectItem>
-                  {positions.map(position => (
-                    <SelectItem key={position} value={position}>{getPositionDisplayName(position)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
-          {filteredPlayers.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>N°</TableHead>
-                    {!isSimplified && <TableHead>Âge</TableHead>}
-                    <TableHead>Poste</TableHead>
-                    <TableHead>Statut</TableHead>
-                    {!teamId && <TableHead>Équipe</TableHead>}
-                    {!isSimplified && !isReadOnly && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPlayers.map((player) => (
-                    <TableRow key={player.id}>
-                      <TableCell className="font-medium flex items-center gap-3">
-                        <PlayerAvatar player={player} size="sm" />
-                        <span>
-                          {player.firstName} {player.lastName}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {player.playerNumber || '--'}
-                        </Badge>
-                      </TableCell>
-                      {!isSimplified && (
-                        <TableCell>
-                          {calculateAge(player.dateOfBirth)}
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <Badge variant="outline">{getPositionDisplayName(player.position)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            player.playerStatus === 'ACTIVE' ? 'default' :
-                            player.playerStatus === 'INJURED' ? 'destructive' :
-                            player.playerStatus === 'SUSPENDED' ? 'secondary' :
-                            'outline'
-                          }
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showNumbering && <TableHead className="w-12">#</TableHead>}
+                <TableHead>ID</TableHead>
+                <TableHead>Joueur</TableHead>
+                <TableHead>Poste</TableHead>
+                <TableHead>Équipe</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>N° Maillot</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPlayers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={showNumbering ? 7 : 6} className="text-center py-4">
+                    Aucun joueur trouvé correspondant aux critères
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPlayers.map((player) => (
+                  <TableRow key={player.id}>
+                    {showNumbering && (
+                      <TableCell className="font-medium text-gray-500">{player.displayNumber || player.id}</TableCell>
+                    )}
+                    <TableCell className="font-mono text-sm">{player.id}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          {player.playerImage?.url ? (
+                            <AvatarImage
+                              src={player.playerImage.url || "/placeholder.svg"}
+                              alt={`${player.firstName} ${player.lastName}`}
+                            />
+                          ) : null}
+                          <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                            {getInitials(player.firstName, player.lastName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {player.firstName} {player.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {calculateAge(player.dateOfBirth)} ans
+                            {player.playerCode && ` • ${player.playerCode}`}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {getPositionDisplayName(player.position)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{player.team ? player.team.name : "Aucune équipe assignée"}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(player.playerStatus || "ACTIVE")}>
+                        {getStatusText(player.playerStatus || "ACTIVE")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm">{player.playerNumber ? `#${player.playerNumber}` : "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => onViewDetails(player)} className="h-8 w-8 p-0">
+                          <span className="sr-only">Voir les détails</span>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => onEditPlayer(player)} className="h-8 w-8 p-0">
+                          <span className="sr-only">Modifier</span>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(player)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
-                          {player.playerStatus === 'ACTIVE' ? 'Actif' :
-                           player.playerStatus === 'INJURED' ? 'Blessé' :
-                           player.playerStatus === 'SUSPENDED' ? 'Suspendu' :
-                           player.playerStatus === 'RETIRED' ? 'Retraité' : 'Actif'}
-                        </Badge>
-                      </TableCell>
-                      {!teamId && (
-                        <TableCell>
-                          {getTeamName(player)}
-                        </TableCell>
-                      )}
-                      {!isSimplified && !isReadOnly && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {onViewDetails && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => onViewDetails(player)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {onEditPlayer && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => onEditPlayer(player)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(player)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="py-12 text-center border rounded-md">
-              <User className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-              <p className="text-muted-foreground">Aucun joueur trouvé</p>
-              {!isReadOnly && onAddNew && (
-                <Button
-                  variant="link"
-                  onClick={onAddNew}
-                  className="mt-2"
-                >
-                  Enregistrer un nouveau joueur
-                </Button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
@@ -284,14 +282,14 @@ export function PlayerList({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
             >
               Annuler
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -300,6 +298,6 @@ export function PlayerList({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
-  );
+    </Card>
+  )
 }

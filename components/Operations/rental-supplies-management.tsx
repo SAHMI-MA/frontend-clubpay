@@ -1297,6 +1297,7 @@ export function RentalSupplierManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>ID</TableHead>
                       <TableHead>Article</TableHead>
                       <TableHead>Type</TableHead>
@@ -1312,8 +1313,9 @@ export function RentalSupplierManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAcquisitions.map((acquisition) => (
+                    {filteredAcquisitions.map((acquisition, index) => (
                       <TableRow key={acquisition.id}>
+                        <TableCell className="font-medium">{index + 1}</TableCell>
                         <TableCell className="font-medium">{acquisition.id}</TableCell>
                         <TableCell>
                           <div>
@@ -1535,6 +1537,7 @@ export function RentalSupplierManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Nom</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Type</TableHead>
@@ -1545,8 +1548,9 @@ export function RentalSupplierManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {suppliesList.map((supply) => (
+                    {suppliesList.map((supply, index) => (
                       <TableRow key={supply.id}>
+                        <TableCell className="font-medium">{index + 1}</TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{supply.name}</p>

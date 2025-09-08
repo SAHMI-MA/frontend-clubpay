@@ -175,6 +175,18 @@ export function ObjectivesManagement() {
   const [selectedObjectiveForAssignment, setSelectedObjectiveForAssignment] = useState<number | null>(null)
   const [objectiveAssignmentPlayers, setObjectiveAssignmentPlayers] = useState<number[]>([])
   
+  // Loading states for async actions
+  const [isCreatingObjective, setIsCreatingObjective] = useState(false)
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [isUpdatingObjective, setIsUpdatingObjective] = useState(false)
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isAssigningGroup, setIsAssigningGroup] = useState(false)
+  const [isAssigningObjective, setIsAssigningObjective] = useState(false)
+  const [isCompletingObjective, setIsCompletingObjective] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  
   // Fetch data on component mount
   useEffect(() => {
     dispatch(fetchObjectiveGroups())
@@ -293,7 +305,11 @@ export function ObjectivesManagement() {
   }
 
   const handleCreateObjective = async () => {
+    if (isCreatingObjective) return
+    
     try {
+      setIsCreatingObjective(true)
+      
       // Validate that a group is selected
       if (!objectiveForm.groupId) {
         toast.error("Veuillez sélectionner un groupe d'objectifs")
@@ -349,11 +365,17 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de la création de l'objectif")
       console.error(error)
+    } finally {
+      setIsCreatingObjective(false)
     }
   }
 
   const handleCreateGroup = async () => {
+    if (isCreatingGroup) return
+    
     try {
+      setIsCreatingGroup(true)
+      
       // Validate form
       if (!groupForm.name.trim()) {
         toast.error("Veuillez entrer un nom de groupe")
@@ -381,12 +403,18 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de la création du groupe d'objectifs")
       console.error(error)
+    } finally {
+      setIsCreatingGroup(false)
     }
   }
 
   // Function to assign a group to players (using new API)
   const handleAssignGroupToPlayers = async (groupId: number, playerIds: number[]) => {
+    if (isAssigningGroup) return
+    
     try {
+      setIsAssigningGroup(true)
+      
       const resultAction = await dispatch(assignGroupToPlayers({ groupId, playerIds }))
       
       if (assignGroupToPlayers.fulfilled.match(resultAction)) {
@@ -431,12 +459,17 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de l'attribution du groupe aux joueurs")
       console.error(error)
+    } finally {
+      setIsAssigningGroup(false)
     }
   }
 
   // Helper function to sync all objectives in a group with all assigned players
   const syncGroupObjectivesWithPlayers = async (groupId: number) => {
+    if (isSyncing) return
+    
     try {
+      setIsSyncing(true)
       console.log('🔄 Synchronisation manuelle déclenchée pour le groupe', groupId)
       const targetGroup = objectiveGroups.find(group => group.id === groupId)
       const groupObjectives = targetGroup?.objectives || []
@@ -489,12 +522,18 @@ export function ObjectivesManagement() {
     } catch (error) {
       console.error('Erreur lors de la synchronisation des objectifs du groupe avec les joueurs:', error)
       toast.error("Erreur lors de la synchronisation des attributions")
+    } finally {
+      setIsSyncing(false)
     }
   }
 
   // Function to handle objective completion
   const handleCompleteObjective = async (playerId: number, objectiveId: number) => {
+    if (isCompletingObjective) return
+    
     try {
+      setIsCompletingObjective(true)
+      
       // First, check if this objective is actually assigned to the player
       const playerProgressForObjective = playerProgress.find(
         p => (p as any).__playerId === playerId && p.objective?.id === objectiveId
@@ -525,6 +564,8 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de la complétion de l'objectif")
       console.error(error)
+    } finally {
+      setIsCompletingObjective(false)
     }
   }
   
@@ -564,9 +605,11 @@ export function ObjectivesManagement() {
 
   // Function to execute the confirmed delete action
   const executeDelete = async () => {
-    if (!deleteConfirmData) return
+    if (!deleteConfirmData || isDeleting) return
     
     try {
+      setIsDeleting(true)
+      
       if (deleteConfirmData.type === 'objective') {
         const resultAction = await dispatch(deleteObjective(deleteConfirmData.id))
         
@@ -593,6 +636,7 @@ export function ObjectivesManagement() {
       toast.error(`Erreur lors de la suppression de ${deleteConfirmData.type}`)
       console.error(error)
     } finally {
+      setIsDeleting(false)
       setIsDeleteConfirmOpen(false)
       setDeleteConfirmData(null)
     }
@@ -612,7 +656,11 @@ export function ObjectivesManagement() {
 
   // Function to submit objective update
   const handleObjectiveUpdate = async () => {
+    if (isUpdatingObjective) return
+    
     try {
+      setIsUpdatingObjective(true)
+      
       if (!editObjectiveForm.title.trim()) {
         toast.error("Veuillez fournir un titre d'objectif")
         return
@@ -673,6 +721,8 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de la mise à jour de l'objectif")
       console.error(error)
+    } finally {
+      setIsUpdatingObjective(false)
     }
   }
 
@@ -688,7 +738,11 @@ export function ObjectivesManagement() {
 
   // Function to update a group
   const handleUpdateGroup = async () => {
+    if (isUpdatingGroup) return
+    
     try {
+      setIsUpdatingGroup(true)
+      
       if (!editGroupForm.name.trim()) {
         toast.error("Veuillez entrer un nom de groupe")
         return
@@ -713,12 +767,18 @@ export function ObjectivesManagement() {
     } catch (error) {
       toast.error("Erreur lors de la mise à jour du groupe")
       console.error(error)
+    } finally {
+      setIsUpdatingGroup(false)
     }
   }
 
   // Function to refresh all data
   const refreshAllData = () => {
+    if (isRefreshing) return
+    
     console.log('🔄 Rafraîchissement manuel déclenché')
+    setIsRefreshing(true)
+    
     dispatch(fetchObjectiveGroups())
     dispatch(fetchObjectives())
     dispatch(fetchAllPlayers())
@@ -744,6 +804,11 @@ export function ObjectivesManagement() {
     }
     
     toast.success("Données rafraîchies avec succès !")
+    
+    // Reset loading state after a reasonable delay
+    setTimeout(() => {
+      setIsRefreshing(false)
+    }, 2000)
   }
 
   // Function to view group details
@@ -754,7 +819,11 @@ export function ObjectivesManagement() {
 
   // Function to handle individual objective assignment to multiple players
   const handleAssignObjectiveToPlayers = async (objectiveId: number, playerIds: number[]) => {
+    if (isAssigningObjective) return
+    
     try {
+      setIsAssigningObjective(true)
+      
       console.log('🎯 Attribution de l\'objectif', objectiveId, 'aux joueurs', playerIds)
       
       const bulkAssignData: BulkAssignObjectiveDto = {
@@ -786,6 +855,8 @@ export function ObjectivesManagement() {
     } catch (error) {
       console.error('💥 Erreur d\'attribution:', error)
       toast.error("Erreur lors de l'attribution de l'objectif aux joueurs")
+    } finally {
+      setIsAssigningObjective(false)
     }
   }
 
@@ -857,10 +928,11 @@ export function ObjectivesManagement() {
           <Button 
             variant="outline" 
             onClick={refreshAllData}
+            disabled={isRefreshing}
             className="bg-gray-50 hover:bg-gray-100"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Rafraîchir les données
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Rafraîchissement...' : 'Rafraîchir les données'}
           </Button>
           <Dialog open={isObjectiveDialogOpen} onOpenChange={setIsObjectiveDialogOpen}>
             <DialogTrigger asChild>
@@ -932,7 +1004,12 @@ export function ObjectivesManagement() {
                 <Button variant="outline" onClick={() => setIsObjectiveDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleCreateObjective}>Créer l'objectif</Button>
+                <Button 
+                  onClick={handleCreateObjective}
+                  disabled={isCreatingObjective}
+                >
+                  {isCreatingObjective ? 'Création...' : 'Créer l\'objectif'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -965,7 +1042,12 @@ export function ObjectivesManagement() {
                 <Button variant="outline" onClick={() => setIsGroupDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleCreateGroup}>Créer le groupe</Button>
+                <Button 
+                  onClick={handleCreateGroup}
+                  disabled={isCreatingGroup}
+                >
+                  {isCreatingGroup ? 'Création...' : 'Créer le groupe'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1153,7 +1235,7 @@ export function ObjectivesManagement() {
 
                             return (
                               <div
-                                key={`${player.id}-${objective.id}`}
+                                key={`progress-${progressItem.id}`}
                                 className={`flex items-center justify-between p-3 rounded ${
                                   isCompleted 
                                     ? 'bg-green-50 border-l-4 border-green-500 dark:bg-green-900/20' 
@@ -1184,8 +1266,9 @@ export function ObjectivesManagement() {
                                       variant="outline"
                                       className="mt-2"
                                       onClick={() => handleCompleteObjective(player.id, objective.id)}
+                                      disabled={isCompletingObjective}
                                     >
-                                      Marquer comme complété
+                                      {isCompletingObjective ? 'Marquage...' : 'Marquer comme complété'}
                                     </Button>
                                   )}
                                 </div>
@@ -1354,11 +1437,12 @@ export function ObjectivesManagement() {
                           variant="outline" 
                           size="sm"
                           onClick={() => syncGroupObjectivesWithPlayers(group.id)}
+                          disabled={isSyncing}
                           className="bg-purple-50 text-purple-600 hover:bg-purple-100"
                           title="Synchroniser tous les objectifs de ce groupe avec tous les joueurs assignés"
                         >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          Synchroniser les attributions
+                          <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                          {isSyncing ? 'Synchronisation...' : 'Synchroniser les attributions'}
                         </Button>
                         <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 bg-transparent"
                           onClick={() => handleDeleteGroup(group.id)}
@@ -1584,9 +1668,9 @@ export function ObjectivesManagement() {
                   })
                 }
               }}
-              disabled={groupAssignmentPlayers.length === 0}
+              disabled={groupAssignmentPlayers.length === 0 || isAssigningGroup}
             >
-              Assigner le groupe
+              {isAssigningGroup ? 'Attribution...' : 'Assigner le groupe'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1902,9 +1986,9 @@ export function ObjectivesManagement() {
                   setSelectedObjectiveForAssignment(null)
                 }
               }}
-              disabled={objectiveAssignmentPlayers.length === 0}
+              disabled={objectiveAssignmentPlayers.length === 0 || isAssigningObjective}
             >
-              Assigner l'objectif
+              {isAssigningObjective ? 'Attribution...' : 'Assigner l\'objectif'}
             </Button>
           </DialogFooter>
         </DialogContent>

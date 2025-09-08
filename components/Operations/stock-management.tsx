@@ -502,6 +502,7 @@ export function StockManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Code</TableHead>
                       <TableHead>Article</TableHead>
                       <TableHead>Catégorie</TableHead>
@@ -514,10 +515,11 @@ export function StockManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredArticles.map((article) => {
+                    {filteredArticles.map((article, index) => {
                       const stockStatus = getStockStatus(article)
                       return (
                         <TableRow key={article.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
                           <TableCell className="font-medium">{article.code}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
@@ -592,6 +594,7 @@ export function StockManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Article</TableHead>
                       <TableHead>Type</TableHead>
@@ -604,8 +607,9 @@ export function StockManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(movements || []).map((movement) => (
+                    {(movements || []).map((movement, index) => (
                       <TableRow key={movement.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell>{new Date(movement.movementDate).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">
                           <div className="flex flex-col">

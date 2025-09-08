@@ -557,12 +557,12 @@ export function AbsenceLeaveManagement() {
           <p className="text-gray-600 dark:text-gray-400">Gérez les demandes et soldes de congés des employés</p>
         </div>
         <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowSettingsDialog(true)} disabled={loading}>
+          <Button variant="outline" onClick={() => setShowSettingsDialog(true)} disabled={loading}>
             <Settings className="w-4 h-4 mr-2" /> Paramètres des congés
           </Button>
           <Dialog open={showNewRequestDialog} onOpenChange={setShowNewRequestDialog}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Button className="bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 <Plus className="w-4 h-4 mr-2" />
                 Nouvelle demande
               </Button>
@@ -761,6 +761,7 @@ export function AbsenceLeaveManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>#</TableHead>
                       <TableHead>ID Demande</TableHead>
                       <TableHead>Employé</TableHead>
                       <TableHead>Type de congé</TableHead>
@@ -771,8 +772,9 @@ export function AbsenceLeaveManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRequests.map((request) => (
+                    {filteredRequests.map((request, index) => (
                       <TableRow key={request.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{request.id}</TableCell>
                         <TableCell>
                           <div>
@@ -780,18 +782,18 @@ export function AbsenceLeaveManagement() {
                               {request.employee?.fullName
                                 ? request.employee.fullName
                                 : (() => {
-                                    const emp = employees.find(e => e.employeeId === request.employeeId);
-                                    return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
-                                  })()
+                                  const emp = employees.find(e => e.employeeId === request.employeeId);
+                                  return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
+                                })()
                               }
                             </div>
                             <div className="text-sm text-gray-500">
                               {request.employee?.position?.title
                                 ? request.employee.position.title
                                 : (() => {
-                                    const emp = employees.find(e => e.employeeId === request.employeeId);
-                                    return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
-                                  })()
+                                  const emp = employees.find(e => e.employeeId === request.employeeId);
+                                  return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                                })()
                               }
                             </div>
                           </div>
@@ -956,18 +958,18 @@ export function AbsenceLeaveManagement() {
                     {selectedRequest?.employee?.fullName
                       ? selectedRequest.employee.fullName
                       : (() => {
-                          const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
-                          return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
-                        })()
+                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                        return emp ? emp.fullName || 'Nom inconnu' : 'Nom inconnu';
+                      })()
                     }
                   </p>
                   <p className="text-sm text-gray-600">
                     {selectedRequest?.employee?.position?.title
                       ? selectedRequest.employee.position.title
                       : (() => {
-                          const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
-                          return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
-                        })()
+                        const emp = employees.find(e => e.employeeId === selectedRequest?.employeeId);
+                        return emp && emp.position && typeof emp.position === "object" ? emp.position.title || "" : "";
+                      })()
                     }
                   </p>
                 </div>

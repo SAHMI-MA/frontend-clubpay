@@ -237,6 +237,7 @@ export function CategoryManagement() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Description</TableHead>
@@ -252,8 +253,9 @@ export function CategoryManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                categories.map((category) => (
+                categories.map((category, index) => (
                   <TableRow key={category.id}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell className="font-medium">{category.name}</TableCell>
                     <TableCell className="font-mono text-sm">{category.code}</TableCell>
                     <TableCell>{category.description || "-"}</TableCell>

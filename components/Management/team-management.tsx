@@ -166,11 +166,13 @@ export function TeamManagement() {
 
   // Fonction utilitaire pour formater le budget en MAD
   const formatBudgetMAD = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'MAD',
-      minimumFractionDigits: 2
-    }).format(amount)
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M MAD`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(1)}K MAD`;
+    } else {
+      return `${amount.toFixed(2)} MAD`;
+    }
   }
 
   return (

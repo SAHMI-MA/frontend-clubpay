@@ -333,7 +333,15 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
   // Debug logging for available players
   useEffect(() => {
     console.log('TacticalPlanner - Available Players:', availablePlayers)
+    console.log('TacticalPlanner - Available Players IDs:', availablePlayers.map(p => p.id))
     console.log('TacticalPlanner - Match:', match)
+    
+    // Check for duplicates
+    const playerIds = availablePlayers.map(p => p.id)
+    const duplicateIds = playerIds.filter((id, index) => playerIds.indexOf(id) !== index)
+    if (duplicateIds.length > 0) {
+      console.warn('TacticalPlanner - Duplicate player IDs detected:', duplicateIds)
+    }
   }, [availablePlayers, match])
 
   // Filter available players (exclude assigned ones and injured/suspended players)
@@ -370,21 +378,34 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
     const starters = matchParticipations.filter(p => p.role === "Starter")
     const subs = matchParticipations.filter(p => p.role === "Substitute")
 
-    // Find players for starters and assign them to positions (only from selected team)
+    // Find players for starters and assign them to positions
+    // Use consistent team matching logic
     const newStartingXI: { [positionIndex: number]: Player } = {}
     starters.forEach((participation, index) => {
-      const player = availablePlayers.find(p => p.id === participation.player.id && p.team?.id === match.team.id)
+      const player = availablePlayers.find(p => {
+        // Match both teamId and team.id to handle different data structures
+        const teamId = match.team?.id;
+        return p.id === participation.player.id && (p.teamId === teamId || p.team?.id === teamId);
+      })
       if (player && index < currentFormation.positions.length) {
         newStartingXI[index] = player
       }
     })
 
-    // Find players for substitutes (only from selected team)
+    // Find players for substitutes
+    // Use consistent team matching logic and prevent duplicates
     const newSubstitutes: Player[] = []
+    const addedPlayerIds = new Set<number>()
+    
     subs.forEach(participation => {
-      const player = availablePlayers.find(p => p.id === participation.player.id && p.teamId === match.team.id)
-      if (player) {
+      const player = availablePlayers.find(p => {
+        // Match both teamId and team.id to handle different data structures
+        const teamId = match.team?.id;
+        return p.id === participation.player.id && (p.teamId === teamId || p.team?.id === teamId);
+      })
+      if (player && !addedPlayerIds.has(player.id)) {
         newSubstitutes.push(player)
+        addedPlayerIds.add(player.id)
       }
     })
 
@@ -426,7 +447,10 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
   }
 
   const addToSubstitutes = (player: Player) => {
-    if (substitutes.length < 5) {
+    // Check if player is already in substitutes to prevent duplicates
+    const isAlreadySubstitute = substitutes.some(sub => sub.id === player.id)
+    
+    if (substitutes.length < 5 && !isAlreadySubstitute) {
       setSubstitutes([...substitutes, player])
     }
   }
@@ -766,7 +790,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
                   const assignedPlayer = startingXI[index]
                   return (
                     <div
-                      key={index}
+                      key={`formation-${selectedFormation}-position-${index}-${position.role}`}
                       className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${draggedPlayer ? 'z-20' : ''}`}
                       style={{
                         left: `${position.x}%`,
@@ -836,7 +860,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
                 {currentFormation.positions.map((position, index) => {
                   const player = startingXI[index]
                   return (
-                    <div key={index} className={`p-2 rounded ${player ? "bg-blue-50" : "bg-gray-50"}`}>
+                    <div key={`starting-xi-${selectedFormation}-${index}-${position.role}`} className={`p-2 rounded ${player ? "bg-blue-50" : "bg-gray-50"}`}>
                       <div className="text-xs text-gray-500 mb-1">{position.role}</div>
                       {player ? (
                         <div className="flex items-center justify-between">

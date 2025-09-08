@@ -929,6 +929,7 @@ export function SalaryPaymentManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>#</TableHead>
                   <TableHead>ID Paiement</TableHead>
                   <TableHead>Employé</TableHead>
                   <TableHead>Période de paie</TableHead>
@@ -940,13 +941,14 @@ export function SalaryPaymentManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayments.map((payment) => {
+                {filteredPayments.map((payment, index) => {
                   const employeeName = payment.employee?.employeeId || payment.employeeId || ""
                   const grossPay = Number(payment.baseSalary) + Number(payment.overtime) + Number(payment.bonuses)
                   const deductions = 0 // If you have deduction logic, update here
                   const netPay = Number(payment.amount)
                   return (
                     <TableRow key={payment.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">{payment.id}</TableCell>
                       <TableCell>
                         <div>
