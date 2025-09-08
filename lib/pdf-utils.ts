@@ -76,7 +76,14 @@ export const formatCurrency = (amount: number): string => {
   if (isNaN(amount) || amount === null || amount === undefined) {
     amount = 0;
   }
-  return amount.toLocaleString('fr-FR', { style: 'currency', currency: 'MAD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  // Use en-US locale for consistent comma separators, then manually add MAD
+  const formatted = amount.toLocaleString('en-US', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+  
+  return `${formatted} MAD`;
 }
 
 export const getFileNameWithDate = (baseName: string): string => {
