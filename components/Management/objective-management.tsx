@@ -333,14 +333,23 @@ export function ObjectivesManagement() {
         // Find the group and assign the new objective to all players in that group
         const targetGroup = objectiveGroups.find(group => group.id === objectiveForm.groupId)
         if (targetGroup && targetGroup.assignedPlayers && targetGroup.assignedPlayers.length > 0) {
+          let assignmentCount = 0
           // Assign the new objective to each player in the group
           for (const player of targetGroup.assignedPlayers) {
             try {
-              const assignData: AssignObjectiveDto = {
-                objectiveId: newObjective.id,
-                playerId: player.id
+              // Check if this assignment already exists in progress data
+              const existingProgress = playerProgress.find(
+                p => (p as any).__playerId === player.id && p.objective?.id === newObjective.id
+              )
+              
+              if (!existingProgress) {
+                const assignData: AssignObjectiveDto = {
+                  objectiveId: newObjective.id,
+                  playerId: player.id
+                }
+                await dispatch(assignObjectiveToPlayer(assignData))
+                assignmentCount++
               }
-              await dispatch(assignObjectiveToPlayer(assignData))
             } catch (error) {
               console.error(`Échec de l'attribution de l'objectif au joueur ${player.id}:`, error)
             }
@@ -351,7 +360,9 @@ export function ObjectivesManagement() {
             dispatch(fetchPlayerObjectiveProgress(player.id))
           })
           
-          toast.success(`Objectif attribué à ${targetGroup.assignedPlayers.length} joueur(s) !`)
+          if (assignmentCount > 0) {
+            toast.success(`Objectif attribué à ${assignmentCount} joueur(s) !`)
+          }
         }
         
         setIsObjectiveDialogOpen(false)
@@ -431,12 +442,19 @@ export function ObjectivesManagement() {
           for (const objective of groupObjectives) {
             for (const playerId of playerIds) {
               try {
-                const assignData: AssignObjectiveDto = {
-                  objectiveId: objective.id,
-                  playerId: playerId
+                // Check if this assignment already exists in progress data
+                const existingProgress = playerProgress.find(
+                  p => (p as any).__playerId === playerId && p.objective?.id === objective.id
+                )
+                
+                if (!existingProgress) {
+                  const assignData: AssignObjectiveDto = {
+                    objectiveId: objective.id,
+                    playerId: playerId
+                  }
+                  await dispatch(assignObjectiveToPlayer(assignData))
+                  assignmentCount++
                 }
-                await dispatch(assignObjectiveToPlayer(assignData))
-                assignmentCount++
               } catch (error) {
                 console.error(`Échec de l'attribution de l'objectif ${objective.id} au joueur ${playerId}:`, error)
               }
@@ -683,14 +701,23 @@ export function ObjectivesManagement() {
         if (editObjectiveForm.groupId) {
           const targetGroup = objectiveGroups.find(group => group.id === editObjectiveForm.groupId)
           if (targetGroup && targetGroup.assignedPlayers && targetGroup.assignedPlayers.length > 0) {
+            let assignmentCount = 0
             // Assign the updated objective to each player in the new group
             for (const player of targetGroup.assignedPlayers) {
               try {
-                const assignData: AssignObjectiveDto = {
-                  objectiveId: editObjectiveForm.id,
-                  playerId: player.id
+                // Check if this assignment already exists in progress data
+                const existingProgress = playerProgress.find(
+                  p => (p as any).__playerId === player.id && p.objective?.id === editObjectiveForm.id
+                )
+                
+                if (!existingProgress) {
+                  const assignData: AssignObjectiveDto = {
+                    objectiveId: editObjectiveForm.id,
+                    playerId: player.id
+                  }
+                  await dispatch(assignObjectiveToPlayer(assignData))
+                  assignmentCount++
                 }
-                await dispatch(assignObjectiveToPlayer(assignData))
               } catch (error) {
                 console.error(`Échec de l'attribution de l'objectif au joueur ${player.id}:`, error)
               }
@@ -700,6 +727,10 @@ export function ObjectivesManagement() {
             targetGroup.assignedPlayers.forEach(player => {
               dispatch(fetchPlayerObjectiveProgress(player.id))
             })
+            
+            if (assignmentCount > 0) {
+              toast.success(`Objectif mis à jour et attribué à ${assignmentCount} nouveau(x) joueur(s) !`)
+            }
           }
         }
         

@@ -1,33 +1,35 @@
 "use client"
 
+import type React from "react"
+
 /**
  * Export a list of transactions to CSV
  * @param transactions Array of Transaction objects
  */
 export function exportTransactionsToCSV(transactions: any[]) {
-  const header = ['ID', 'Type', 'Category', 'Amount (MAD)', 'Description', 'Date', 'Status', 'Reference'];
-  const rows = transactions.map(transaction => [
-    transaction.id || '',
-    transaction.type || '',
-    transaction.category || '',
+  const header = ["ID", "Type", "Category", "Amount (MAD)", "Description", "Date", "Status", "Reference"]
+  const rows = transactions.map((transaction) => [
+    transaction.id || "",
+    transaction.type || "",
+    transaction.category || "",
     transaction.amount || 0,
-    transaction.description || '',
-    transaction.transactionDate || transaction.date || '',
-    transaction.status || '',
-    transaction.reference || ''
-  ]);
+    transaction.description || "",
+    transaction.transactionDate || transaction.date || "",
+    transaction.status || "",
+    transaction.reference || "",
+  ])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'transactions.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "transactions.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -35,28 +37,54 @@ export function exportTransactionsToCSV(transactions: any[]) {
  * @param salaryPayments Array of SalaryPayment objects
  */
 export function exportSalaryPaymentsToCSV(salaryPayments: any[]) {
-  const header = ['ID', 'Employee', 'Period', 'Amount (MAD)', 'Status', 'Payment Date', 'Notes'];
-  const rows = salaryPayments.map(payment => [
-    payment.id || '',
-    payment.employeeName || payment.employee || '',
-    `${payment.periodStart || ''} - ${payment.periodEnd || ''}`,
+  const header = ["ID", "Employee", "Period", "Amount (MAD)", "Status", "Payment Date", "Notes"]
+  const rows = salaryPayments.map((payment) => [
+    payment.id || "",
+    payment.employeeName || payment.employee || "",
+    `${payment.periodStart || ""} - ${payment.periodEnd || ""}`,
     payment.amount || 0,
-    payment.status || '',
-    payment.paymentDate || '',
-    payment.notes || ''
-  ]);
+    payment.status || "",
+    payment.paymentDate || "",
+    payment.notes || "",
+  ])
   const csvContent = [header, ...rows]
-    .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'salary-payments.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.setAttribute("download", "salary-payments.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * Generate PDF report for financial data using the enhanced PDF utilities
+ * @param reportData Financial report data
+ */
+export async function generateFinancialReportPDF(reportData: any) {
+  try {
+    // Dynamic import to avoid SSR issues
+    const { generateFinancialReportPDF: generatePDF } = await import("@/lib/jsPDF/FinancialReportPDF")
+    
+    // Try to get club info from API, fallback to default
+    let clubInfo;
+    try {
+      const { api } = await import("@/lib/api");
+      clubInfo = await api.get<any>("associations/settings");
+    } catch (error) {
+      console.warn("Could not load club settings, using default:", error);
+      clubInfo = undefined; // Will use default club info
+    }
+    
+    await generatePDF(reportData, clubInfo);
+  } catch (error) {
+    console.error("Error generating PDF:", error)
+    alert("Erreur lors de la génération du PDF. Veuillez réessayer.")
+  }
 }
 
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -78,45 +106,46 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
-import { 
-  CreditCard, 
-  DollarSign, 
-  Eye, 
+import {
+  CreditCard,
+  DollarSign,
+  Eye,
   FileText,
-  Plus, 
-  RefreshCcw, 
-  Search, 
-  TrendingDown, 
-  TrendingUp, 
-  Loader2
+  Plus,
+  RefreshCcw,
+  Search,
+  TrendingDown,
+  TrendingUp,
+  Loader2,
+  Download,
 } from "lucide-react"
-import 'jspdf-autotable'
-import { formatCurrency } from '@/lib/pdf-utils'
+import "jspdf-autotable"
+import { formatCurrency } from "@/lib/pdf-utils"
 
-declare module 'jspdf' {
+declare module "jspdf" {
   interface jsPDF {
-    autoTable: (options: any) => void;
+    autoTable: (options: any) => void
   }
 }
 import { ToastNotification, useToast } from "@/components/ui/toast-notification"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
-import { RootState } from "@/lib/redux/store"
-import { 
-  fetchTransactions, 
+import type { RootState } from "@/lib/redux/store"
+import {
+  fetchTransactions,
   createTransaction,
   createTransactionFromAcquisition,
   createTransactionFromSalaryPayment,
   fetchSalaryPayments,
-  createSalaryPayment
+  createSalaryPayment,
 } from "@/lib/redux/financialSlice"
-import { 
-  TransactionType, 
-  TransactionCategory, 
+import {
+  TransactionType,
+  TransactionCategory,
   PaymentStatus as TransactionPaymentStatus,
-  CreateTransactionDto,
-  CreateTransactionFromAcquisitionDto,
-  CreateTransactionFromSalaryPaymentDto,
-  CreateSalaryPaymentDto
+  type CreateTransactionDto,
+  type CreateTransactionFromAcquisitionDto,
+  type CreateTransactionFromSalaryPaymentDto,
+  type CreateSalaryPaymentDto,
 } from "@/lib/types/financial-management"
 
 // Add new types for financial reports
@@ -153,137 +182,129 @@ interface TransactionStatistics {
   }>
 }
 
-import { 
-  approveOrRejectAcquisition
-} from "@/lib/redux/acquisitionSlice"
+import { approveOrRejectAcquisition } from "@/lib/redux/acquisitionSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
 import { fetchAllStaff } from "@/lib/redux/staffSlice"
-import { 
-  Acquisition, 
-  ApprovalStatus,
-  ApprovalDto
-} from "@/lib/types/supplier-management"
+import { type Acquisition, ApprovalStatus, type ApprovalDto } from "@/lib/types/supplier-management"
 import { api } from "@/lib/api"
 import { apiConfig } from "@/lib/api-config"
 
 // No sample data needed
 
 export function FinancialManagement() {
-  const [customPOFile, setCustomPOFile] = useState<File | null>(null);
-  const [customPOId, setCustomPOId] = useState<number | null>(null);
-  const [isUploadingCustomPO, setIsUploadingCustomPO] = useState(false);
-  const [uploadCustomPOError, setUploadCustomPOError] = useState<string | null>(null);
-
-
+  const [customPOFile, setCustomPOFile] = useState<File | null>(null)
+  const [customPOId, setCustomPOId] = useState<number | null>(null)
+  const [isUploadingCustomPO, setIsUploadingCustomPO] = useState(false)
+  const [uploadCustomPOError, setUploadCustomPOError] = useState<string | null>(null)
 
   // State for purchase order file (for acquisition transaction)
-  const [purchaseOrderFile, setPurchaseOrderFile] = useState<File | null>(null);
-  const [purchaseOrderId, setPurchaseOrderId] = useState<number | null>(null);
-  const [isUploadingPO, setIsUploadingPO] = useState(false);
-  const [uploadPOError, setUploadPOError] = useState<string | null>(null);
+  const [purchaseOrderFile, setPurchaseOrderFile] = useState<File | null>(null)
+  const [purchaseOrderId, setPurchaseOrderId] = useState<number | null>(null)
+  const [isUploadingPO, setIsUploadingPO] = useState(false)
+  const [uploadPOError, setUploadPOError] = useState<string | null>(null)
 
   // Handle purchase order file upload
   const handlePurchaseOrderFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setPurchaseOrderFile(e.target.files[0]);
-      setUploadPOError(null);
+      setPurchaseOrderFile(e.target.files[0])
+      setUploadPOError(null)
     }
-  };
-    // Handle custom transaction purchase order file upload
+  }
+  // Handle custom transaction purchase order file upload
   const handleCustomPOFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCustomPOFile(e.target.files[0]);
-      setUploadCustomPOError(null);
+      setCustomPOFile(e.target.files[0])
+      setUploadCustomPOError(null)
     }
-  };
+  }
 
   // ...existing code...
 
   // Toast notification state
-  const { toastState, showToast, hideToast } = useToast();
+  const { toastState, showToast, hideToast } = useToast()
 
   // ...existing code...
 
   // Place after showToast is defined
   const handleUploadCustomPO = async () => {
     if (!customPOFile) {
-      setUploadCustomPOError("Please select a file to upload.");
-      return;
+      setUploadCustomPOError("Please select a file to upload.")
+      return
     }
-    setIsUploadingCustomPO(true);
-    setUploadCustomPOError(null);
+    setIsUploadingCustomPO(true)
+    setUploadCustomPOError(null)
     try {
-      const formData = new FormData();
-      formData.append("file", customPOFile);
-      let authToken = '';
-      if (typeof window !== 'undefined') {
-        authToken = localStorage.getItem('auth_token') || '';
+      const formData = new FormData()
+      formData.append("file", customPOFile)
+      let authToken = ""
+      if (typeof window !== "undefined") {
+        authToken = localStorage.getItem("auth_token") || ""
       }
-      const { getApiUrl } = await import('@/lib/api-config');
-      const uploadUrl = getApiUrl('acquisitions/upload-file');
+      const { getApiUrl } = await import("@/lib/api-config")
+      const uploadUrl = getApiUrl("acquisitions/upload-file")
       const response = await fetch(uploadUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${authToken}`
+          Authorization: `Bearer ${authToken}`,
         },
-        body: formData
-      });
+        body: formData,
+      })
       if (!response.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error("Failed to upload file")
       }
-      const data = await response.json();
-      setCustomPOId(data.id);
-      showToast('Purchase order file uploaded successfully', 'success');
+      const data = await response.json()
+      setCustomPOId(data.id)
+      showToast("Purchase order file uploaded successfully", "success")
     } catch (err: any) {
-      setUploadCustomPOError(err.message || 'Failed to upload file');
+      setUploadCustomPOError(err.message || "Failed to upload file")
     } finally {
-      setIsUploadingCustomPO(false);
+      setIsUploadingCustomPO(false)
     }
-  };
+  }
 
   const handleUploadPurchaseOrder = async () => {
     if (!purchaseOrderFile) {
-      setUploadPOError("Please select a file to upload.");
-      return;
+      setUploadPOError("Please select a file to upload.")
+      return
     }
-    setIsUploadingPO(true);
-    setUploadPOError(null);
+    setIsUploadingPO(true)
+    setUploadPOError(null)
     try {
-      const formData = new FormData();
-      formData.append("file", purchaseOrderFile);
-      let authToken = '';
-      if (typeof window !== 'undefined') {
-        authToken = localStorage.getItem('auth_token') || '';
+      const formData = new FormData()
+      formData.append("file", purchaseOrderFile)
+      let authToken = ""
+      if (typeof window !== "undefined") {
+        authToken = localStorage.getItem("auth_token") || ""
       }
-      const { getApiUrl } = await import('@/lib/api-config');
-      const uploadUrl = getApiUrl('acquisitions/upload-file');
+      const { getApiUrl } = await import("@/lib/api-config")
+      const uploadUrl = getApiUrl("acquisitions/upload-file")
       const response = await fetch(uploadUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${authToken}`
+          Authorization: `Bearer ${authToken}`,
         },
-        body: formData
-      });
+        body: formData,
+      })
       if (!response.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error("Failed to upload file")
       }
-      const data = await response.json();
-      setPurchaseOrderId(data.id);
-      showToast('Purchase order file uploaded successfully', 'success');
+      const data = await response.json()
+      setPurchaseOrderId(data.id)
+      showToast("Purchase order file uploaded successfully", "success")
     } catch (err: any) {
-      setUploadPOError(err.message || 'Failed to upload file');
+      setUploadPOError(err.message || "Failed to upload file")
     } finally {
-      setIsUploadingPO(false);
+      setIsUploadingPO(false)
     }
-  };
+  }
   const dispatch = useAppDispatch()
-  
+
   // State for managing the UI
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedType, setSelectedType] = useState("all")
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  
+
   // State for financial reports
   const [isGenerateReportDialogOpen, setIsGenerateReportDialogOpen] = useState(false)
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
@@ -293,14 +314,14 @@ export function FinancialManagement() {
   const [selectedReport, setSelectedReport] = useState<FinancialReport | null>(null)
   const [isReportDetailDialogOpen, setIsReportDetailDialogOpen] = useState(false)
   const [reportForm, setReportForm] = useState({
-    periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // January 1st
-    periodEnd: new Date().toISOString().split('T')[0], // Today
+    periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0], // January 1st
+    periodEnd: new Date().toISOString().split("T")[0], // Today
     title: "",
-    notes: ""
+    notes: "",
   })
   const [transactionStats, setTransactionStats] = useState<TransactionStatistics | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(false)
-  
+
   // State for managing transactions
   const [isCreateTransactionDialogOpen, setIsCreateTransactionDialogOpen] = useState(false)
   const [approvedAcquisitions, setApprovedAcquisitions] = useState<Acquisition[]>([])
@@ -308,28 +329,30 @@ export function FinancialManagement() {
   const [transactionDescription, setTransactionDescription] = useState("")
   const [isSubmittingTransaction, setIsSubmittingTransaction] = useState(false)
   const [transactionError, setTransactionError] = useState<string | null>(null)
-  
+
   // Add new state for acquisition loading
   const [isLoadingAcquisitions, setIsLoadingAcquisitions] = useState(false)
   const [acquisitionError, setAcquisitionError] = useState<string | null>(null)
-  
+
   // State for managing salary payments
   const [isCreateSalaryPaymentDialogOpen, setIsCreateSalaryPaymentDialogOpen] = useState(false)
   const [isSubmittingSalaryPayment, setIsSubmittingSalaryPayment] = useState(false)
   const [salaryPaymentError, setSalaryPaymentError] = useState<string | null>(null)
-  
+
   // State for transaction type dialog
   const [isTransactionTypeDialogOpen, setIsTransactionTypeDialogOpen] = useState(false)
   const [selectedSalaryPaymentId, setSelectedSalaryPaymentId] = useState<number | null>(null)
   const [selectedTransactionType, setSelectedTransactionType] = useState<TransactionType>(TransactionType.EXPENSE)
-  const [selectedTransactionCategory, setSelectedTransactionCategory] = useState<TransactionCategory | "">(TransactionCategory.SALARY)
+  const [selectedTransactionCategory, setSelectedTransactionCategory] = useState<TransactionCategory | "">(
+    TransactionCategory.SALARY,
+  )
   const [isCustomTransactionDialogOpen, setIsCustomTransactionDialogOpen] = useState(false)
   const [customTransactionForm, setCustomTransactionForm] = useState({
     amount: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     description: "",
     type: TransactionType.INCOME as TransactionType,
-    category: TransactionCategory.SPONSORSHIP as TransactionCategory
+    category: TransactionCategory.SPONSORSHIP as TransactionCategory,
   })
   const [salaryPaymentForm, setSalaryPaymentForm] = useState({
     amount: "",
@@ -343,7 +366,7 @@ export function FinancialManagement() {
     playerId: null as number | null,
     staffId: null as number | null,
   })
-  
+
   // Get data from Redux store
   const { transactions, loading, salaryPayments } = useAppSelector((state) => state.financial)
   const players = useAppSelector((state) => state.players?.players || [])
@@ -351,32 +374,28 @@ export function FinancialManagement() {
   const playersLoading = useAppSelector((state) => state.players?.loading || false)
   const staffLoading = useAppSelector((state) => state.staff?.loading || false)
   const authUser = useAppSelector((state: RootState) => state.auth.user)
-  
+
   // No legacy sample data needed
 
   // Function to fetch financial reports
   const fetchFinancialReports = useCallback(async () => {
     setIsLoadingReports(true)
     try {
-      const reports = await api.get<FinancialReport[]>('accounting/financial-reports')
+      const reports = await api.get<FinancialReport[]>("accounting/financial-reports")
       setFinancialReports(reports)
     } catch (err: unknown) {
       console.error("Failed to fetch financial reports:", err)
-      showToast(
-        "Failed to load financial reports",
-        "error",
-        "Error"
-      )
+      showToast("Failed to load financial reports", "error", "Error")
     } finally {
       setIsLoadingReports(false)
     }
   }, [])
-  
+
   // Function to fetch approved acquisitions
   const fetchApprovedAcquisitionsData = useCallback(async () => {
     setIsLoadingAcquisitions(true)
     setAcquisitionError(null)
-    
+
     try {
       // First attempt to use the API service directly
       try {
@@ -386,16 +405,16 @@ export function FinancialManagement() {
         return
       } catch (err: any) {
         // If the error is related to authentication, don't try the fallback
-        if (err.message?.includes('Authentication required') || err.message?.includes('Authentication failed')) {
+        if (err.message?.includes("Authentication required") || err.message?.includes("Authentication failed")) {
           throw err // Re-throw to be caught by outer catch
         }
       }
-      
+
       // If direct API call failed for non-auth reasons, try to get all acquisitions and filter
       try {
-        const allAcquisitions = await api.get<Acquisition[]>('acquisitions')
+        const allAcquisitions = await api.get<Acquisition[]>("acquisitions")
         const approvedAcquisitions = allAcquisitions.filter(
-          acquisition => acquisition.approvalStatus === ApprovalStatus.APPROVED
+          (acquisition) => acquisition.approvalStatus === ApprovalStatus.APPROVED,
         )
         setApprovedAcquisitions(approvedAcquisitions) // Still using the same state variable
       } catch (fallbackErr) {
@@ -405,199 +424,200 @@ export function FinancialManagement() {
       console.error("Failed to fetch approved acquisitions:", err)
       const errorMsg = err instanceof Error ? err.message : "Unknown error"
       setAcquisitionError(`Failed to load approved acquisitions: ${errorMsg}`)
-      showToast(
-        "Failed to load approved acquisitions",
-        "error",
-        "Error"
-      )
+      showToast("Failed to load approved acquisitions", "error", "Error")
     } finally {
       setIsLoadingAcquisitions(false)
     }
   }, [])
-  
+
   // Function to fetch transaction statistics
   // Use useMemo to calculate transaction statistics when dependencies change
   const calculateStatistics = useMemo(() => {
     // Calculate statistics locally from transactions
-    const transactionsByMonth = new Map<number, { income: number; expenses: number }>();
-      
+    const transactionsByMonth = new Map<number, { income: number; expenses: number }>()
+
     // Initialize all months
     for (let i = 0; i < 12; i++) {
-      transactionsByMonth.set(i, { income: 0, expenses: 0 });
+      transactionsByMonth.set(i, { income: 0, expenses: 0 })
     }
-    
+
     // Calculate statistics from transactions for the selected year
-    transactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.date);
+    transactions.forEach((transaction) => {
+      const transactionDate = new Date(transaction.date)
       if (transactionDate.getFullYear() === selectedYear) {
-        const month = transactionDate.getMonth(); // 0-11
-        const data = transactionsByMonth.get(month) || { income: 0, expenses: 0 };
-        
+        const month = transactionDate.getMonth() // 0-11
+        const data = transactionsByMonth.get(month) || { income: 0, expenses: 0 }
+
         if (transaction.type === TransactionType.INCOME) {
-          data.income += transaction.amount;
+          data.income += transaction.amount
         } else {
-          data.expenses += Math.abs(transaction.amount);
+          data.expenses += Math.abs(transaction.amount)
         }
-        
-        transactionsByMonth.set(month, data);
+
+        transactionsByMonth.set(month, data)
       }
-    });
-    
+    })
+
     // Create byPeriod data from the transactions
     const byPeriod = Array.from(transactionsByMonth.entries()).map(([month, data]) => {
       return {
         period: (month + 1).toString(), // 1-12
         income: data.income,
         expenses: -data.expenses, // Negative for expenses
-        net: data.income - data.expenses
-      };
-    });
-    
-    // Calculate total income, expenses and net profit
-    const totalIncome = byPeriod.reduce((sum, period) => sum + period.income, 0);
-    const totalExpenses = byPeriod.reduce((sum, period) => sum + period.expenses, 0);
-    const netProfit = totalIncome + totalExpenses; // expenses are negative
-    
-    // Create category breakdown
-    const byCategory: Record<string, number> = {};
-    transactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.date);
-      if (transactionDate.getFullYear() === selectedYear) {
-        const category = transaction.category;
-        const amount = transaction.type === TransactionType.INCOME ? transaction.amount : -Math.abs(transaction.amount);
-        byCategory[category] = (byCategory[category] || 0) + amount;
+        net: data.income - data.expenses,
       }
-    });
-    
+    })
+
+    // Calculate total income, expenses and net profit
+    const totalIncome = byPeriod.reduce((sum, period) => sum + period.income, 0)
+    const totalExpenses = byPeriod.reduce((sum, period) => sum + period.expenses, 0)
+    const netProfit = totalIncome + totalExpenses // expenses are negative
+
+    // Create category breakdown
+    const byCategory: Record<string, number> = {}
+    transactions.forEach((transaction) => {
+      const transactionDate = new Date(transaction.date)
+      if (transactionDate.getFullYear() === selectedYear) {
+        const category = transaction.category
+        const amount = transaction.type === TransactionType.INCOME ? transaction.amount : -Math.abs(transaction.amount)
+        byCategory[category] = (byCategory[category] || 0) + amount
+      }
+    })
+
     // Return the calculated statistics
     return {
       totalIncome,
       totalExpenses,
       netProfit,
       byCategory,
-      byPeriod
-    } as TransactionStatistics;
-  }, [selectedYear, transactions]);
+      byPeriod,
+    } as TransactionStatistics
+  }, [selectedYear, transactions])
 
   // Function to fetch transaction statistics (now just uses the memoized calculation)
   const fetchTransactionStatistics = useCallback(async () => {
-    setIsLoadingStats(true);
+    setIsLoadingStats(true)
     try {
       // Set the statistics from our memoized calculation
-      setTransactionStats(calculateStatistics);
+      setTransactionStats(calculateStatistics)
       // Only show toast on the first load
       // showToast("Using local transaction data for statistics", "info");
     } catch (error) {
-      console.error("Failed to calculate transaction statistics:", error);
+      console.error("Failed to calculate transaction statistics:", error)
     } finally {
-      setIsLoadingStats(false);
+      setIsLoadingStats(false)
     }
-  }, [calculateStatistics, transactionStats]);
-  
+  }, [calculateStatistics, transactionStats])
+
   // Function to generate financial report
   const handleGenerateReport = useCallback(async () => {
     if (!reportForm.periodStart || !reportForm.periodEnd || !reportForm.title) {
-      showToast(
-        "Please fill in all required fields",
-        "error",
-        "Validation Error"
-      )
+      showToast("Please fill in all required fields", "error", "Validation Error")
       return
     }
-    
+
     // Check authentication
     let authToken
-    if (typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth_token')
+    if (typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token")
     }
-    
+
     if (!authToken) {
-      showToast(
-        "Authentication required: Please log in again",
-        "error",
-        "Authentication Failed"
-      )
+      showToast("Authentication required: Please log in again", "error", "Authentication Failed")
       return
     }
-    
+
     // Get user ID
-    let userId: number | null = null;
+    let userId: number | null = null
     if (authUser && authUser.id) {
-      userId = authUser.id;
+      userId = authUser.id
     } else {
-      const userDataString = localStorage.getItem('user_data');
+      const userDataString = localStorage.getItem("user_data")
       if (userDataString) {
         try {
-          const userData = JSON.parse(userDataString);
+          const userData = JSON.parse(userDataString)
           if (userData && userData.id) {
-            userId = userData.id;
+            userId = userData.id
           }
         } catch (e) {
-          console.error("Failed to parse user data from localStorage:", e);
+          console.error("Failed to parse user data from localStorage:", e)
         }
       }
-      
+
       if (!userId) {
-        showToast(
-          "Authentication issue: Cannot retrieve your user information",
-          "error",
-          "User ID Not Found"
-        );
-        return;
+        showToast("Authentication issue: Cannot retrieve your user information", "error", "User ID Not Found")
+        return
       }
     }
-    
+
     setIsGeneratingReport(true)
     setReportError(null)
-    
-    try {   
-      showToast(
-        "Financial report generated successfully",
-        "success",
-        "Report Generated"
-      )
-      
+
+    try {
+      // Create the report data
+      const reportData = {
+        title: reportForm.title,
+        periodStart: reportForm.periodStart,
+        periodEnd: reportForm.periodEnd,
+        notes: reportForm.notes || "",
+        generatedById: userId,
+      }
+
+      // Make API call to create the financial report
+      await api.post<FinancialReport>("accounting/financial-reports/generate", reportData)
+
+      showToast("Financial report generated successfully", "success", "Report Generated")
+
       // Reset form and close dialog
       setReportForm({
-        periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-        periodEnd: new Date().toISOString().split('T')[0],
+        periodStart: new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0],
+        periodEnd: new Date().toISOString().split("T")[0],
         title: "",
-        notes: ""
+        notes: "",
       })
       setIsGenerateReportDialogOpen(false)
-      
+
       // Refresh reports
       fetchFinancialReports()
     } catch (err: unknown) {
       console.error("Failed to generate report:", err)
-      const errorMessage = "Failed to generate report. Please try again."
+      const errorMessage = err instanceof Error ? err.message : "Failed to generate report. Please try again."
       setReportError(errorMessage)
-      showToast(
-        errorMessage,
-        "error",
-        "Report Generation Failed"
-      )
+      showToast(errorMessage, "error", "Report Generation Failed")
     } finally {
       setIsGeneratingReport(false)
     }
-  }, [reportForm, showToast, authUser, fetchFinancialReports]);
-  
+  }, [reportForm, showToast, authUser, fetchFinancialReports])
+
   // Function to view report details
-  const handleViewReport = useCallback(async (reportId: number) => {
-    try {
-      const report = await api.get<FinancialReport>(`accounting/financial-reports/${reportId}`)
-      setSelectedReport(report)
-      setIsReportDetailDialogOpen(true)
-    } catch (err: unknown) {
-      console.error("Failed to fetch report details:", err)
-      showToast(
-        "Failed to load report details",
-        "error",
-        "Error"
-      )
-    }
-  }, [showToast]);
-  
+  const handleViewReport = useCallback(
+    async (reportId: number) => {
+      try {
+        const report = await api.get<FinancialReport>(`accounting/financial-reports/${reportId}`)
+        setSelectedReport(report)
+        setIsReportDetailDialogOpen(true)
+      } catch (err: unknown) {
+        console.error("Failed to fetch report details:", err)
+        showToast("Failed to load report details", "error", "Error")
+      }
+    },
+    [showToast],
+  )
+
+  // Function to generate PDF for a report
+  const handleGenerateReportPDF = useCallback(
+    async (report: FinancialReport) => {
+      try {
+        await generateFinancialReportPDF(report)
+        showToast("PDF généré avec succès", "success", "PDF Généré")
+      } catch (error) {
+        console.error("Error generating PDF:", error)
+        showToast("Erreur lors de la génération du PDF", "error", "Erreur")
+      }
+    },
+    [showToast],
+  )
+
   // Fetch initial data on component mount - only run once
   useEffect(() => {
     // Fetch data from Redux
@@ -608,130 +628,115 @@ export function FinancialManagement() {
 
     // Fetch other data directly
     const fetchInitialData = async () => {
-      await Promise.all([
-        fetchApprovedAcquisitionsData(),
-        fetchFinancialReports()
-      ]);
-    };
-    
-    fetchInitialData();
+      await Promise.all([fetchApprovedAcquisitionsData(), fetchFinancialReports()])
+    }
+
+    fetchInitialData()
     // Explicitly NOT including fetchApprovedAcquisitionsData or fetchFinancialReports
     // in the dependency array to prevent infinite loops
-  }, [dispatch]);
-  
-  // Update stats when year or transactions change, but separate from other data fetching
+  }, [dispatch])
+
+  // Update stats when year or transactions change, but separate from other data
   useEffect(() => {
     fetchTransactionStatistics()
-  }, [selectedYear, transactions]);
-  
+  }, [selectedYear, transactions])
+
   // Create custom transaction
   const handleCreateCustomTransaction = useCallback(async () => {
     // Check if all required fields are filled
     if (!customTransactionForm.amount || !customTransactionForm.date || !customTransactionForm.description) {
-      showToast(
-        "Please fill in all required fields for the transaction",
-        "error",
-        "Validation Error"
-      )
+      showToast("Please fill in all required fields for the transaction", "error", "Validation Error")
       return
     }
-    
+
     // Check authentication token and get user ID
     let authToken
-    if (typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth_token')
+    if (typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token")
     }
-    
+
     if (!authToken) {
       showToast(
         "Authentication required: Please log in again to create a transaction",
         "error",
-        "Authentication Failed"
+        "Authentication Failed",
       )
       return
     }
-    
+
     // Get user ID
-    let userId: number | null = null;
-    
+    let userId: number | null = null
+
     if (authUser && authUser.id) {
-      userId = authUser.id;
+      userId = authUser.id
     } else {
       // Fallback: Try to get user ID from localStorage if not in Redux state
-      const userDataString = localStorage.getItem('user_data');
+      const userDataString = localStorage.getItem("user_data")
       if (userDataString) {
         try {
-          const userData = JSON.parse(userDataString);
+          const userData = JSON.parse(userDataString)
           if (userData && userData.id) {
-            userId = userData.id;
+            userId = userData.id
           }
         } catch (e) {
-          console.error("Failed to parse user data from localStorage:", e);
+          console.error("Failed to parse user data from localStorage:", e)
         }
       }
-      
+
       if (!userId) {
-        showToast(
-          "Authentication issue: Cannot retrieve your user information",
-          "error",
-          "User ID Not Found"
-        );
-        return;
+        showToast("Authentication issue: Cannot retrieve your user information", "error", "User ID Not Found")
+        return
       }
     }
-    
+
     try {
       // Create the transaction
       const transactionData: CreateTransactionDto = {
         type: customTransactionForm.type,
         category: customTransactionForm.category,
-        amount: parseFloat(customTransactionForm.amount),
+        amount: Number.parseFloat(customTransactionForm.amount),
         date: customTransactionForm.date,
         description: customTransactionForm.description,
         createdById: userId as number, // We've already checked that userId is not null above
-        purchaseOrderId: customPOId || undefined
+        purchaseOrderId: customPOId || undefined,
       }
-      
+
       console.log("Creating custom transaction with data:", transactionData)
-      
+
       // Use the Redux thunk to create the transaction
-      const result = await dispatch(createTransaction(transactionData)).unwrap();
-      
+      const result = await dispatch(createTransaction(transactionData)).unwrap()
+
       console.log("Custom transaction created successfully:", result)
-      
+
       // Show success toast notification
       showToast(
-        `${customTransactionForm.type === TransactionType.INCOME ? 'Income' : 'Expense'} transaction created successfully.`,
+        `${customTransactionForm.type === TransactionType.INCOME ? "Income" : "Expense"} transaction created successfully.`,
         "success",
-        "Transaction Created"
+        "Transaction Created",
       )
-      
+
       // Reset form and close dialog
       setCustomTransactionForm({
         amount: "",
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         description: "",
         type: TransactionType.INCOME,
-        category: TransactionCategory.SPONSORSHIP
+        category: TransactionCategory.SPONSORSHIP,
       })
-      setCustomPOFile(null);
-      setCustomPOId(null);
+      setCustomPOFile(null)
+      setCustomPOId(null)
       setIsCustomTransactionDialogOpen(false)
-      
+
       // Refresh transactions
       dispatch(fetchTransactions())
     } catch (err: any) {
       console.error("Failed to create custom transaction:", err)
-      
+
       const errorMessage = err.message || "Failed to create transaction. Please try again."
-      
-      showToast(
-        errorMessage,
-        "error",
-        "Transaction Creation Failed"
-      )
+
+      showToast(errorMessage, "error", "Transaction Creation Failed")
     }
-  }, [customTransactionForm, dispatch, showToast]);
+  }, [customTransactionForm, dispatch, showToast, customPOId])
 
   // Create transaction from acquisition
   const handleCreateTransaction = useCallback(async () => {
@@ -739,13 +744,13 @@ export function FinancialManagement() {
       setTransactionError("Please select an acquisition")
       return
     }
-    
+
     // Check authentication token
     let authToken
-    if (typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth_token')
+    if (typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token")
     }
-    
+
     // Default transaction type and category for acquisitions
     if (!selectedTransactionType) {
       setSelectedTransactionType(TransactionType.EXPENSE)
@@ -753,72 +758,74 @@ export function FinancialManagement() {
     if (!selectedTransactionCategory) {
       setSelectedTransactionCategory(TransactionCategory.EQUIPMENT)
     }
-    
+
     if (!authToken) {
       setTransactionError("Authentication required: Please log in again to create a transaction")
       return
     }
-    
+
     // Check if we have a valid authenticated user
-    let userId: number | null = null;
-    
+    let userId: number | null = null
+
     if (authUser && authUser.id) {
-      userId = authUser.id;
+      userId = authUser.id
     } else {
       // Fallback: Try to get user ID from localStorage if not in Redux state
-      const userDataString = localStorage.getItem('user_data');
+      const userDataString = localStorage.getItem("user_data")
       if (userDataString) {
         try {
-          const userData = JSON.parse(userDataString);
+          const userData = JSON.parse(userDataString)
           if (userData && userData.id) {
-            userId = userData.id;
-            console.log("Retrieved user ID from localStorage:", userId);
+            userId = userData.id
+            console.log("Retrieved user ID from localStorage:", userId)
           }
         } catch (e) {
-          console.error("Failed to parse user data from localStorage:", e);
+          console.error("Failed to parse user data from localStorage:", e)
         }
       }
-      
+
       if (!userId) {
-        setTransactionError("Authentication issue: Cannot retrieve your user information");
-        console.error("User ID not found in auth state or localStorage");
-        return;
+        setTransactionError("Authentication issue: Cannot retrieve your user information")
+        console.error("User ID not found in auth state or localStorage")
+        return
       }
     }
-    
+
     setIsSubmittingTransaction(true)
     setTransactionError(null)
-    
+
     try {
       // First, approve the acquisition
       console.log("Approving acquisition:", selectedAcquisitionId)
       const approvalData: ApprovalDto = {
         approvalStatus: ApprovalStatus.APPROVED,
         approverId: userId, // Using authenticated user's ID
-        approvalComments: "Approved for transaction creation"
+        approvalComments: "Approved for transaction creation",
       }
-      
+
       console.log("Sending approval data:", JSON.stringify(approvalData))
-      
+
       try {
-        await dispatch(approveOrRejectAcquisition({ 
-          id: selectedAcquisitionId, 
-          approvalData 
-        })).unwrap()
-        
+        await dispatch(
+          approveOrRejectAcquisition({
+            id: selectedAcquisitionId,
+            approvalData,
+          }),
+        ).unwrap()
+
         console.log("Acquisition approved successfully")
       } catch (approvalError: any) {
         console.error("Failed to approve acquisition:", approvalError)
-        throw new Error(`Failed to approve acquisition: ${approvalError.message || 'Unknown error'}`)
+        throw new Error(`Failed to approve acquisition: ${approvalError.message || "Unknown error"}`)
       }
-      
+
       // Then create the transaction
       const transactionData: CreateTransactionFromAcquisitionDto = {
         acquisitionId: selectedAcquisitionId,
         createdById: userId, // Using authenticated user's ID
         customDescription: transactionDescription || undefined,
-        purchaseOrderId: purchaseOrderId || undefined
-      };
+        purchaseOrderId: purchaseOrderId || undefined,
+      }
 
       console.log("Creating transaction with data:", transactionData)
 
@@ -827,11 +834,7 @@ export function FinancialManagement() {
       setIsCreateTransactionDialogOpen(false)
 
       // Show success toast notification
-      showToast(
-        "Transaction created successfully from acquisition.",
-        "success",
-        "Transaction Created"
-      )
+      showToast("Transaction created successfully from acquisition.", "success", "Transaction Created")
 
       // Reset form and refetch data
       setSelectedAcquisitionId(null)
@@ -844,19 +847,15 @@ export function FinancialManagement() {
       fetchApprovedAcquisitionsData()
     } catch (err: any) {
       console.error("Failed to approve acquisition or create transaction:", err)
-      
+
       const errorMessage = err.message || "Failed to create transaction. Please try again."
-      
+
       // Show error toast notification
-      showToast(
-        errorMessage,
-        "error",
-        "Transaction Creation Failed"
-      )
-      
-      if (err.message?.includes('401') || err.message?.includes('auth')) {
+      showToast(errorMessage, "error", "Transaction Creation Failed")
+
+      if (err.message?.includes("401") || err.message?.includes("auth")) {
         setTransactionError("Authentication failed: Your session may have expired. Please log in again.")
-      } else if (err.message?.includes('approve')) {
+      } else if (err.message?.includes("approve")) {
         setTransactionError(`Failed to approve acquisition: ${err.message}`)
       } else {
         setTransactionError(errorMessage)
@@ -864,13 +863,24 @@ export function FinancialManagement() {
     } finally {
       setIsSubmittingTransaction(false)
     }
-  }, [dispatch, fetchApprovedAcquisitionsData, selectedAcquisitionId, transactionDescription, showToast]);
-  
+  }, [
+    dispatch,
+    fetchApprovedAcquisitionsData,
+    selectedAcquisitionId,
+    transactionDescription,
+    showToast,
+    purchaseOrderId,
+  ])
+
   // Create salary payment
   const handleCreateSalaryPayment = useCallback(async () => {
     // Validation
-    if (!salaryPaymentForm.amount || !salaryPaymentForm.paymentDate || 
-        !salaryPaymentForm.periodStart || !salaryPaymentForm.periodEnd) {
+    if (
+      !salaryPaymentForm.amount ||
+      !salaryPaymentForm.paymentDate ||
+      !salaryPaymentForm.periodStart ||
+      !salaryPaymentForm.periodEnd
+    ) {
       setSalaryPaymentError("Please fill in all required fields")
       return
     }
@@ -887,10 +897,10 @@ export function FinancialManagement() {
 
     // Check authentication token
     let authToken
-    if (typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth_token')
+    if (typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token")
     }
-    
+
     if (!authToken) {
       setSalaryPaymentError("Authentication required: Please log in again to create a salary payment")
       return
@@ -900,38 +910,34 @@ export function FinancialManagement() {
     setSalaryPaymentError(null)
 
     try {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-      
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}")
+
       if (!currentUser.id) {
         setSalaryPaymentError("Authentication required: Please log in again to create a salary payment")
         return
       }
 
       const salaryPaymentData: CreateSalaryPaymentDto = {
-        amount: parseFloat(salaryPaymentForm.amount),
+        amount: Number.parseFloat(salaryPaymentForm.amount),
         paymentDate: salaryPaymentForm.paymentDate,
         periodStart: salaryPaymentForm.periodStart,
         periodEnd: salaryPaymentForm.periodEnd,
-        bonus: salaryPaymentForm.bonus ? parseFloat(salaryPaymentForm.bonus) : undefined,
+        bonus: salaryPaymentForm.bonus ? Number.parseFloat(salaryPaymentForm.bonus) : undefined,
         playerId: salaryPaymentForm.recipientType === "player" ? salaryPaymentForm.playerId! : undefined,
         staffId: salaryPaymentForm.recipientType === "staff" ? salaryPaymentForm.staffId! : undefined,
         createdBy: currentUser.id,
       }
 
       console.log("Creating salary payment with data:", salaryPaymentData)
-      
+
       const result = await dispatch(createSalaryPayment(salaryPaymentData)).unwrap()
       console.log("Salary payment created successfully:", result)
-      
+
       setIsCreateSalaryPaymentDialogOpen(false)
-      
+
       // Show success toast notification
-      showToast(
-        "Salary payment created successfully.",
-        "success",
-        "Salary Payment Created"
-      )
-      
+      showToast("Salary payment created successfully.", "success", "Salary Payment Created")
+
       // Reset form
       setSalaryPaymentForm({
         amount: "",
@@ -945,23 +951,19 @@ export function FinancialManagement() {
         playerId: null,
         staffId: null,
       })
-      
+
       // Refresh data
       dispatch(fetchSalaryPayments())
       dispatch(fetchTransactions()) // Salary payments may create transactions
     } catch (err: any) {
       console.error("Failed to create salary payment:", err)
-      
+
       const errorMessage = err.message || "Failed to create salary payment. Please try again."
-      
+
       // Show error toast notification
-      showToast(
-        errorMessage,
-        "error",
-        "Salary Payment Creation Failed"
-      )
-      
-      if (err.message?.includes('401') || err.message?.includes('auth')) {
+      showToast(errorMessage, "error", "Salary Payment Creation Failed")
+
+      if (err.message?.includes("401") || err.message?.includes("auth")) {
         setSalaryPaymentError("Authentication failed: Your session may have expired. Please log in again.")
       } else {
         setSalaryPaymentError(errorMessage)
@@ -969,110 +971,105 @@ export function FinancialManagement() {
     } finally {
       setIsSubmittingSalaryPayment(false)
     }
-  }, [salaryPaymentForm, dispatch, showToast]);
-  
+  }, [salaryPaymentForm, dispatch, showToast])
+
   // Create transaction from salary payment with specified type
   const handleCreateTransactionFromSalaryPayment = useCallback(async () => {
     // Check authentication token and user
     let authToken
-    if (typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth_token')
+    if (typeof window !== "undefined") {
+      authToken = localStorage.getItem("auth_token")
     }
-    
+
     if (!authToken || !selectedSalaryPaymentId) {
-      showToast(
-        "Authentication required or invalid salary payment",
-        "error",
-        "Transaction Creation Failed"
-      )
+      showToast("Authentication required or invalid salary payment", "error", "Transaction Creation Failed")
       return
     }
-    
+
     // Check if we have a valid authenticated user
-    let userId: number | null = null;
-    
+    let userId: number | null = null
+
     if (authUser && authUser.id) {
-      userId = authUser.id;
+      userId = authUser.id
     } else {
       // Fallback: Try to get user ID from localStorage if not in Redux state
-      const userDataString = localStorage.getItem('user_data');
+      const userDataString = localStorage.getItem("user_data")
       if (userDataString) {
         try {
-          const userData = JSON.parse(userDataString);
+          const userData = JSON.parse(userDataString)
           if (userData && userData.id) {
-            userId = userData.id;
-            console.log("Retrieved user ID from localStorage:", userId);
+            userId = userData.id
+            console.log("Retrieved user ID from localStorage:", userId)
           }
         } catch (e) {
-          console.error("Failed to parse user data from localStorage:", e);
+          console.error("Failed to parse user data from localStorage:", e)
         }
       }
-      
+
       if (!userId) {
-        showToast(
-          "Authentication issue: Cannot retrieve your user information",
-          "error",
-          "User ID Not Found"
-        );
-        console.error("User ID not found in auth state or localStorage");
-        return;
+        showToast("Authentication issue: Cannot retrieve your user information", "error", "User ID Not Found")
+        console.error("User ID not found in auth state or localStorage")
+        return
       }
     }
-    
+
     try {
       // Create the transaction from salary payment
       // First, find the salary payment to get recipient details for description
-      const paymentDetails = salaryPayments.find(p => p.id === selectedSalaryPaymentId);
-      let customDescription = "Salary payment transaction";
-      
+      const paymentDetails = salaryPayments.find((p) => p.id === selectedSalaryPaymentId)
+      let customDescription = "Salary payment transaction"
+
       if (paymentDetails) {
-        const playerInfo = paymentDetails.player || (paymentDetails.playerId ? players.find(p => p.id === paymentDetails.playerId) : null);
-        const staffInfo = paymentDetails.staff || (paymentDetails.staffId ? staff.find(s => s.id === paymentDetails.staffId) : null);
-        const recipientName = playerInfo 
-          ? `${playerInfo.firstName} ${playerInfo.lastName} (Player)` 
-          : staffInfo 
-            ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})` 
-            : 'Unknown recipient';
-            
-        const periodStart = new Date(paymentDetails.periodStart).toLocaleDateString();
-        const periodEnd = new Date(paymentDetails.periodEnd).toLocaleDateString();
-        
-        customDescription = `${selectedTransactionType === TransactionType.INCOME ? 'Income' : 'Expense'} for ${recipientName} - Period: ${periodStart} to ${periodEnd}`;
+        const playerInfo =
+          paymentDetails.player ||
+          (paymentDetails.playerId ? players.find((p) => p.id === paymentDetails.playerId) : null)
+        const staffInfo =
+          paymentDetails.staff || (paymentDetails.staffId ? staff.find((s) => s.id === paymentDetails.staffId) : null)
+        const recipientName = playerInfo
+          ? `${playerInfo.firstName} ${playerInfo.lastName} (Player)`
+          : staffInfo
+            ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})`
+            : "Unknown recipient"
+
+        const periodStart = new Date(paymentDetails.periodStart).toLocaleDateString()
+        const periodEnd = new Date(paymentDetails.periodEnd).toLocaleDateString()
+
+        customDescription = `${selectedTransactionType === TransactionType.INCOME ? "Income" : "Expense"} for ${recipientName} - Period: ${periodStart} to ${periodEnd}`
       }
-      
+
       // Use the authenticated user's ID instead of a hardcoded value
       const transactionData: CreateTransactionFromSalaryPaymentDto = {
         salaryPaymentId: selectedSalaryPaymentId,
         createdById: userId, // Use the retrieved user ID
         customDescription: customDescription,
         transactionType: selectedTransactionType,
-        transactionCategory: selectedTransactionCategory as TransactionCategory || TransactionCategory.SALARY
+        transactionCategory: (selectedTransactionCategory as TransactionCategory) || TransactionCategory.SALARY,
       }
-      
+
       console.log("Creating transaction with authenticated user ID:", userId)
-      
+
       console.log("Creating transaction from salary payment with data:", transactionData)
-      
+
       const result = await dispatch(createTransactionFromSalaryPayment(transactionData)).unwrap()
       console.log("Transaction created successfully from salary payment:", result)
-      
+
       // Show success toast notification
       showToast(
-        `${selectedTransactionType === TransactionType.INCOME ? 'Income' : 'Expense'} transaction created successfully from salary payment.`,
+        `${selectedTransactionType === TransactionType.INCOME ? "Income" : "Expense"} transaction created successfully from salary payment.`,
         "success",
-        "Transaction Created"
+        "Transaction Created",
       )
-      
+
       // Close the dialog
       setIsTransactionTypeDialogOpen(false)
       setSelectedSalaryPaymentId(null)
-      
+
       // Refresh transactions and salary payments
       dispatch(fetchTransactions())
       dispatch(fetchSalaryPayments())
     } catch (err: any) {
       console.error("Failed to create transaction from salary payment:", err)
-      
+
       // Log detailed error information to help diagnose the issue
       console.error("Error details:", {
         response: err.response,
@@ -1080,42 +1077,52 @@ export function FinancialManagement() {
         data: err.data,
         message: err.message,
         userId,
-        fullError: err
-      });
-      
+        fullError: err,
+      })
+
       // Try to get more detailed error message from the response if available
-      const serverErrorMessage = err.response?.data?.message || err.data?.message;
-      const detailedError = serverErrorMessage || err.message || "Failed to create transaction. Please try again.";
-      
-      console.log("Detailed API error:", detailedError);
+      const serverErrorMessage = err.response?.data?.message || err.data?.message
+      const detailedError = serverErrorMessage || err.message || "Failed to create transaction. Please try again."
+
+      console.log("Detailed API error:", detailedError)
       // Log the actual data that was attempted to be sent to the API
-      console.log("Request data that was being sent to the API endpoint:");
-      
+      console.log("Request data that was being sent to the API endpoint:")
+
       // Show error toast notification with more details if available
-      showToast(
-        `Error: ${detailedError}`,
-        "error",
-        "Transaction Creation Failed"
-      )
+      showToast(`Error: ${detailedError}`, "error", "Transaction Creation Failed")
     }
-  }, [selectedSalaryPaymentId, selectedTransactionType, selectedTransactionCategory, dispatch, showToast]);
-  
+  }, [
+    selectedSalaryPaymentId,
+    selectedTransactionType,
+    selectedTransactionCategory,
+    dispatch,
+    showToast,
+    salaryPayments,
+    players,
+    staff,
+  ])
+
   // Filter transactions based on search term, category, and type
-  const filteredTransactions = useMemo(() => transactions.filter((transaction) => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || transaction.category.toString().toLowerCase() === selectedCategory.toLowerCase();
-    const matchesType = selectedType === "all" || transaction.type.toString().toLowerCase() === selectedType.toLowerCase();
-    
-    return matchesSearch && matchesCategory && matchesType;
-  }), [transactions, searchTerm, selectedCategory, selectedType]);
+  const filteredTransactions = useMemo(
+    () =>
+      transactions.filter((transaction) => {
+        const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesCategory =
+          selectedCategory === "all" || transaction.category.toString().toLowerCase() === selectedCategory.toLowerCase()
+        const matchesType =
+          selectedType === "all" || transaction.type.toString().toLowerCase() === selectedType.toLowerCase()
+
+        return matchesSearch && matchesCategory && matchesType
+      }),
+    [transactions, searchTerm, selectedCategory, selectedType],
+  )
 
   // Utility function to get color based on transaction type
   const getTypeColor = useCallback((type: TransactionType) => {
     return type === TransactionType.INCOME
       ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-  }, []);
+  }, [])
 
   // Calculate financial summaries
 
@@ -1134,129 +1141,130 @@ export function FinancialManagement() {
 
   // No payment-related functions needed
 
-  const totalIncome = useMemo(() => 
-    transactions.filter((t) => t.type === TransactionType.INCOME).reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0) || 0
-  , [transactions]);
-  
+  const totalIncome = useMemo(
+    () =>
+      transactions
+        .filter((t) => t.type === TransactionType.INCOME)
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0) || 0,
+    [transactions],
+  )
+
   const totalExpenses = useMemo(() => {
     return transactions
       .filter((t) => t.type === TransactionType.EXPENSE)
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
-  }, [transactions]);
-  
-  const netProfit = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
+  }, [transactions])
+
+  const netProfit = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses])
 
   const calculateMonthlyData = useCallback(() => {
-    const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
     // If we have API statistics data, use it
     if (transactionStats && transactionStats.byPeriod) {
       // Create a map from API data
-      const apiDataMap = new Map();
-      
-      transactionStats.byPeriod.forEach(period => {
-        let monthIndex = -1;
-        const periodStr = period.period ? period.period.toString() : '';
-        
+      const apiDataMap = new Map()
+
+      transactionStats.byPeriod.forEach((period) => {
+        let monthIndex = -1
+        const periodStr = period.period ? period.period.toString() : ""
+
         // Handle different possible period formats from the API
-        if (periodStr.includes('-')) {
+        if (periodStr.includes("-")) {
           // Format: "2025-1", "2025-2", etc. or "2025-01", "2025-02", etc.
-          const [year, month] = periodStr.split('-');
-          if (parseInt(year) === selectedYear) {
-            monthIndex = parseInt(month) - 1; // Convert to 0-based index
+          const [year, month] = periodStr.split("-")
+          if (Number.parseInt(year) === selectedYear) {
+            monthIndex = Number.parseInt(month) - 1 // Convert to 0-based index
           }
         } else if (periodStr.length === 6) {
           // Format: "202501", "202502", etc. (YYYYMM)
-          const year = parseInt(periodStr.substring(0, 4));
-          const month = parseInt(periodStr.substring(4, 6));
+          const year = Number.parseInt(periodStr.substring(0, 4))
+          const month = Number.parseInt(periodStr.substring(4, 6))
           if (year === selectedYear) {
-            monthIndex = month - 1;
+            monthIndex = month - 1
           }
         } else if (periodStr.length === 1 || periodStr.length === 2) {
           // Format: Just month number "1", "2", etc.
-          monthIndex = parseInt(periodStr) - 1;
-        } else if (periodStr.toLowerCase().includes('jan') || 
-                  periodStr.toLowerCase().includes('feb') || 
-                  periodStr.toLowerCase().includes('mar')) {
+          monthIndex = Number.parseInt(periodStr) - 1
+        } else if (
+          periodStr.toLowerCase().includes("jan") ||
+          periodStr.toLowerCase().includes("feb") ||
+          periodStr.toLowerCase().includes("mar")
+        ) {
           // Format: Month name like "Jan", "February", etc.
-          monthIndex = monthNames.findIndex(m => 
-            periodStr.toLowerCase().includes(m.toLowerCase())
-          );
+          monthIndex = monthNames.findIndex((m) => periodStr.toLowerCase().includes(m.toLowerCase()))
         }
-        
+
         // If we successfully parsed a valid month index, add the data
         if (monthIndex >= 0 && monthIndex < 12) {
           apiDataMap.set(monthNames[monthIndex], {
             income: period.income || 0,
             expenses: Math.abs(period.expenses || 0), // Ensure positive for display
-            profit: period.net || 0
-          });
+            profit: period.net || 0,
+          })
         }
-      });
-      
+      })
+
       // Return data for all 12 months, filling missing months with zeros
-      return monthNames.map(month => {
-        const data = apiDataMap.get(month) || { income: 0, expenses: 0, profit: 0 };
+      return monthNames.map((month) => {
+        const data = apiDataMap.get(month) || { income: 0, expenses: 0, profit: 0 }
         return {
           month,
           income: data.income,
           expenses: data.expenses,
-          profit: data.income - data.expenses
-        };
-      });
+          profit: data.income - data.expenses,
+        }
+      })
     }
-    
+
     // Fallback to local calculation from transactions
-    const monthlyMap = new Map<string, { income: number; expenses: number }>();
-    
+    const monthlyMap = new Map<string, { income: number; expenses: number }>()
+
     // Initialize all 12 months for the selected year
-    monthNames.forEach(month => {
-      monthlyMap.set(month, { income: 0, expenses: 0 });
-    });
-    
+    monthNames.forEach((month) => {
+      monthlyMap.set(month, { income: 0, expenses: 0 })
+    })
+
     // Aggregate transactions by month for the selected year
     transactions.forEach((transaction) => {
-      const transactionDate = new Date(transaction.date);
-      const transactionYear = transactionDate.getFullYear();
-      
+      const transactionDate = new Date(transaction.date)
+      const transactionYear = transactionDate.getFullYear()
+
       // Only include transactions from the selected year
       if (transactionYear === selectedYear) {
-        const monthKey = transactionDate.toLocaleDateString('en-US', { month: 'short' });
-        
+        const monthKey = transactionDate.toLocaleDateString("en-US", { month: "short" })
+
         if (monthlyMap.has(monthKey)) {
-          const monthData = monthlyMap.get(monthKey)!;
+          const monthData = monthlyMap.get(monthKey)!
           if (transaction.type === TransactionType.INCOME) {
-            monthData.income += transaction.amount;
+            monthData.income += transaction.amount
           } else {
-            monthData.expenses += Math.abs(transaction.amount);
+            monthData.expenses += Math.abs(transaction.amount)
           }
         }
       }
-    });
-    
+    })
+
     // Convert to array format for charts (maintain month order)
-    return monthNames.map(month => {
-      const data = monthlyMap.get(month)!;
+    return monthNames.map((month) => {
+      const data = monthlyMap.get(month)!
       return {
         month,
         income: data.income,
         expenses: data.expenses,
-        profit: data.income - data.expenses
-      };
-    });
-  }, [transactionStats, selectedYear, transactions]);
+        profit: data.income - data.expenses,
+      }
+    })
+  }, [transactionStats, selectedYear, transactions])
 
   // Use memoization to avoid recalculating monthly data on every render
-  const monthlyData = useMemo(() => calculateMonthlyData(), [calculateMonthlyData]);
+  const monthlyData = useMemo(() => calculateMonthlyData(), [calculateMonthlyData])
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Toast Notification */}
       <ToastNotification toast={toastState} onClose={hideToast} />
-      
+
       {/* Export Button */}
       <div className="flex justify-end">
         <Button
@@ -1266,29 +1274,29 @@ export function FinancialManagement() {
           Exporter les transactions (CSV)
         </Button>
       </div>
-      
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestion financière</h1>
           <p className="text-gray-600 dark:text-gray-400">Suivez et gérez toutes les transactions financières</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            className="bg-purple-600 hover:bg-purple-700 text-white" 
+          <Button
+            className="bg-purple-600 hover:bg-purple-700 text-white"
             onClick={() => setIsCustomTransactionDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Transaction personnalisée
           </Button>
-          <Button 
-            className="bg-green-600 hover:bg-green-700 text-white" 
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white"
             onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Nouveau paiement de salaire
           </Button>
-          <Button 
-            className="bg-blue-800 hover:bg-blue-900 text-white" 
+          <Button
+            className="bg-blue-800 hover:bg-blue-900 text-white"
             onClick={() => setIsCreateTransactionDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -1331,13 +1339,13 @@ export function FinancialManagement() {
 
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Dernières transactions</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Dernières transactions
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {transactions.length}
-            </div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{transactions.length}</div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Nombre total de transactions enregistrées</p>
           </CardContent>
         </Card>
@@ -1415,7 +1423,7 @@ export function FinancialManagement() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={10} className="h-24 text-center">
                           <div className="flex justify-center items-center">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-500 mr-2" />
                             <span>Chargement des transactions...</span>
@@ -1424,7 +1432,7 @@ export function FinancialManagement() {
                       </TableRow>
                     ) : filteredTransactions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={10} className="h-24 text-center">
                           Aucune transaction trouvée.
                         </TableCell>
                       </TableRow>
@@ -1436,15 +1444,27 @@ export function FinancialManagement() {
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>{transaction.category}</TableCell>
                           <TableCell>
-                            <Badge className={getTypeColor(transaction.type)}>{transaction.type === TransactionType.INCOME ? 'Recette' : 'Dépense'}</Badge>
+                            <Badge className={getTypeColor(transaction.type)}>
+                              {transaction.type === TransactionType.INCOME ? "Recette" : "Dépense"}
+                            </Badge>
                           </TableCell>
-                          <TableCell className={transaction.type === TransactionType.INCOME ? "text-green-600" : "text-red-600"}>
+                          <TableCell
+                            className={transaction.type === TransactionType.INCOME ? "text-green-600" : "text-red-600"}
+                          >
                             {formatCurrency(transaction.amount)}
                           </TableCell>
-                          <TableCell>{transaction.sourceId || 'N/A'}</TableCell>
-                          <TableCell>{transaction.sourceType || 'N/A'}</TableCell>
+                          <TableCell>{transaction.sourceId || "N/A"}</TableCell>
+                          <TableCell>{transaction.sourceType || "N/A"}</TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(transaction.status)}>{transaction.status === TransactionPaymentStatus.PAID ? 'Payé' : transaction.status === TransactionPaymentStatus.PENDING ? 'En attente' : transaction.status === TransactionPaymentStatus.APPROVED ? 'Approuvé' : transaction.status}</Badge>
+                            <Badge className={getStatusColor(transaction.status)}>
+                              {transaction.status === TransactionPaymentStatus.PAID
+                                ? "Payé"
+                                : transaction.status === TransactionPaymentStatus.PENDING
+                                  ? "En attente"
+                                  : transaction.status === TransactionPaymentStatus.APPROVED
+                                    ? "Approuvé"
+                                    : transaction.status}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             {transaction.purchaseOrder && transaction.purchaseOrder.url ? (
@@ -1453,7 +1473,7 @@ export function FinancialManagement() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center text-blue-600 hover:underline"
-                                title={transaction.purchaseOrder.fileName || 'View Purchase Order'}
+                                title={transaction.purchaseOrder.fileName || "View Purchase Order"}
                               >
                                 <FileText className="h-4 w-4 mr-1" />
                                 Voir PDF
@@ -1477,29 +1497,36 @@ export function FinancialManagement() {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rapports & Analyses financières</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Générez des rapports et visualisez les tendances de performance financière</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Générez des rapports et visualisez les tendances de performance financière
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Label htmlFor="year-select" className="text-sm font-medium">Année :</Label>
-                <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <Label htmlFor="year-select" className="text-sm font-medium">
+                  Année :
+                </Label>
+                <Select
+                  value={selectedYear.toString()}
+                  onValueChange={(value) => setSelectedYear(Number.parseInt(value))}
+                >
                   <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Sélectionner une année" />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 5 }, (_, i) => {
-                      const year = new Date().getFullYear() - i;
+                      const year = new Date().getFullYear() - i
                       return (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
                         </SelectItem>
-                      );
+                      )
                     })}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button 
+                <Button
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() => setIsGenerateReportDialogOpen(true)}
                 >
@@ -1509,44 +1536,58 @@ export function FinancialManagement() {
               </div>
             </div>
           </div>
-          
+
           {/* Financial Statistics Cards */}
           {transactionStats && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-l-4 border-l-green-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des recettes ({selectedYear})</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total des recettes ({selectedYear})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{formatCurrency(transactionStats.totalIncome || 0)}</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(transactionStats.totalIncome || 0)}
+                  </div>
                 </CardContent>
               </Card>
               <Card className="border-l-4 border-l-red-500">
-                               <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total des dépenses ({selectedYear})</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total des dépenses ({selectedYear})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">{formatCurrency(transactionStats.totalExpenses || 0)}</div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {formatCurrency(transactionStats.totalExpenses || 0)}
+                  </div>
                 </CardContent>
               </Card>
               <Card className="border-l-4 border-l-blue-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice net ({selectedYear})</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Bénéfice net ({selectedYear})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${(transactionStats.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div
+                    className={`text-2xl font-bold ${(transactionStats.netProfit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
+                  >
                     {formatCurrency(isNaN(transactionStats.netProfit) ? 0 : transactionStats.netProfit)}
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
-          
+
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Recettes vs Dépenses mensuelles ({selectedYear})</CardTitle>
+                <CardTitle className="text-gray-900 dark:text-white">
+                  Recettes vs Dépenses mensuelles ({selectedYear})
+                </CardTitle>
                 <CardDescription>Performance financière pour {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1586,20 +1627,14 @@ export function FinancialManagement() {
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Line 
-                        type="monotone" 
-                        dataKey="profit" 
-                        stroke="#1E3A8A" 
-                        strokeWidth={2} 
-                        name="Bénéfice" 
-                      />
+                      <Line type="monotone" dataKey="profit" stroke="#1E3A8A" strokeWidth={2} name="Bénéfice" />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Generated Reports Table */}
           <Card>
             <CardHeader>
@@ -1634,7 +1669,7 @@ export function FinancialManagement() {
                     ) : financialReports.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center">
-                          No financial reports found. Generate your first report above.
+                          Aucun rapport financier trouvé. Générez votre premier rapport ci-dessus.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1643,7 +1678,8 @@ export function FinancialManagement() {
                           <TableCell className="font-medium">{index + 1}</TableCell>
                           <TableCell className="font-medium">{report.title}</TableCell>
                           <TableCell>
-                            {new Date(report.periodStart).toLocaleDateString()} - {new Date(report.periodEnd).toLocaleDateString()}
+                            {new Date(report.periodStart).toLocaleDateString()} -{" "}
+                            {new Date(report.periodEnd).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-green-600">{formatCurrency(report.totalIncome || 0)}</TableCell>
                           <TableCell className="text-red-600">{formatCurrency(report.totalExpenses || 0)}</TableCell>
@@ -1653,13 +1689,18 @@ export function FinancialManagement() {
                           <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => handleViewReport(report.id)}>
+                                <Eye className="h-4 w-4 mr-1" />
+                                Voir
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleViewReport(report.id)}
+                                onClick={() => handleGenerateReportPDF(report)}
+                                className="text-blue-600 hover:text-blue-700"
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Voir
+                                <Download className="h-4 w-4 mr-1" />
+                                PDF
                               </Button>
                             </div>
                           </TableCell>
@@ -1674,15 +1715,16 @@ export function FinancialManagement() {
         </TabsContent>
       </Tabs>
 
+      {/* All the existing dialogs remain the same... */}
       {/* Create Transaction Dialog */}
       <Dialog open={isCreateTransactionDialogOpen} onOpenChange={setIsCreateTransactionDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Créer une transaction depuis une acquisition approuvée</DialogTitle>
             <DialogDescription>
-              Sélectionnez une acquisition approuvée pour créer une transaction financière.
-              Cela enregistrera la transaction financière associée à l'acquisition.
-              La transaction utilisera la date actuelle et sera créée avec votre identifiant utilisateur.
+              Sélectionnez une acquisition approuvée pour créer une transaction financière. Cela enregistrera la
+              transaction financière associée à l'acquisition. La transaction utilisera la date actuelle et sera créée
+              avec votre identifiant utilisateur.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1690,16 +1732,18 @@ export function FinancialManagement() {
               <div className="flex flex-col justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
                 <span className="text-gray-600">Chargement des acquisitions en attente...</span>
-                <p className="text-xs text-gray-500 mt-1">Veuillez patienter pendant la récupération des données d'acquisitions en attente</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Veuillez patienter pendant la récupération des données d'acquisitions en attente
+                </p>
               </div>
             ) : acquisitionError ? (
               <div className="py-4 text-center bg-red-50 p-4 rounded-md border border-red-200">
                 <p className="text-red-600 mb-3">{acquisitionError}</p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={fetchApprovedAcquisitionsData}
-                  className="mt-2 border-red-300 hover:bg-red-100"
+                  className="mt-2 border-red-300 hover:bg-red-100 bg-transparent"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
                   Réessayer
@@ -1708,12 +1752,14 @@ export function FinancialManagement() {
             ) : approvedAcquisitions.length === 0 ? (
               <div className="py-4 text-center bg-blue-50 p-4 rounded-md border border-blue-200">
                 <p className="text-blue-600 mb-3">Aucune acquisition approuvée trouvée</p>
-                <p className="text-sm text-gray-600">Aucune acquisition approuvée n'est disponible pour créer des transactions.</p>
-                <Button 
-                  variant="outline" 
+                <p className="text-sm text-gray-600">
+                  Aucune acquisition approuvée n'est disponible pour créer des transactions.
+                </p>
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={fetchApprovedAcquisitionsData}
-                  className="mt-3 border-blue-300 hover:bg-blue-100"
+                  className="mt-3 border-blue-300 hover:bg-blue-100 bg-transparent"
                 >
                   <RefreshCcw className="h-4 w-4 mr-1" />
                   Rafraîchir
@@ -1745,14 +1791,12 @@ export function FinancialManagement() {
                   {purchaseOrderId && (
                     <div className="text-green-600 text-xs mt-1">File uploaded (ID: {purchaseOrderId})</div>
                   )}
-                  {uploadPOError && (
-                    <div className="text-red-600 text-xs mt-1">{uploadPOError}</div>
-                  )}
+                  {uploadPOError && <div className="text-red-600 text-xs mt-1">{uploadPOError}</div>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="acquisition">Approved Acquisition</Label>
-                  <Select 
-                    value={selectedAcquisitionId?.toString() || ""} 
+                  <Select
+                    value={selectedAcquisitionId?.toString() || ""}
                     onValueChange={(value) => setSelectedAcquisitionId(Number(value))}
                   >
                     <SelectTrigger>
@@ -1761,20 +1805,20 @@ export function FinancialManagement() {
                     <SelectContent>
                       {approvedAcquisitions.map((acq) => (
                         <SelectItem key={acq.id} value={acq.id.toString()}>
-                          {acq.acquisitionName || acq.description} - {acq.totalCost.toLocaleString()} MAD ({acq.acquisitionType})
+                          {acq.acquisitionName || acq.description} - {acq.totalCost.toLocaleString()} MAD (
+                          {acq.acquisitionType})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                </div>
-                
+
+                <div className="grid grid-cols-2 gap-4"></div>
+
                 <div className="space-y-2">
                   <Label htmlFor="description">Custom Description (Optional)</Label>
-                  <Textarea 
-                    id="description" 
+                  <Textarea
+                    id="description"
                     placeholder="Additional details about this transaction"
                     value={transactionDescription}
                     onChange={(e) => setTransactionDescription(e.target.value)}
@@ -1782,7 +1826,7 @@ export function FinancialManagement() {
                 </div>
               </div>
             )}
-            </div>
+          </div>
 
           {transactionError && (
             <div className="bg-red-50 p-3 rounded-md border border-red-200">
@@ -1793,8 +1837,8 @@ export function FinancialManagement() {
             <Button variant="outline" onClick={() => setIsCreateTransactionDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleCreateTransaction} 
+            <Button
+              onClick={handleCreateTransaction}
               disabled={!selectedAcquisitionId || isSubmittingTransaction}
               className="bg-blue-800 hover:bg-blue-900 text-white min-w-[150px]"
             >
@@ -1810,7 +1854,8 @@ export function FinancialManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
+      {/* All other dialogs remain unchanged... */}
       <Dialog open={isCreateSalaryPaymentDialogOpen} onOpenChange={setIsCreateSalaryPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
@@ -1819,13 +1864,13 @@ export function FinancialManagement() {
               Créez un nouveau paiement de salaire pour un joueur ou un membre du staff.
             </DialogDescription>
           </DialogHeader>
-          
+
           {salaryPaymentError && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 mb-4">
               <p className="text-sm">{salaryPaymentError}</p>
             </div>
           )}
-          
+
           <div className="grid gap-4 py-4">
             {/* Recipient Type */}
             <div className="grid grid-cols-4 items-center gap-4">
@@ -1840,10 +1885,14 @@ export function FinancialManagement() {
                     name="recipientType"
                     value="player"
                     checked={salaryPaymentForm.recipientType === "player"}
-                    onChange={() => setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null })}
+                    onChange={() =>
+                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null })
+                    }
                     className="h-4 w-4 border-gray-300 text-blue-600"
                   />
-                  <Label htmlFor="playerType" className="cursor-pointer">Joueur</Label>
+                  <Label htmlFor="playerType" className="cursor-pointer">
+                    Joueur
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
@@ -1852,14 +1901,18 @@ export function FinancialManagement() {
                     name="recipientType"
                     value="staff"
                     checked={salaryPaymentForm.recipientType === "staff"}
-                    onChange={() => setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "staff", playerId: null })}
+                    onChange={() =>
+                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "staff", playerId: null })
+                    }
                     className="h-4 w-4 border-gray-300 text-blue-600"
                   />
-                  <Label htmlFor="staffType" className="cursor-pointer">Staff</Label>
+                  <Label htmlFor="staffType" className="cursor-pointer">
+                    Staff
+                  </Label>
                 </div>
               </div>
             </div>
-            
+
             {/* Recipient Selection */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="recipient" className="text-right">
@@ -1869,7 +1922,9 @@ export function FinancialManagement() {
                 {salaryPaymentForm.recipientType === "player" ? (
                   <Select
                     value={salaryPaymentForm.playerId?.toString() || ""}
-                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, playerId: parseInt(value) })}
+                    onValueChange={(value) =>
+                      setSalaryPaymentForm({ ...salaryPaymentForm, playerId: Number.parseInt(value) })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a player" />
@@ -1894,7 +1949,9 @@ export function FinancialManagement() {
                 ) : (
                   <Select
                     value={salaryPaymentForm.staffId?.toString() || ""}
-                    onValueChange={(value) => setSalaryPaymentForm({ ...salaryPaymentForm, staffId: parseInt(value) })}
+                    onValueChange={(value) =>
+                      setSalaryPaymentForm({ ...salaryPaymentForm, staffId: Number.parseInt(value) })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a staff member" />
@@ -1939,7 +1996,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Payment Date */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="paymentDate" className="text-right">
@@ -1954,7 +2011,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Period Start */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="periodStart" className="text-right">
@@ -1969,7 +2026,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Period End */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="periodEnd" className="text-right">
@@ -1984,7 +2041,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Bonus (optional) */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="bonus" className="text-right">
@@ -2004,7 +2061,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Tax Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="taxAmount" className="text-right">
@@ -2024,7 +2081,7 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Net Amount */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="netAmount" className="text-right">
@@ -2045,18 +2102,12 @@ export function FinancialManagement() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateSalaryPaymentDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsCreateSalaryPaymentDialogOpen(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={handleCreateSalaryPayment}
-              disabled={isSubmittingSalaryPayment}
-            >
+            <Button onClick={handleCreateSalaryPayment} disabled={isSubmittingSalaryPayment}>
               {isSubmittingSalaryPayment ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2069,7 +2120,7 @@ export function FinancialManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Transaction Type Selection Dialog */}
       <Dialog open={isTransactionTypeDialogOpen} onOpenChange={setIsTransactionTypeDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -2079,15 +2130,15 @@ export function FinancialManagement() {
               Sélectionnez le type et la catégorie de transaction pour ce paiement de salaire.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="transactionType" className="text-right">
                 Type de transaction*
               </Label>
               <div className="col-span-3">
-                <Select 
-                  value={selectedTransactionType} 
+                <Select
+                  value={selectedTransactionType}
                   onValueChange={(value) => setSelectedTransactionType(value as TransactionType)}
                 >
                   <SelectTrigger>
@@ -2100,14 +2151,14 @@ export function FinancialManagement() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">
                 Catégorie*
               </Label>
               <div className="col-span-3">
-                <Select 
-                  value={selectedTransactionCategory} 
+                <Select
+                  value={selectedTransactionCategory}
                   onValueChange={(value) => setSelectedTransactionCategory(value as TransactionCategory)}
                 >
                   <SelectTrigger>
@@ -2134,21 +2185,25 @@ export function FinancialManagement() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="col-span-3 text-xs text-gray-500 mt-2">
               <p className="mb-1">Transaction types:</p>
               <ul className="pl-5 list-disc space-y-1">
-                <li><b>Expense:</b> Money going out (salary payments, equipment purchases, utilities, etc.)</li>
-                <li><b>Income:</b> Money coming in (sponsorships, donations, registration fees, etc.)</li>
+                <li>
+                  <b>Expense:</b> Money going out (salary payments, equipment purchases, utilities, etc.)
+                </li>
+                <li>
+                  <b>Income:</b> Money coming in (sponsorships, donations, registration fees, etc.)
+                </li>
               </ul>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTransactionTypeDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
+            <Button
               onClick={handleCreateTransactionFromSalaryPayment}
               className="bg-blue-800 hover:bg-blue-900 text-white"
             >
@@ -2157,15 +2212,13 @@ export function FinancialManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Custom Transaction Dialog */}
       <Dialog open={isCustomTransactionDialogOpen} onOpenChange={setIsCustomTransactionDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Créer une transaction personnalisée</DialogTitle>
-            <DialogDescription>
-              Créez une transaction de recette ou de dépense personnalisée.
-            </DialogDescription>
+            <DialogDescription>Créez une transaction de recette ou de dépense personnalisée.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* Transaction type */}
@@ -2174,13 +2227,18 @@ export function FinancialManagement() {
                 Transaction Type*
               </Label>
               <div className="col-span-3">
-                <Select 
-                  value={customTransactionForm.type} 
-                  onValueChange={(value) => setCustomTransactionForm({
-                    ...customTransactionForm,
-                    type: value as TransactionType,
-                    category: value === TransactionType.INCOME ? TransactionCategory.SPONSORSHIP : TransactionCategory.UTILITY
-                  })}
+                <Select
+                  value={customTransactionForm.type}
+                  onValueChange={(value) =>
+                    setCustomTransactionForm({
+                      ...customTransactionForm,
+                      type: value as TransactionType,
+                      category:
+                        value === TransactionType.INCOME
+                          ? TransactionCategory.SPONSORSHIP
+                          : TransactionCategory.UTILITY,
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select transaction type" />
@@ -2198,12 +2256,14 @@ export function FinancialManagement() {
                 Category*
               </Label>
               <div className="col-span-3">
-                <Select 
-                  value={customTransactionForm.category} 
-                  onValueChange={(value) => setCustomTransactionForm({
-                    ...customTransactionForm,
-                    category: value as TransactionCategory
-                  })}
+                <Select
+                  value={customTransactionForm.category}
+                  onValueChange={(value) =>
+                    setCustomTransactionForm({
+                      ...customTransactionForm,
+                      category: value as TransactionCategory,
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
@@ -2244,10 +2304,12 @@ export function FinancialManagement() {
                   placeholder="0.00"
                   className="pl-12"
                   value={customTransactionForm.amount}
-                  onChange={(e) => setCustomTransactionForm({
-                    ...customTransactionForm,
-                    amount: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setCustomTransactionForm({
+                      ...customTransactionForm,
+                      amount: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -2261,10 +2323,12 @@ export function FinancialManagement() {
                   id="customDate"
                   type="date"
                   value={customTransactionForm.date}
-                  onChange={(e) => setCustomTransactionForm({
-                    ...customTransactionForm,
-                    date: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setCustomTransactionForm({
+                      ...customTransactionForm,
+                      date: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -2278,10 +2342,12 @@ export function FinancialManagement() {
                   id="customDescription"
                   placeholder="Describe the transaction..."
                   value={customTransactionForm.description}
-                  onChange={(e) => setCustomTransactionForm({
-                    ...customTransactionForm,
-                    description: e.target.value
-                  })}
+                  onChange={(e) =>
+                    setCustomTransactionForm({
+                      ...customTransactionForm,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -2289,8 +2355,20 @@ export function FinancialManagement() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Purchase Order File</Label>
               <div className="col-span-3">
-                <Input type="file" accept=".pdf,image/*,.doc,.docx,.txt" onChange={handleCustomPOFileChange} disabled={isUploadingCustomPO || customTransactionForm.type === TransactionType.INCOME} />
-                <Button type="button" onClick={handleUploadCustomPO} disabled={isUploadingCustomPO || !customPOFile || customTransactionForm.type === TransactionType.INCOME} className="mt-2">
+                <Input
+                  type="file"
+                  accept=".pdf,image/*,.doc,.docx,.txt"
+                  onChange={handleCustomPOFileChange}
+                  disabled={isUploadingCustomPO || customTransactionForm.type === TransactionType.INCOME}
+                />
+                <Button
+                  type="button"
+                  onClick={handleUploadCustomPO}
+                  disabled={
+                    isUploadingCustomPO || !customPOFile || customTransactionForm.type === TransactionType.INCOME
+                  }
+                  className="mt-2"
+                >
                   {isUploadingCustomPO ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
                   Upload File
                 </Button>
@@ -2303,36 +2381,33 @@ export function FinancialManagement() {
             <Button variant="outline" onClick={() => setIsCustomTransactionDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleCreateCustomTransaction}
-              className="bg-blue-800 hover:bg-blue-900 text-white"
-            >
+            <Button onClick={handleCreateCustomTransaction} className="bg-blue-800 hover:bg-blue-900 text-white">
               Créer la transaction
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Generate Report Dialog */}
       <Dialog open={isGenerateReportDialogOpen} onOpenChange={setIsGenerateReportDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Générer un rapport financier</DialogTitle>
-            <DialogDescription>
-              Créez un rapport financier complet pour une période donnée.
-            </DialogDescription>
+            <DialogDescription>Créez un rapport financier complet pour une période donnée.</DialogDescription>
           </DialogHeader>
-          
+
           {reportError && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 mb-4">
               <p className="text-sm">{reportError}</p>
             </div>
           )}
-          
+
           <div className="grid gap-4 py-4">
             {/* Report Title */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="reportTitle" className="text-right">Titre*</Label>
+              <Label htmlFor="reportTitle" className="text-right">
+                Titre*
+              </Label>
               <div className="col-span-3">
                 <Input
                   id="reportTitle"
@@ -2342,10 +2417,12 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Period Start */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodStart" className="text-right">Date de début*</Label>
+              <Label htmlFor="periodStart" className="text-right">
+                Date de début*
+              </Label>
               <div className="col-span-3">
                 <Input
                   id="periodStart"
@@ -2355,10 +2432,12 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Period End */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="periodEnd" className="text-right">Date de fin*</Label>
+              <Label htmlFor="periodEnd" className="text-right">
+                Date de fin*
+              </Label>
               <div className="col-span-3">
                 <Input
                   id="periodEnd"
@@ -2368,10 +2447,12 @@ export function FinancialManagement() {
                 />
               </div>
             </div>
-            
+
             {/* Notes */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="reportNotes" className="text-right">Notes</Label>
+              <Label htmlFor="reportNotes" className="text-right">
+                Notes
+              </Label>
               <div className="col-span-3">
                 <Textarea
                   id="reportNotes"
@@ -2382,13 +2463,13 @@ export function FinancialManagement() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsGenerateReportDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleGenerateReport} 
+            <Button
+              onClick={handleGenerateReport}
               disabled={isGeneratingReport}
               className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]"
             >
@@ -2407,17 +2488,19 @@ export function FinancialManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Report Detail Dialog */}
       <Dialog open={isReportDetailDialogOpen} onOpenChange={setIsReportDetailDialogOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>{selectedReport?.title}</DialogTitle>
             <DialogDescription>
-              Rapport financier pour {selectedReport && new Date(selectedReport.periodStart).toLocaleDateString('fr-FR')} - {selectedReport && new Date(selectedReport.periodEnd).toLocaleDateString('fr-FR')}
+              Rapport financier pour{" "}
+              {selectedReport && new Date(selectedReport.periodStart).toLocaleDateString("fr-FR")} -{" "}
+              {selectedReport && new Date(selectedReport.periodEnd).toLocaleDateString("fr-FR")}
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedReport && (
             <div className="space-y-6">
               {/* Summary Cards */}
@@ -2427,7 +2510,9 @@ export function FinancialManagement() {
                     <CardTitle className="text-sm font-medium text-gray-600">Total des recettes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-bold text-green-600">{formatCurrency(selectedReport.totalIncome || 0)}</div>
+                    <div className="text-xl font-bold text-green-600">
+                      {formatCurrency(selectedReport.totalIncome || 0)}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card className="border-l-4 border-l-red-500">
@@ -2435,7 +2520,9 @@ export function FinancialManagement() {
                     <CardTitle className="text-sm font-medium text-gray-600">Total des dépenses</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xl font-bold text-red-600">{formatCurrency(selectedReport.totalExpenses || 0)}</div>
+                    <div className="text-xl font-bold text-red-600">
+                      {formatCurrency(selectedReport.totalExpenses || 0)}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card className="border-l-4 border-l-blue-500">
@@ -2443,50 +2530,56 @@ export function FinancialManagement() {
                     <CardTitle className="text-sm font-medium text-gray-600">Bénéfice net</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-xl font-bold ${selectedReport.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div
+                      className={`text-xl font-bold ${selectedReport.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
                       {formatCurrency(selectedReport.netProfit || 0)}
                     </div>
                   </CardContent>
                 </Card>
               </div>
-              
+
               {/* Breakdown Tables */}
               <div className="grid grid-cols-2 gap-6">
                 {/* Income Breakdown */}
                 <div>
-                    <h4 className="text-sm font-medium text-gray-600 mb-2">Répartition des recettes</h4>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Répartition des recettes</h4>
                   <div className="space-y-2">
-                    {selectedReport.incomeBreakdown && Object.entries(selectedReport.incomeBreakdown).map(([category, amount]) => (
-                      <div key={category} className="flex justify-between py-1 border-b border-gray-100">
-                        <span className="text-sm text-gray-600">{category}</span>
-                        <span className="text-sm font-medium text-green-600">{formatCurrency(amount as number)}</span>
-                      </div>
-                    ))}
+                    {selectedReport.incomeBreakdown &&
+                      Object.entries(selectedReport.incomeBreakdown).map(([category, amount]) => (
+                        <div key={category} className="flex justify-between py-1 border-b border-gray-100">
+                          <span className="text-sm text-gray-600">{category}</span>
+                          <span className="text-sm font-medium text-green-600">{formatCurrency(amount as number)}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
-                
+
                 {/* Expense Breakdown */}
                 <div>
-                    <h4 className="text-sm font-medium text-gray-600 mb-2">Répartition des dépenses</h4>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Répartition des dépenses</h4>
                   <div className="space-y-2">
-                    {selectedReport.expenseBreakdown && Object.entries(selectedReport.expenseBreakdown).map(([category, amount]) => (
-                      <div key={category} className="flex justify-between py-1 border-b border-gray-100">
-                        <span className="text-sm text-gray-600">{category}</span>
-                        <span className="text-sm font-medium text-red-600">{formatCurrency(amount as number)}</span>
-                      </div>
-                    ))}
+                    {selectedReport.expenseBreakdown &&
+                      Object.entries(selectedReport.expenseBreakdown).map(([category, amount]) => (
+                        <div key={category} className="flex justify-between py-1 border-b border-gray-100">
+                          <span className="text-sm text-gray-600">{category}</span>
+                          <span className="text-sm font-medium text-red-600">{formatCurrency(amount as number)}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
-              
+
               {/* Report Metadata */}
               <div className="pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                   <div>
-                    <span className="font-medium">Générer par:</span> {selectedReport.generatedBy?.firstName} {selectedReport.generatedBy?.lastName}
+                    <span className="font-medium">Générer par:</span> {selectedReport.generatedBy?.firstName}{" "}
+                    {selectedReport.generatedBy?.lastName}
                   </div>
                   <div>
-                    <span className="font-medium">Créé le:</span> {new Date(selectedReport.createdAt).toLocaleString('fr-FR')}
+                    <span className="font-medium">Créé le:</span>{" "}
+                    {new Date(selectedReport.createdAt).toLocaleString("fr-FR")}
                   </div>
                 </div>
                 {selectedReport.notes && (
@@ -2498,8 +2591,16 @@ export function FinancialManagement() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleGenerateReportPDF(selectedReport!)}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger PDF
+            </Button>
             <Button variant="outline" onClick={() => setIsReportDetailDialogOpen(false)}>
               Fermer
             </Button>
