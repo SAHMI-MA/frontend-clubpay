@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, MapPin, Plus, Search, Trophy, Users, Target, Loader2, Trash2, Eye, Edit, AlertTriangle} from "lucide-react"
+import { Calendar, Clock, MapPin, Plus, Search, Trophy, Users, Target, Loader2, Trash2, Eye, Edit, AlertTriangle } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
 import { toast } from "sonner"
-import { 
+import {
   fetchAllMatches,
   fetchMatchParticipations,
   fetchAllTeams,
@@ -34,10 +34,10 @@ import {
   setSelectedMatch
 } from "@/lib/redux/matchSlice"
 import { fetchAllPlayers } from "@/lib/redux/playerSlice"
-import { 
-  Match, 
+import {
+  Match,
   CreateMatchDto,
-  UpdateMatchDto, 
+  UpdateMatchDto,
 } from "@/lib/types/match-management"
 import { TacticalPlanner } from "./tactical-planner"
 
@@ -74,15 +74,15 @@ export function exportMatchesToCSV(matches: Match[]) {
 export function MatchManagement() {
   // Redux state
   const dispatch = useDispatch<AppDispatch>()
-  const { 
-    matches, 
-    participations, 
+  const {
+    matches,
+    participations,
     teams,
     selectedMatchId,
     loading,
-    error 
+    error
   } = useSelector((state: RootState) => state.matches)
-  
+
   // Get players from Redux store
   const { players } = useSelector((state: RootState) => state.players)
 
@@ -97,6 +97,8 @@ export function MatchManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isTacticalPlannerOpen, setIsTacticalPlannerOpen] = useState(false)
   const [isQuickStatusDialogOpen, setIsQuickStatusDialogOpen] = useState(false)
+  const [isParticipationDeleteDialogOpen, setIsParticipationDeleteDialogOpen] = useState(false)
+  const [participationToDelete, setParticipationToDelete] = useState<{ id: number; playerName: string } | null>(null)
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null)
   const [selectedMatchForView, setSelectedMatchForView] = useState<Match | null>(null)
   const [selectedMatchForTactical, setSelectedMatchForTactical] = useState<Match | null>(null)
@@ -106,7 +108,7 @@ export function MatchManagement() {
     status: "Scheduled" as 'Scheduled' | 'Completed' | 'Cancelled',
     result: ""
   })
-  
+
   // Form states
   const [matchForm, setMatchForm] = useState({
     nomMatch: "",
@@ -119,7 +121,7 @@ export function MatchManagement() {
     result: "", // Match result
     teamId: ""
   })
-  
+
   const [editMatchForm, setEditMatchForm] = useState({
     nomMatch: "",
     city: "",
@@ -131,35 +133,35 @@ export function MatchManagement() {
     result: "", // Match result
     teamId: ""
   })
-  
+
   const [, setParticipationForm] = useState({
     playerId: "",
-    role: "Starter" as "Starter" | "Substitute" | "Bench",
+    role: "Starter" as "Starter" | "Substitute" | "Bench" | "Reserve",
     bonus: "",
     percentage: ""
   })
 
   // Load data on component mount
-  useEffect(() => {    
+  useEffect(() => {
     const loadData = async () => {
       try {
         console.log('📡 Dispatching fetchAllMatches...');
         const matchesResult = await dispatch(fetchAllMatches());
         console.log('✅ fetchAllMatches result:', matchesResult);
-        
+
         console.log('📡 Dispatching fetchAllTeams...');
         const teamsResult = await dispatch(fetchAllTeams());
         console.log('✅ fetchAllTeams result:', teamsResult);
-        
+
         console.log('📡 Dispatching fetchAllPlayers...');
         const playersResult = await dispatch(fetchAllPlayers());
         console.log('✅ fetchAllPlayers result:', playersResult);
-        
+
       } catch (error) {
         console.error('❌ Error loading initial data:', error);
       }
     };
-    
+
     loadData();
   }, [dispatch]);
 
@@ -239,7 +241,7 @@ export function MatchManagement() {
       // Fallback to date-based logic if status is not set
       const matchDate = new Date(match.dateTime)
       const now = new Date()
-      
+
       if (matchDate > now) {
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
       } else {
@@ -259,7 +261,7 @@ export function MatchManagement() {
       // Fallback to date-based logic if status is not set
       const matchDate = new Date(match.dateTime)
       const now = new Date()
-      
+
       return matchDate > now ? "Programmé" : "Terminé"
     }
   }
@@ -272,6 +274,8 @@ export function MatchManagement() {
         return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
       case "bench":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+      case "reserve":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
     }
@@ -305,7 +309,7 @@ export function MatchManagement() {
       }
 
       const resultAction = await dispatch(createMatch(matchData))
-      
+
       if (createMatch.fulfilled.match(resultAction)) {
         toast.success("Match créé avec succès!")
         setIsCreateMatchDialogOpen(false)
@@ -322,7 +326,7 @@ export function MatchManagement() {
   const handleDeleteMatch = async (matchId: number) => {
     try {
       const resultAction = await dispatch(deleteMatch(matchId))
-      
+
       if (deleteMatch.fulfilled.match(resultAction)) {
         toast.success("Match supprimé avec succès!")
         setIsDeleteDialogOpen(false)
@@ -380,7 +384,7 @@ export function MatchManagement() {
         matchId: selectedMatchForView.id,
         matchData
       }))
-      
+
       if (updateMatch.fulfilled.match(resultAction)) {
         toast.success("Match mis à jour avec succès!")
         setIsEditMatchDialogOpen(false)
@@ -405,13 +409,13 @@ export function MatchManagement() {
     setSelectedMatchForTactical(match)
     setIsTacticalPlannerOpen(true)
     dispatch(setSelectedMatch(match.id))
-    
+
     // Load both participations and players
     await Promise.all([
       dispatch(fetchMatchParticipations(match.id)),
       dispatch(fetchAllPlayers())
     ])
-    
+
     console.log('Loaded data for tactical planner')
   }
 
@@ -460,21 +464,14 @@ export function MatchManagement() {
       })
   }
 
-  const handleRemovePlayerFromMatch = async (participationId: number, matchId: number) => {
-    try {
-      const resultAction = await dispatch(removePlayerFromMatch({
-        matchId,
-        participationId
-      }))
-      
-      if (removePlayerFromMatch.fulfilled.match(resultAction)) {
-        toast.success("Joueur retiré du match avec succès!")
-      } else {
-        toast.error("Échec de la suppression du joueur du match")
-      }
-    } catch (error) {
-      toast.error("Erreur lors de la suppression du joueur du match")
-      console.error(error)
+  const handleRemovePlayerFromMatch = (participationId: number) => {
+    const participation = participations.find(p => p.id === participationId);
+    if (participation && participation.player) {
+      setParticipationToDelete({
+        id: participationId,
+        playerName: `${participation.player.firstName} ${participation.player.lastName}`
+      });
+      setIsParticipationDeleteDialogOpen(true);
     }
   }
 
@@ -523,8 +520,8 @@ export function MatchManagement() {
           <p className="text-sm text-red-700">
             {error.matches || error.teams}
           </p>
-          <Button 
-            className="mt-4 bg-red-600 hover:bg-red-700" 
+          <Button
+            className="mt-4 bg-red-600 hover:bg-red-700"
             onClick={() => {
               dispatch(fetchAllMatches())
               dispatch(fetchAllTeams())
@@ -537,7 +534,33 @@ export function MatchManagement() {
     )
   }
 
-  return (
+  const confirmRemoveParticipation = async () => {
+    if (!participationToDelete || !selectedMatchId) return;
+
+    try {
+      // Call the API to delete the participation
+      const resultAction = await dispatch(removePlayerFromMatch({
+        matchId: selectedMatchId,
+        participationId: participationToDelete.id
+      }));
+
+      if (removePlayerFromMatch.fulfilled.match(resultAction)) {
+        toast.success(`${participationToDelete.playerName} a été retiré du match avec succès!`);
+      } else {
+        toast.error("Échec de la suppression du joueur du match");
+      }
+
+      // Close the confirmation dialog
+      setIsParticipationDeleteDialogOpen(false);
+      setParticipationToDelete(null);
+
+      // Refresh the participations list
+      dispatch(fetchMatchParticipations(selectedMatchId));
+    } catch (error) {
+      console.error('Error removing participation:', error);
+      toast.error("Erreur lors de la suppression du joueur du match");
+    }
+  };  return (
     <div className="space-y-6">
       {/* Export Matches CSV Button */}
       <div className="flex justify-end">
@@ -573,55 +596,55 @@ export function MatchManagement() {
                 <Label htmlFor="matchName" className="text-right">
                   Nom du match
                 </Label>
-                <Input 
-                  id="matchName" 
+                <Input
+                  id="matchName"
                   placeholder="Nom du match"
                   value={matchForm.nomMatch}
-                  onChange={(e) => setMatchForm({...matchForm, nomMatch: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, nomMatch: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="opposition" className="text-right">
                   Adversaire
                 </Label>
-                <Input 
-                  id="opposition" 
+                <Input
+                  id="opposition"
                   placeholder="Équipe adverse"
                   value={matchForm.opposition}
-                  onChange={(e) => setMatchForm({...matchForm, opposition: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, opposition: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="city" className="text-right">
                   Ville
                 </Label>
-                <Input 
-                  id="city" 
+                <Input
+                  id="city"
                   placeholder="Ville du match"
                   value={matchForm.city}
-                  onChange={(e) => setMatchForm({...matchForm, city: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, city: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="dateTime" className="text-right">
                   Date & Heure
                 </Label>
-                <Input 
-                  id="dateTime" 
+                <Input
+                  id="dateTime"
                   type="datetime-local"
                   value={matchForm.dateTime}
-                  onChange={(e) => setMatchForm({...matchForm, dateTime: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, dateTime: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="team" className="text-right">
                   Équipe
                 </Label>
-                <Select value={matchForm.teamId} onValueChange={(value) => setMatchForm({...matchForm, teamId: value})}>
+                <Select value={matchForm.teamId} onValueChange={(value) => setMatchForm({ ...matchForm, teamId: value })}>
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Sélectionner une équipe" />
                   </SelectTrigger>
@@ -638,33 +661,33 @@ export function MatchManagement() {
                 <Label htmlFor="formation" className="text-right">
                   Formation
                 </Label>
-                <Input 
-                  id="formation" 
+                <Input
+                  id="formation"
                   placeholder="ex : 4-4-2, 4-3-3"
                   value={matchForm.formation}
-                  onChange={(e) => setMatchForm({...matchForm, formation: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, formation: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="bonus" className="text-right">
                   Prime de participation
                 </Label>
-                <Input 
-                  id="bonus" 
+                <Input
+                  id="bonus"
                   type="number"
                   step="0.01"
                   placeholder="ex : 500"
                   value={matchForm.bonus}
-                  onChange={(e) => setMatchForm({...matchForm, bonus: e.target.value})}
-                  className="col-span-3" 
+                  onChange={(e) => setMatchForm({ ...matchForm, bonus: e.target.value })}
+                  className="col-span-3"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="status" className="text-right">
                   Statut
                 </Label>
-                <Select value={matchForm.status} onValueChange={(value) => setMatchForm({...matchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled'})}>
+                <Select value={matchForm.status} onValueChange={(value) => setMatchForm({ ...matchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled' })}>
                   <SelectTrigger className="col-span-3">
                     <SelectValue />
                   </SelectTrigger>
@@ -680,19 +703,19 @@ export function MatchManagement() {
                   <Label htmlFor="result" className="text-right">
                     Résultat
                   </Label>
-                  <Input 
-                    id="result" 
+                  <Input
+                    id="result"
                     placeholder="ex : 2-1"
                     value={matchForm.result}
-                    onChange={(e) => setMatchForm({...matchForm, result: e.target.value})}
-                    className="col-span-3" 
+                    onChange={(e) => setMatchForm({ ...matchForm, result: e.target.value })}
+                    className="col-span-3"
                   />
                 </div>
               )}
             </div>
             <DialogFooter>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-blue-800 hover:bg-blue-900"
                 onClick={handleCreateMatch}
                 disabled={loading.matches}
@@ -753,11 +776,11 @@ export function MatchManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {totalBonuses >= 1000000 
-              ? `${(totalBonuses/1000000).toFixed(1)}M MAD`
-              : totalBonuses >= 1000
-              ? `${(totalBonuses/1000).toFixed(1)}K MAD` 
-              : `${totalBonuses.toFixed(2)} MAD`}
+              {totalBonuses >= 1000000
+                ? `${(totalBonuses / 1000000).toFixed(1)}M MAD`
+                : totalBonuses >= 1000
+                  ? `${(totalBonuses / 1000).toFixed(1)}K MAD`
+                  : `${totalBonuses.toFixed(2)} MAD`}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total attribué</p>
           </CardContent>
@@ -808,7 +831,7 @@ export function MatchManagement() {
                       const { date, time } = formatDateTime(match.dateTime)
                       const status = getMatchStatus(match)
                       return (
-                        <TableRow 
+                        <TableRow
                           key={match.id}
                           className={selectedMatchId === match.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}
                         >
@@ -931,8 +954,8 @@ export function MatchManagement() {
                   <Label htmlFor="match-select" className="text-sm font-medium whitespace-nowrap">
                     Sélectionner un match:
                   </Label>
-                  <Select 
-                    value={selectedMatchId?.toString() || ""} 
+                  <Select
+                    value={selectedMatchId?.toString() || ""}
                     onValueChange={(value) => {
                       if (value) {
                         const matchId = parseInt(value)
@@ -961,7 +984,7 @@ export function MatchManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {/* Show selected match info */}
                 {selectedMatchId && (() => {
                   const selectedMatch = matches.find(m => m.id === selectedMatchId)
@@ -1017,7 +1040,7 @@ export function MatchManagement() {
                       ) : participations.map((participation) => (
                         <TableRow key={participation.id}>
                           <TableCell className="font-medium">
-                            {participation.player 
+                            {participation.player
                               ? `${participation.player.firstName} ${participation.player.lastName}`
                               : "Joueur inconnu"
                             }
@@ -1025,13 +1048,18 @@ export function MatchManagement() {
                           <TableCell>
                             {(() => {
                               const selectedMatch = matches.find(m => m.id === selectedMatchId)
-                              return selectedMatch ? 
-                                `${selectedMatch.nomMatch} vs ${selectedMatch.opposition}` : 
+                              return selectedMatch ?
+                                `${selectedMatch.nomMatch} vs ${selectedMatch.opposition}` :
                                 "Détails du match"
                             })()}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getParticipationColor(participation.role)}>{participation.role === 'Starter' ? 'Titulaire' : participation.role === 'Substitute' ? 'Remplaçant' : 'Banc'}</Badge>
+                            <Badge className={getParticipationColor(participation.role)}>
+                              {participation.role === 'Starter' ? 'Titulaire' : 
+                               participation.role === 'Substitute' ? 'Remplaçant' : 
+                               participation.role === 'Reserve' ? 'Réserviste' : 
+                               'Banc'}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-green-600 font-medium">
                             {(() => {
@@ -1051,9 +1079,7 @@ export function MatchManagement() {
                               variant="outline"
                               className="text-red-600 hover:text-red-700"
                               onClick={() => {
-                                if (selectedMatchId) {
-                                  handleRemovePlayerFromMatch(participation.id, selectedMatchId)
-                                }
+                                handleRemovePlayerFromMatch(participation.id)
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1143,9 +1169,9 @@ export function MatchManagement() {
                 <Label className="text-sm font-medium text-gray-600">Statut</Label>
                 <Badge className={getStatusColor(selectedMatchForView)}>
                   {selectedMatchForView.status === 'Scheduled' ? 'Programmé' :
-                   selectedMatchForView.status === 'Completed' ? 'Terminé' :
-                   selectedMatchForView.status === 'Cancelled' ? 'Annulé' :
-                   new Date(selectedMatchForView.dateTime) > new Date() ? 'À venir' : 'Terminé'}
+                    selectedMatchForView.status === 'Completed' ? 'Terminé' :
+                      selectedMatchForView.status === 'Cancelled' ? 'Annulé' :
+                        new Date(selectedMatchForView.dateTime) > new Date() ? 'À venir' : 'Terminé'}
                 </Badge>
               </div>
               {selectedMatchForView.result && (
@@ -1176,7 +1202,7 @@ export function MatchManagement() {
               <Input
                 id="edit-match-name"
                 value={editMatchForm.nomMatch}
-                onChange={(e) => setEditMatchForm({...editMatchForm, nomMatch: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, nomMatch: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1187,7 +1213,7 @@ export function MatchManagement() {
               <Input
                 id="edit-opposition"
                 value={editMatchForm.opposition}
-                onChange={(e) => setEditMatchForm({...editMatchForm, opposition: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, opposition: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1198,7 +1224,7 @@ export function MatchManagement() {
               <Input
                 id="edit-city"
                 value={editMatchForm.city}
-                onChange={(e) => setEditMatchForm({...editMatchForm, city: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, city: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1210,7 +1236,7 @@ export function MatchManagement() {
                 id="edit-datetime"
                 type="datetime-local"
                 value={editMatchForm.dateTime}
-                onChange={(e) => setEditMatchForm({...editMatchForm, dateTime: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, dateTime: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1218,7 +1244,7 @@ export function MatchManagement() {
               <Label htmlFor="edit-team" className="text-right">
                 Équipe
               </Label>
-              <Select value={editMatchForm.teamId} onValueChange={(value) => setEditMatchForm({...editMatchForm, teamId: value})}>
+              <Select value={editMatchForm.teamId} onValueChange={(value) => setEditMatchForm({ ...editMatchForm, teamId: value })}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Sélectionner une équipe" />
                 </SelectTrigger>
@@ -1239,7 +1265,7 @@ export function MatchManagement() {
                 id="edit-formation"
                 placeholder="ex : 4-4-2, 4-3-3"
                 value={editMatchForm.formation}
-                onChange={(e) => setEditMatchForm({...editMatchForm, formation: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, formation: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1253,7 +1279,7 @@ export function MatchManagement() {
                 step="0.01"
                 placeholder="ex : 500"
                 value={editMatchForm.bonus}
-                onChange={(e) => setEditMatchForm({...editMatchForm, bonus: e.target.value})}
+                onChange={(e) => setEditMatchForm({ ...editMatchForm, bonus: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -1261,7 +1287,7 @@ export function MatchManagement() {
               <Label htmlFor="edit-status" className="text-right">
                 Statut
               </Label>
-              <Select value={editMatchForm.status} onValueChange={(value) => setEditMatchForm({...editMatchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled'})}>
+              <Select value={editMatchForm.status} onValueChange={(value) => setEditMatchForm({ ...editMatchForm, status: value as 'Scheduled' | 'Completed' | 'Cancelled' })}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue />
                 </SelectTrigger>
@@ -1281,15 +1307,15 @@ export function MatchManagement() {
                   id="edit-result"
                   placeholder="ex : 2-1"
                   value={editMatchForm.result}
-                  onChange={(e) => setEditMatchForm({...editMatchForm, result: e.target.value})}
+                  onChange={(e) => setEditMatchForm({ ...editMatchForm, result: e.target.value })}
                   className="col-span-3"
                 />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               onClick={handleUpdateMatch}
               disabled={loading.matches}
               className="bg-orange-500 hover:bg-orange-600 text-white"
@@ -1330,8 +1356,8 @@ export function MatchManagement() {
             </div>
           )}
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setIsDeleteDialogOpen(false)
                 setMatchToDelete(null)
@@ -1339,7 +1365,7 @@ export function MatchManagement() {
             >
               Annuler
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={() => matchToDelete && handleDeleteMatch(matchToDelete.id)}
               disabled={loading.matches}
@@ -1376,12 +1402,12 @@ export function MatchManagement() {
             const filteredPlayers = players.filter(player => {
               return player.teamId === teamId || player.team?.id === teamId;
             });
-            
+
             // Remove duplicates by player ID
-            const uniquePlayers = filteredPlayers.filter((player, index, self) => 
+            const uniquePlayers = filteredPlayers.filter((player, index, self) =>
               index === self.findIndex(p => p.id === player.id)
             );
-            
+
             return uniquePlayers;
           })()}
         />
@@ -1393,7 +1419,7 @@ export function MatchManagement() {
           <DialogHeader>
             <DialogTitle>Modifier le statut du match</DialogTitle>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">
@@ -1413,7 +1439,7 @@ export function MatchManagement() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="result" className="text-right">
                 Résultat
@@ -1427,13 +1453,34 @@ export function MatchManagement() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeQuickStatusEdit}>
               Annuler
             </Button>
             <Button type="button" onClick={handleQuickStatusUpdate}>
               Sauvegarder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Participation Delete Confirmation Dialog */}
+      <Dialog open={isParticipationDeleteDialogOpen} onOpenChange={setIsParticipationDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir retirer {participationToDelete?.playerName} du match ?
+              Cette action ne peut pas être annulée.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsParticipationDeleteDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={confirmRemoveParticipation}>
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>

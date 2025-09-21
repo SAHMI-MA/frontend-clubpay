@@ -29,7 +29,7 @@ export interface Match {
 
 export interface MatchParticipation {
   id: number;
-  role: "Starter" | "Substitute" | "Bench";
+  role: "Starter" | "Substitute" | "Bench" | "Reserve";
   bonus?: string | number; // Can be string from API
   percentage?: string | number; // Can be string from API
   position?: string; // NEW: Player's position in this specific match
@@ -83,7 +83,7 @@ export interface UpdateMatchDto {
 }
 
 export interface CreateMatchParticipationDto {
-  role: "Starter" | "Substitute" | "Bench";
+  role: "Starter" | "Substitute" | "Bench" | "Reserve";
   bonus?: number;
   percentage?: number;
   position?: string; // NEW: Player's position in this match
@@ -91,7 +91,7 @@ export interface CreateMatchParticipationDto {
 }
 
 export interface UpdateMatchParticipationDto {
-  role?: "Starter" | "Substitute" | "Bench";
+  role?: "Starter" | "Substitute" | "Bench" | "Reserve";
   bonus?: number;
   percentage?: number;
   position?: string; // NEW: Player's position in this match

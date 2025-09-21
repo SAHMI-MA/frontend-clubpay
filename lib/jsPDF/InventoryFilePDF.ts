@@ -53,7 +53,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
   doc.rect(20, yPosition - 5, 170, 8, 'F')
   
   doc.setTextColor(30, 64, 175)
-  doc.setFontSize(12)
+  doc.setFontSize(9)
   doc.setFont("helvetica", "bold")
   doc.text("INFORMATIONS GÉNÉRALE", 22, yPosition)
   yPosition += 15
@@ -70,7 +70,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
   ]
 
   doc.setTextColor(0, 0, 0)
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   generalInfo.forEach(([label, value]) => {
     doc.setFont("helvetica", "bold")
     doc.text(label, 25, yPosition)
@@ -87,14 +87,14 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
     doc.rect(20, yPosition - 5, 170, 8, 'F')
     
     doc.setTextColor(30, 64, 175)
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("DESCRIPTION", 22, yPosition)
     yPosition += 15
 
     doc.setTextColor(0, 0, 0)
     doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     const splitDescription = doc.splitTextToSize(item.description, 160)
     doc.text(splitDescription, 25, yPosition)
     yPosition += splitDescription.length * 5 + 15
@@ -107,13 +107,13 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
     doc.rect(20, yPosition - 5, 170, 8, 'F')
     
     doc.setTextColor(30, 64, 175)
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text(`ALLOCATIONS ACTUELLES (${currentAllocations.length})`, 22, yPosition)
     yPosition += 15
 
     doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     
     currentAllocations.forEach((allocation: InventoryHistory) => {
       // Check if we need a new page
@@ -168,7 +168,7 @@ export async function generateInventoryItemPDF(item: InventoryItem, clubInfo?: a
     doc.rect(20, yPosition - 5, 170, 8, 'F')
     
     doc.setTextColor(30, 64, 175)
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text(`HISTORIQUE DES ALLOCATIONS (${allocationHistory.length})`, 22, yPosition)
     yPosition += 15
@@ -290,7 +290,7 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
   ]
 
   doc.setTextColor(0, 0, 0)
-  doc.setFontSize(11)
+  doc.setFontSize(9)
   summaryStats.forEach(([label, value]) => {
     doc.setFont("helvetica", "bold")
     doc.text(label, 25, yPosition)
@@ -308,13 +308,13 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
   doc.rect(20, yPosition - 5, 170, 8, 'F')
   
   doc.setTextColor(30, 64, 175)
-  doc.setFontSize(12)
+  doc.setFontSize(9)
   doc.setFont("helvetica", "bold")
   doc.text("RÉPARTITION PAR CATÉGORIE", 22, yPosition)
   yPosition += 15
 
   doc.setTextColor(0, 0, 0)
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   categories.forEach(category => {
     const categoryItems = items.filter(item => item.category === category)
     doc.setFont("helvetica", "bold")
@@ -331,7 +331,7 @@ export async function generateInventoryReportPDF(items: InventoryItem[], clubInf
   doc.rect(20, yPosition - 5, 170, 8, 'F')
   
   doc.setTextColor(30, 64, 175)
-  doc.setFontSize(12)
+  doc.setFontSize(9)
   doc.setFont("helvetica", "bold")
   doc.text("LISTE DES ÉQUIPEMENTS", 22, yPosition)
   yPosition += 15

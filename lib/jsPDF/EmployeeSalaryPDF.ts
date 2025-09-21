@@ -34,12 +34,12 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     let yPos = 85 // Adjusted from 60 to 85 to account for top padding
 
     // Payment ID and Date section
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS GÉNÉRALES", 20, yPos)
     yPos += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.text(`ID Paiement: ${payment.id}`, 20, yPos)
     doc.text(`Date de paiement: ${payment.paymentDate || "N/A"}`, 120, yPos)
@@ -54,12 +54,12 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     yPos += 20
 
     // Employee Information
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS EMPLOYÉ", 20, yPos)
     yPos += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.text(`Nom complet: ${employeeName}`, 20, yPos)
     doc.text(`ID Employé: ${employeeId}`, 120, yPos)
@@ -71,12 +71,12 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     if (payment.paymentMethod === "Bank Transfer" && payment.bankAccountId) {
       const bankAccount = bankAccounts.find((a) => a.id === String(payment.bankAccountId))
       if (bankAccount) {
-        doc.setFontSize(12)
+        doc.setFontSize(9)
         doc.setFont("helvetica", "bold")
         doc.text("COMPTE BANCAIRE", 20, yPos)
         yPos += 8
 
-        doc.setFontSize(10)
+        doc.setFontSize(9)
         doc.setFont("helvetica", "normal")
         doc.text(`Banque: ${bankAccount.bankName}`, 20, yPos)
         doc.text(`Numéro de compte: ${bankAccount.accountNumber}`, 120, yPos)
@@ -85,7 +85,7 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     }
 
     // Financial Details
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("DÉTAILS FINANCIERS", 20, yPos)
     yPos += 10
@@ -94,7 +94,7 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     doc.setFillColor(245, 245, 245)
     doc.rect(20, yPos, 170, 50, "F")
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     yPos += 8
 
@@ -122,7 +122,7 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
     // Net amount - highlighted
     yPos += 12
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.text("MONTANT NET:", 25, yPos)
     doc.text(formatCurrency(Number(payment.amount) || 0), 80, yPos)
 
@@ -130,12 +130,12 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
 
     // Period details if available
     if (payment.periodStart && payment.periodEnd) {
-      doc.setFontSize(12)
+      doc.setFontSize(9)
       doc.setFont("helvetica", "bold")
       doc.text("PÉRIODE DE TRAVAIL", 20, yPos)
       yPos += 8
 
-      doc.setFontSize(10)
+      doc.setFontSize(9)
       doc.setFont("helvetica", "normal")
       doc.text(`Du: ${payment.periodStart}`, 25, yPos)
       doc.text(`Au: ${payment.periodEnd}`, 120, yPos)
@@ -144,7 +144,7 @@ export async function generateEmployeeSalaryPDF({ payment, bankAccounts }: Emplo
 
     // Processing information if available
     if (payment.processedDate) {
-      doc.setFontSize(10)
+      doc.setFontSize(9)
       doc.setFont("helvetica", "italic")
       doc.text(`Traité le: ${payment.processedDate}`, 20, yPos)
       yPos += 10

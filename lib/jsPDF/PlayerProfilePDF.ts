@@ -38,7 +38,7 @@ export async function generatePlayerProfilePDF(
 
     // Player basic info section
     pdf.setTextColor(0, 0, 0)
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("INFORMATIONS PERSONNELLES", margin, yPosition)
     yPosition += 10
@@ -48,7 +48,7 @@ export async function generatePlayerProfilePDF(
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     // Personal information in two columns
@@ -96,7 +96,7 @@ export async function generatePlayerProfilePDF(
     yPosition += 20
 
     // Sports information section
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("INFORMATIONS SPORTIVES", margin, yPosition)
     yPosition += 10
@@ -105,7 +105,7 @@ export async function generatePlayerProfilePDF(
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     pdf.setFont("helvetica", "bold")
@@ -152,13 +152,14 @@ export async function generatePlayerProfilePDF(
 
     // Contract information (if exists)
     if (player.contract) {
-        // Check if we need a new page
-        if (yPosition > 220) {
+        // Check if we need a new page - reserve space for the entire contract section
+        // Contract section needs approximately 80 points (title + 6-8 lines of content)
+        if (yPosition > pageHeight - 120) {
             pdf.addPage()
             yPosition = 85 // Adjusted from 30 to 85 for top padding
         }
 
-        pdf.setFontSize(16)
+        pdf.setFontSize(9)
         pdf.setFont("helvetica", "bold")
         pdf.text("INFORMATIONS CONTRACTUELLES", margin, yPosition)
         yPosition += 10
@@ -167,7 +168,7 @@ export async function generatePlayerProfilePDF(
         pdf.line(margin, yPosition, pageWidth - margin, yPosition)
         yPosition += 15
 
-        pdf.setFontSize(11)
+        pdf.setFontSize(9)
         pdf.setFont("helvetica", "normal")
 
         pdf.setFont("helvetica", "bold")
@@ -207,12 +208,13 @@ export async function generatePlayerProfilePDF(
     }
 
     // Statistics section
-    if (yPosition > 200) {
+    // Check if we need a new page - reserve space for statistics section (about 60 points)
+    if (yPosition > pageHeight - 100) {
         pdf.addPage()
         yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("STATISTIQUES", margin, yPosition)
     yPosition += 10
@@ -221,7 +223,7 @@ export async function generatePlayerProfilePDF(
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     const matchesPlayed = player.matchParticipations?.length || 0

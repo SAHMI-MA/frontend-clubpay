@@ -28,7 +28,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
 
     // Employee basic info section
     pdf.setTextColor(0, 0, 0)
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("INFORMATIONS PERSONNELLES", margin, yPosition)
     yPosition += 10
@@ -38,7 +38,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     // Personal information in two columns
@@ -88,7 +88,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     yPosition += 20
 
     // Contact information section
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("CONTACT & ADRESSE", margin, yPosition)
     yPosition += 10
@@ -97,7 +97,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     if (employee.phoneNumber) {
@@ -131,7 +131,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
         yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("INFORMATIONS PROFESSIONNELLES", margin, yPosition)
     yPosition += 10
@@ -140,7 +140,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     pdf.setFont("helvetica", "bold")
@@ -181,7 +181,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
         yPosition = 85 // Adjusted from 30 to 85 for top padding
     }
 
-    pdf.setFontSize(16)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "bold")
     pdf.text("INFORMATIONS FINANCIÈRES", margin, yPosition)
     yPosition += 10
@@ -190,7 +190,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
     pdf.line(margin, yPosition, pageWidth - margin, yPosition)
     yPosition += 15
 
-    pdf.setFontSize(11)
+    pdf.setFontSize(9)
     pdf.setFont("helvetica", "normal")
 
     if (employee.currentSalary) {
@@ -223,7 +223,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
 
     // Notes section
     if (employee.notes && yPosition < 250) {
-        pdf.setFontSize(16)
+        pdf.setFontSize(9)
         pdf.setFont("helvetica", "bold")
         pdf.text("NOTES", margin, yPosition)
         yPosition += 10
@@ -232,7 +232,7 @@ export async function GenerateEmployeeProfilePDF(employee: Employee) {
         pdf.line(margin, yPosition, pageWidth - margin, yPosition)
         yPosition += 10
 
-        pdf.setFontSize(11)
+        pdf.setFontSize(9)
         pdf.setFont("helvetica", "normal")
         const notesLines = pdf.splitTextToSize(employee.notes, contentWidth)
         pdf.text(notesLines, margin, yPosition)

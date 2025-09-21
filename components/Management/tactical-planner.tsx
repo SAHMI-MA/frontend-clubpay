@@ -312,6 +312,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
   const [selectedFormation, setSelectedFormation] = useState("4-4-2")
   const [startingXI, setStartingXI] = useState<{ [positionIndex: number]: Player }>({})
   const [substitutes, setSubstitutes] = useState<Player[]>([])
+  const [reservePlayers, setReservePlayers] = useState<Player[]>([])
   const [strategy, setStrategy] = useState("")
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -327,7 +328,8 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
   const getAssignedPlayerIds = () => {
     const startingIds = Object.values(startingXI).map((p) => p.id)
     const subIds = substitutes.map((p) => p.id)
-    return [...startingIds, ...subIds]
+    const reserveIds = reservePlayers.map((p) => p.id)
+    return [...startingIds, ...subIds, ...reserveIds]
   }
 
   // Debug logging for available players
@@ -374,9 +376,10 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
       return
     }
 
-    // Separate starters and substitutes
+    // Separate players by roles
     const starters = matchParticipations.filter(p => p.role === "Starter")
     const subs = matchParticipations.filter(p => p.role === "Substitute")
+    const reserves = matchParticipations.filter(p => p.role === "Reserve")
 
     // Find players for starters and assign them to positions
     // Use consistent team matching logic
@@ -395,6 +398,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
     // Find players for substitutes
     // Use consistent team matching logic and prevent duplicates
     const newSubstitutes: Player[] = []
+    const newReservePlayers: Player[] = []
     const addedPlayerIds = new Set<number>()
     
     subs.forEach(participation => {
@@ -409,10 +413,24 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
       }
     })
 
+    // Find players for reserves
+    reserves.forEach(participation => {
+      const player = availablePlayers.find(p => {
+        // Match both teamId and team.id to handle different data structures
+        const teamId = match.team?.id;
+        return p.id === participation.player.id && (p.teamId === teamId || p.team?.id === teamId);
+      })
+      if (player && !addedPlayerIds.has(player.id)) {
+        newReservePlayers.push(player)
+        addedPlayerIds.add(player.id)
+      }
+    })
+
     setStartingXI(newStartingXI)
     setSubstitutes(newSubstitutes)
+    setReservePlayers(newReservePlayers)
     
-    toast.info(`Loaded existing squad: ${Object.keys(newStartingXI).length} starters, ${newSubstitutes.length} substitutes`)
+    toast.info(`Loaded existing squad: ${Object.keys(newStartingXI).length} starters, ${newSubstitutes.length} substitutes, ${newReservePlayers.length} reserves`)
   }
 
   // Helper functions
@@ -427,6 +445,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
   const resetTacticalPlan = () => {
     setStartingXI({})
     setSubstitutes([])
+    setReservePlayers([])
     setSelectedFormation("4-4-2")
     setStrategy("")
   }
@@ -457,6 +476,19 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
 
   const removeFromSubstitutes = (playerId: number) => {
     setSubstitutes(substitutes.filter((p) => p.id !== playerId))
+  }
+
+  const addToReserves = (player: Player) => {
+    // Check if player is already in reserves to prevent duplicates
+    const isAlreadyReserve = reservePlayers.some(reserve => reserve.id === player.id)
+    
+    if (!isAlreadyReserve) {
+      setReservePlayers([...reservePlayers, player])
+    }
+  }
+
+  const removeFromReserves = (playerId: number) => {
+    setReservePlayers(reservePlayers.filter((p) => p.id !== playerId))
   }
 
   // Drag and drop handlers
@@ -493,10 +525,18 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
     }
   }
 
+  const handleDropOnReserves = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (draggedPlayer) {
+      addToReserves(draggedPlayer)
+      setDraggedPlayer(null)
+    }
+  }
+
   const handleFormationChange = (formationId: string) => {
     if (formationId !== selectedFormation) {
       // Ask for confirmation if there are players assigned
-      if (Object.keys(startingXI).length > 0 || substitutes.length > 0) {
+      if (Object.keys(startingXI).length > 0 || substitutes.length > 0 || reservePlayers.length > 0) {
         if (window.confirm("Changing formation will reset all player assignments. Continue?")) {
           setSelectedFormation(formationId)
           setStartingXI({})
@@ -612,8 +652,8 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
           const participationData: CreateMatchParticipationDto = {
             playerId: player.id,
             role: "Substitute",
-            bonus: match.bonus || 500, // Full bonus for all participants
-            percentage: 100 // Full percentage for all participants
+            bonus: match.bonus || 500, // Full bonus for substitutes
+            percentage: 100 // Full percentage for substitutes
           }
 
           const result = await dispatch(addPlayerToMatch({
@@ -627,21 +667,15 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
         }
       }
 
-      // Add non-participating players with reduced bonus
-      const nonParticipatingPlayers = availablePlayers.filter(player => {
-        const isStarting = Object.values(startingXI).some(p => p.id === player.id);
-        const isSubstitute = substitutes.some(p => p.id === player.id);
-        return !isStarting && !isSubstitute;
-      });
-
-      if (nonParticipatingPlayers.length > 0) {
-        toast.info(`Attribution de prime réduite à ${nonParticipatingPlayers.length} joueurs non-participants...`)
-        for (const player of nonParticipatingPlayers) {
+      // Add reserve players with 50% bonus (handled automatically by backend)
+      if (reservePlayers.length > 0) {
+        toast.info("Attribution des réservistes...")
+        for (const player of reservePlayers) {
           const participationData: CreateMatchParticipationDto = {
             playerId: player.id,
-            role: "Bench",
-            bonus: match.bonus ? match.bonus * 0.5 : 250, // 50% bonus for non-participants
-            percentage: 50 // 50% for non-participants
+            role: "Reserve",
+            bonus: match.bonus || 500, // Backend will automatically apply 50% reduction
+            percentage: 50 // 50% percentage for reserves
           }
 
           const result = await dispatch(addPlayerToMatch({
@@ -650,12 +684,13 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
           }))
 
           if (addPlayerToMatch.rejected.match(result)) {
-            console.warn(`Failed to assign bonus to non-participating player ${player.firstName} ${player.lastName}`)
+            throw new Error(`Failed to assign reserve ${player.firstName} ${player.lastName}`)
           }
         }
       }
 
-      toast.success(`Plan tactique sauvegardé ! ${Object.keys(startingXI).length} titulaires, ${substitutes.length} remplaçants, et ${nonParticipatingPlayers.length} joueurs non-participants assignés.`)
+      const totalAssigned = Object.keys(startingXI).length + substitutes.length + reservePlayers.length;
+      toast.success(`Plan tactique sauvegardé ! ${Object.keys(startingXI).length} titulaires, ${substitutes.length} remplaçants, ${reservePlayers.length} réservistes (Total: ${totalAssigned} joueurs).`)
       onClose()
     } catch (error) {
       toast.error(`Erreur lors de la sauvegarde du plan tactique : ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
@@ -674,7 +709,7 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
           </DialogTitle>
           <DialogDescription>
             Sélectionnez la formation et assignez les joueurs à leurs positions tactiques. 
-            {participations.length > 0 && ` Équipe actuelle : ${participations.filter(p => p.role === "Starter").length} titulaires, ${participations.filter(p => p.role === "Substitute").length} remplaçants.`}
+            {participations.length > 0 && ` Équipe actuelle : ${participations.filter(p => p.role === "Starter").length} titulaires, ${participations.filter(p => p.role === "Substitute").length} remplaçants, ${participations.filter(p => p.role === "Reserve").length} réservistes.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -691,16 +726,37 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
                       draggable
                       onDragStart={() => handleDragStart(player)}
                       onDragEnd={handleDragEnd}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
+                      className="flex flex-col p-2 bg-gray-50 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
                     >
-                      <div>
-                        <div className="font-medium text-sm">{getPlayerDisplayName(player)}</div>
-                        <div className="text-xs text-gray-500">
-                          #{getPlayerNumber(player)} - {player.position}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm">{getPlayerDisplayName(player)}</div>
+                          <div className="text-xs text-gray-500">
+                            #{getPlayerNumber(player)} - {player.position}
+                          </div>
+                        </div>
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold">
+                          {getPlayerNumber(player)}
                         </div>
                       </div>
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold">
-                        {getPlayerNumber(player)}
+                      <div className="flex gap-1 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1 h-6 text-xs px-1" 
+                          onClick={() => addToSubstitutes(player)}
+                          disabled={substitutes.length >= 5}
+                        >
+                          Sub
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1 h-6 text-xs px-1 bg-orange-50" 
+                          onClick={() => addToReserves(player)}
+                        >
+                          Reserve
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -905,6 +961,35 @@ export function TacticalPlanner({ match, isOpen, onClose, availablePlayers }: Ta
                 {substitutes.length === 0 && (
                   <div className="text-xs text-gray-400 italic text-center py-4">
                     Drag players here for substitutes bench
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Reserve Players */}
+            <div
+              className="p-4 bg-orange-50 rounded-lg border-2 border-dashed border-orange-300"
+              onDragOver={handleDragOver}
+              onDrop={handleDropOnReserves}
+            >
+              <h4 className="font-semibold mb-2">Reserves ({reservePlayers.length}) <span className="text-sm text-orange-600">(50% bonus)</span></h4>
+              <div className="space-y-2">
+                {reservePlayers.map((player) => (
+                  <div key={player.id} className="flex items-center justify-between p-2 bg-orange-100 rounded">
+                    <div>
+                      <div className="font-medium text-sm">{getPlayerDisplayName(player)}</div>
+                      <div className="text-xs text-gray-500">
+                        #{getPlayerNumber(player)} - {player.position}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => removeFromReserves(player.id)}>
+                      <UserMinus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                {reservePlayers.length === 0 && (
+                  <div className="text-xs text-gray-400 italic text-center py-4">
+                    Drag players here for reserves (50% bonus automatically applied)
                   </div>
                 )}
               </div>

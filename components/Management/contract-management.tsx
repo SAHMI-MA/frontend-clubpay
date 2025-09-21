@@ -101,8 +101,8 @@ export function exportContractsToCSV(contracts: any[]) {
     contract.hasBonus ? 'Yes' : 'No',
     contract.signatureBonus || 0,
     contract.player ? 'Player' : 'Staff',
-    contract.player 
-      ? `${contract.player.firstName} ${contract.player.lastName}` 
+    contract.player
+      ? `${contract.player.firstName} ${contract.player.lastName}`
       : (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : ''),
     contract.description || ''
   ]);
@@ -366,21 +366,28 @@ export function ContractManagement() {
   const handleCreateContract = async () => {
     try {
       setFileUploadError(null)
-      
+
       // Validation
       if (contractForm.contractType === "player" && !contractForm.playerId) {
         showToast("Veuillez sélectionner un joueur dans le menu déroulant", "error", "Erreur de validation")
         return
       }
-      
+
       if (contractForm.contractType === "staff" && !contractForm.staffId) {
         showToast("Veuillez sélectionner un membre du staff dans le menu déroulant", "error", "Erreur de validation")
         return
       }
 
+      // Date validation
+      const dateValidation = validateContractDates(contractForm.startDate, contractForm.endDate);
+      if (!dateValidation.isValid) {
+        showToast(dateValidation.error || "Erreur de validation des dates", "error", "Erreur de validation");
+        return;
+      }
+
       // Ensure contractFileId is a number or undefined to avoid validation errors
       const contractFileId = uploadedFileId ? Number(uploadedFileId) : undefined
-      
+
       const contractData = {
         title: contractForm.title,
         salary: Number(contractForm.salary),
@@ -389,7 +396,7 @@ export function ContractManagement() {
         hasBonus: contractForm.hasBonus,
         signatureBonus: contractForm.hasBonus ? Number(contractForm.signatureBonus) : undefined,
         description: contractForm.description,
-        contractFileId: contractFileId, // Ensure it's a number or undefined
+        contractFileId: contractFileId,
       }
 
       console.log("Creating contract with data:", contractData)
@@ -399,12 +406,10 @@ export function ContractManagement() {
           ...contractData,
           playerId: contractForm.playerId,
         }))
-        
+
         if (createPlayerContract.fulfilled.match(result)) {
           console.log("✅ Contrat joueur créé avec succès")
           showToast("Contrat joueur créé avec succès", "success", "Succès")
-          
-          // Reset form and close dialog
           setIsCreateDialogOpen(false)
           resetForm()
         } else if (createPlayerContract.rejected.match(result)) {
@@ -415,16 +420,14 @@ export function ContractManagement() {
       } else {
         const result = await dispatch(createStaffContract({
           ...contractData,
-          staffId: contractForm.staffId,
+          staffId: Number(contractForm.staffId),
           benefits: contractForm.benefits ? JSON.parse(contractForm.benefits) : undefined,
           terms: contractForm.terms,
         }))
-        
+
         if (createStaffContract.fulfilled.match(result)) {
           console.log("✅ Contrat staff créé avec succès")
           showToast("Contrat staff créé avec succès", "success", "Succès")
-          
-          // Reset form and close dialog
           setIsCreateDialogOpen(false)
           resetForm()
         } else if (createStaffContract.rejected.match(result)) {
@@ -569,32 +572,32 @@ export function ContractManagement() {
 
   // Filtered contracts based on search and Redux filters
   const filteredPlayerContracts = playerContracts.filter((contract) => {
-  const playerName = contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : '');
-  const matchesSearch =
-    playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contract.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const playerName = contract.playerName || (contract.player ? `${contract.player.firstName} ${contract.player.lastName}` : '');
+    const matchesSearch =
+      playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.title.toLowerCase().includes(searchTerm.toLowerCase())
 
-  // Use Redux filter state instead of local state
-  const currentStatusFilter = filterStatus || "all"
-  const contractStatus = contract.status?.toLowerCase() || 'draft'
-  const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
+    // Fix: Ensure both sides are lowercase for comparison
+    const currentStatusFilter = (filterStatus || "all").toLowerCase()
+    const contractStatus = (contract.status || 'draft').toLowerCase()
+    const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
 
-  return matchesSearch && matchesStatus
-});
+    return matchesSearch && matchesStatus
+  });
 
   const filteredStaffContracts = staffContracts.filter((contract) => {
-  const staffName = contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : '');
-  const matchesSearch =
-    staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contract.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const staffName = contract.staffName || (contract.staff ? `${contract.staff.firstName} ${contract.staff.lastName}` : '');
+    const matchesSearch =
+      staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.title.toLowerCase().includes(searchTerm.toLowerCase())
 
-  // Use Redux filter state instead of local state
-  const currentStatusFilter = filterStatus || "all"
-  const contractStatus = contract.status?.toLowerCase() || 'draft'
-  const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
+    // Fix: Ensure both sides are lowercase for comparison
+    const currentStatusFilter = (filterStatus || "all").toLowerCase()
+    const contractStatus = (contract.status || 'draft').toLowerCase()
+    const matchesStatus = currentStatusFilter === "all" || contractStatus === currentStatusFilter
 
-  return matchesSearch && matchesStatus
-});
+    return matchesSearch && matchesStatus
+  });
 
   const contractStats = {
     player: {
@@ -616,6 +619,24 @@ export function ContractManagement() {
       }, 0),
     },
   }
+
+  const validateContractDates = (startDate: string, endDate: string) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    if (startDate && startDate < today) {
+      return { isValid: false, error: "La date de début ne peut pas être dans le passé" };
+    }
+
+    if (endDate && endDate < today) {
+      return { isValid: false, error: "La date de fin ne peut pas être dans le passé" };
+    }
+
+    if (startDate && endDate && startDate >= endDate) {
+      return { isValid: false, error: "La date de fin doit être postérieure à la date de début" };
+    }
+
+    return { isValid: true, error: null };
+  };
 
   return (
     <div className="space-y-6">
@@ -825,6 +846,7 @@ export function ContractManagement() {
                     <Input
                       id="startDate"
                       type="date"
+                      min={new Date().toISOString().split('T')[0]} // Prevent past dates
                       value={contractForm.startDate}
                       onChange={(e) => setContractForm({ ...contractForm, startDate: e.target.value })}
                     />
@@ -834,6 +856,7 @@ export function ContractManagement() {
                     <Input
                       id="endDate"
                       type="date"
+                      min={contractForm.startDate || new Date().toISOString().split('T')[0]} // End date must be after start date
                       value={contractForm.endDate}
                       onChange={(e) => setContractForm({ ...contractForm, endDate: e.target.value })}
                     />
@@ -1033,7 +1056,7 @@ export function ContractManagement() {
                   {(() => {
                     // Combine and filter contracts
                     const allContracts: CombinedContract[] = [];
-                    
+
                     // Add player contracts
                     if (contractTypeFilter === "all" || contractTypeFilter === "player") {
                       filteredPlayerContracts.forEach(contract => {
@@ -1045,7 +1068,7 @@ export function ContractManagement() {
                         });
                       });
                     }
-                    
+
                     // Add staff contracts
                     if (contractTypeFilter === "all" || contractTypeFilter === "staff") {
                       filteredStaffContracts.forEach(contract => {
@@ -1057,7 +1080,7 @@ export function ContractManagement() {
                         });
                       });
                     }
-                    
+
                     // Sort by creation date or ID
                     allContracts.sort((a, b) => {
                       if (a.createdAt && b.createdAt) {
@@ -1065,7 +1088,7 @@ export function ContractManagement() {
                       }
                       return Number(b.id) - Number(a.id);
                     });
-                    
+
                     return allContracts.map((contract, index) => (
                       <TableRow key={`${contract.contractType}-${contract.id}`}>
                         <TableCell>{index + 1}</TableCell>
@@ -1203,9 +1226,9 @@ export function ContractManagement() {
                               size="sm"
                               className="text-red-600 hover:text-red-700 bg-transparent"
                               onClick={() => {
-                                setContractToDelete({ 
-                                  id: contract.id.toString(), 
-                                  type: contract.contractType 
+                                setContractToDelete({
+                                  id: contract.id.toString(),
+                                  type: contract.contractType
                                 });
                                 setDeleteDialogOpen(true);
                               }}
@@ -1875,7 +1898,7 @@ export function ContractManagement() {
                   placeholder="Titre du contrat"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="edit-salary">Salaire mensuel (MAD)</Label>
                 <Input
@@ -1886,13 +1909,14 @@ export function ContractManagement() {
                   placeholder="Salaire en MAD"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-startDate">Date de début</Label>
                   <Input
                     id="edit-startDate"
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={editForm.startDate ? editForm.startDate.slice(0, 10) : ''}
                     onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
                   />
@@ -1902,6 +1926,7 @@ export function ContractManagement() {
                   <Input
                     id="edit-endDate"
                     type="date"
+                    min={editForm.startDate ? editForm.startDate.slice(0, 10) : new Date().toISOString().split('T')[0]}
                     value={editForm.endDate ? editForm.endDate.slice(0, 10) : ''}
                     onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
                   />
@@ -1933,7 +1958,7 @@ export function ContractManagement() {
                   />
                 </div>
               )}
-              
+
               <div>
                 <Label htmlFor="edit-description">Description</Label>
                 <Textarea
@@ -2020,8 +2045,8 @@ export function ContractManagement() {
                     contractFileId: editUploadedFileId
                       ? editUploadedFileId
                       : contractToEdit.contractFile?.id
-                      ? contractToEdit.contractFile.id
-                      : undefined,
+                        ? contractToEdit.contractFile.id
+                        : undefined,
                   };
                   const result = await dispatch(updatePlayerContract({ id: contractToEdit.id.toString(), data: updateData }));
                   if (updatePlayerContract.fulfilled.match(result)) {
@@ -2044,8 +2069,8 @@ export function ContractManagement() {
                     contractFileId: editUploadedFileId
                       ? editUploadedFileId
                       : contractToEdit.contractFile?.id
-                      ? contractToEdit.contractFile.id
-                      : undefined,
+                        ? contractToEdit.contractFile.id
+                        : undefined,
                   };
                   const result = await dispatch(updateStaffContract({ id: contractToEdit.id.toString(), data: updateData }));
                   if (updateStaffContract.fulfilled.match(result)) {

@@ -43,12 +43,12 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     let yPos = 85 // Adjusted from 60 to 85 to account for top padding
 
     // Payment ID and Date section
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS GÉNÉRALES", 20, yPos)
     yPos += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.text(`ID Paiement: ${payment.id}`, 20, yPos)
     doc.text(`Date de paiement: ${new Date(payment.paymentDate).toLocaleDateString("fr-FR")}`, 120, yPos)
@@ -63,12 +63,12 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     yPos += 20
 
     // Recipient Information
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("BÉNÉFICIAIRE", 20, yPos)
     yPos += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.text(`Nom complet: ${recipientName}`, 20, yPos)
     doc.text(`Type: ${recipientType}`, 120, yPos)
@@ -77,7 +77,7 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     yPos += 20
 
     // Financial Details
-    doc.setFontSize(14)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("DÉTAILS FINANCIERS", 20, yPos)
     yPos += 10
@@ -86,7 +86,7 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     doc.setFillColor(245, 245, 245)
     doc.rect(20, yPos, 170, 40, "F")
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     yPos += 8
 
@@ -108,7 +108,7 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     // Net amount - highlighted
     yPos += 12
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.text("MONTANT NET:", 25, yPos)
     doc.text(
       formatCurrency(Number(payment.amount) + Number(payment.bonus || 0)),
@@ -120,12 +120,12 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
 
     // Notes section if available
     if (payment.notes) {
-      doc.setFontSize(14)
+      doc.setFontSize(9)
       doc.setFont("helvetica", "bold")
       doc.text("NOTES", 20, yPos)
       yPos += 10
 
-      doc.setFontSize(10)
+      doc.setFontSize(9)
       doc.setFont("helvetica", "normal")
       const splitNotes = doc.splitTextToSize(payment.notes, 170)
       doc.text(splitNotes, 20, yPos)

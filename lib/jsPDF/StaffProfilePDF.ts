@@ -30,12 +30,12 @@ export default async function StaffProfilePDF({staff, teamName}: StaffProfilePDF
     let yPosition = 85 // Adjusted from 55 to 85 to account for top padding
 
     // Staff member name and role
-    doc.setFontSize(16)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text(`${staff.firstName} ${staff.lastName}`, 20, yPosition)
 
     // Role badge
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.setFillColor(59, 130, 246) // Blue background for role
     doc.setTextColor(255, 255, 255)
@@ -46,13 +46,13 @@ export default async function StaffProfilePDF({staff, teamName}: StaffProfilePDF
     doc.setTextColor(0, 0, 0)
 
     // General Information Section
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS GÉNÉRALES", 20, yPosition)
     yPosition += 10
 
     // Create a table-like structure for general info
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
 
     const generalInfo = [
@@ -75,12 +75,12 @@ export default async function StaffProfilePDF({staff, teamName}: StaffProfilePDF
     yPosition += 10
 
     // Contact Information Section
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS DE CONTACT", 20, yPosition)
     yPosition += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
 
     const contactInfo = [
@@ -99,12 +99,12 @@ export default async function StaffProfilePDF({staff, teamName}: StaffProfilePDF
     yPosition += 10
 
     // Professional Information Section
-    doc.setFontSize(12)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
     doc.text("INFORMATIONS PROFESSIONNELLES", 20, yPosition)
     yPosition += 10
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
 
     const professionalInfo = [

@@ -51,7 +51,7 @@ export class FinancialReportPDFGenerator extends PDFGenerator {
     ];
 
     const doc = this.getDocument();
-    doc.setFontSize(11);
+    doc.setFontSize(12);
 
     summaryData.forEach(([label, value, color]) => {
       // Check if we need a new page for each item
@@ -99,7 +99,7 @@ export class FinancialReportPDFGenerator extends PDFGenerator {
     yPosition = this.addFinancialSectionHeader(title, yPosition);
 
     const doc = this.getDocument();
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
 
     Object.entries(breakdown).forEach(([category, amount]) => {
@@ -139,7 +139,7 @@ export class FinancialReportPDFGenerator extends PDFGenerator {
     yPosition = this.addFinancialSectionHeader("INFORMATIONS DU RAPPORT", yPosition);
 
     const doc = this.getDocument();
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(0, 0, 0);
 
@@ -199,7 +199,7 @@ export class FinancialReportPDFGenerator extends PDFGenerator {
 
     // Draw header text
     doc.setTextColor(30, 58, 138); // Blue color matching the header
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text(title, margin + 5, yPosition + 6);
 

@@ -163,7 +163,7 @@ export interface UpdatePlayerContractDto {
 
 export interface CreateStaffContractDto {
   title: string;
-  staffId: string;
+  staffId: number;
   salary: number;
   startDate: string;
   endDate: string;
@@ -265,9 +265,9 @@ export const contractApi = {
   async createStaffContract(data: CreateStaffContractDto): Promise<StaffContract> {
     this._ensureAuthenticated();
     
-    const staffId = data.staffId;
+    const { staffId, ...contractData } = data;
     console.log(`➕ Creating staff contract for staff ID: ${staffId}`);
-    return await api.post<StaffContract>(`contracts/staff/${staffId}`, data);
+    return await api.post<StaffContract>(`contracts/staff/${staffId}`, contractData);
   },
 
   async updateStaffContract(id: string, data: UpdateStaffContractDto): Promise<StaffContract> {

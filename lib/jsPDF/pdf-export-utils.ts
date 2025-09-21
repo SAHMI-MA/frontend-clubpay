@@ -188,19 +188,19 @@ export class PDFGenerator {
 
     // Club name and title (positioned to the right of logo)
     this.doc.setTextColor(255, 255, 255);
-    this.doc.setFontSize(18);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(this.clubInfo.name, 50, 16);
 
-    this.doc.setFontSize(14);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'normal');
     this.doc.text(documentTitle, 50, 26);
 
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
     this.doc.text(`N° ${documentNumber}`, 50, 34);
 
     // Date in top right
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
     this.doc.text(`Date: ${date}`, this.pageWidth - 60, 20);
   }
 
@@ -216,7 +216,7 @@ export class PDFGenerator {
 
   private addTitle(documentTitle: string, yPosition: number): number {
     this.doc.setTextColor(0, 0, 0);
-    this.doc.setFontSize(16);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(documentTitle, this.margin, yPosition);
     return yPosition + 10;
@@ -258,7 +258,7 @@ export class PDFGenerator {
       yPosition = this.addTitle(documentTitle, yPosition);
 
       // Add document number and date
-      this.doc.setFontSize(10);
+      this.doc.setFontSize(9);
       this.doc.text(`N° ${documentNumber}`, this.margin, yPosition);
       this.doc.text(`Date: ${date}`, this.pageWidth - 60, yPosition, { align: 'right' });
     } else {
@@ -292,14 +292,14 @@ export class PDFGenerator {
     const columnWidth = (this.pageWidth - 3 * this.margin) / 2;
 
     this.doc.setTextColor(0, 0, 0);
-    this.doc.setFontSize(12);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(leftTitle, this.margin, yPosition);
     this.doc.text(rightTitle, this.margin + columnWidth + this.margin, yPosition);
 
     yPosition += 8;
 
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'normal');
 
     const maxLines = Math.max(leftLines.length, rightLines.length);
@@ -325,7 +325,7 @@ export class PDFGenerator {
 
     // Draw header text
     this.doc.setTextColor(this.primaryColor);
-    this.doc.setFontSize(12);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(title, this.margin + 2, yPosition + 4);
 
@@ -335,7 +335,7 @@ export class PDFGenerator {
 
   private addDetailsSection(details: Array<[string, string]>, yPosition: number): number {
     this.doc.setTextColor(0, 0, 0);
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
 
     const pageHeight = this.doc.internal.pageSize.height;
     const footerSpace = 60; // Space reserved for footer
@@ -370,7 +370,7 @@ export class PDFGenerator {
     this.doc.rect(this.pageWidth - 120, yPosition, 100, 20, 'F');
 
     this.doc.setTextColor(255, 255, 255);
-    this.doc.setFontSize(12);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text('VALEUR TOTALE:', this.pageWidth - 110, yPosition + 8);
     this.doc.text(`${totalValue.toFixed(2)} MAD`, this.pageWidth - 110, yPosition + 16);
@@ -388,13 +388,13 @@ export class PDFGenerator {
     }
     
     this.doc.setTextColor(this.primaryColor);
-    this.doc.setFontSize(14);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text(title, this.margin, yPosition);
     yPosition += 10;
 
     this.doc.setTextColor(0, 0, 0);
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'normal');
     const lines = this.doc.splitTextToSize(content, this.pageWidth - 2 * this.margin);
     
@@ -539,7 +539,7 @@ export class PDFGenerator {
   }
 
   public addSignatures(yPosition: number, beneficiaryLabel: string = 'Bénéficiaire'): number {
-    this.doc.setFontSize(10);
+    this.doc.setFontSize(9);
     this.doc.setTextColor(this.secondaryColor);
     this.doc.setFont('helvetica', 'normal');
     this.doc.text('Signatures:', this.margin, yPosition);
