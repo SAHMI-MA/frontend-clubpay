@@ -144,6 +144,7 @@ export function StockManagement() {
   const [viewingArticle, setViewingArticle] = useState<Article | null>(null)
   const [isAddMovementOpen, setIsAddMovementOpen] = useState(false)
   const [isViewMovementOpen, setIsViewMovementOpen] = useState(false)
+  const [isBulkMovementOpen, setIsBulkMovementOpen] = useState(false)
   const [viewingMovement, setViewingMovement] = useState<any>(null)
 
   // Image handling states
@@ -194,6 +195,20 @@ export function StockManagement() {
     location: "",
     notes: "",
   })
+
+  const [bulkMovements, setBulkMovements] = useState<CreateStockMovementDto[]>([
+    {
+      articleId: 0,
+      type: MovementType.INPUT,
+      reason: MovementReason.OTHER,
+      quantity: 1,
+      unitPrice: 0,
+      referenceDocument: "",
+      supplierCustomer: "",
+      location: "",
+      notes: "",
+    }
+  ])
 
   const filteredArticles = (articles || []).filter((article) => {
     const matchesSearch = 
@@ -638,6 +653,85 @@ export function StockManagement() {
     }
   }
 
+  // Function to open movement dialog for a specific article
+  const openQuickMovementDialog = (article: Article) => {
+    setNewMovement({
+      articleId: article.id,
+      type: MovementType.INPUT,
+      quantity: 1,
+      unitPrice: article.unitPrice || 0,
+      reason: MovementReason.PURCHASE,
+      location: article.location || '',
+      referenceDocument: '',
+      supplierCustomer: article.supplier?.name || '',
+      notes: ''
+    })
+    setIsAddMovementOpen(true)
+  }
+
+  // Bulk movement functions
+  const addBulkMovement = () => {
+    setBulkMovements([...bulkMovements, {
+      articleId: 0,
+      type: MovementType.INPUT,
+      reason: MovementReason.OTHER,
+      quantity: 1,
+      unitPrice: 0,
+      referenceDocument: '',
+      supplierCustomer: '',
+      location: '',
+      notes: ''
+    }])
+  }
+
+  const removeBulkMovement = (index: number) => {
+    if (bulkMovements.length > 1) {
+      setBulkMovements(bulkMovements.filter((_, i) => i !== index))
+    }
+  }
+
+  const updateBulkMovement = (index: number, field: keyof CreateStockMovementDto, value: any) => {
+    const updated = [...bulkMovements]
+    updated[index] = { ...updated[index], [field]: value }
+    setBulkMovements(updated)
+  }
+
+  const handleBulkMovements = async () => {
+    try {
+      // Validate all movements
+      const invalidMovements = bulkMovements.filter((movement) => 
+        !movement.articleId || movement.quantity <= 0
+      )
+      
+      if (invalidMovements.length > 0) {
+        alert('Veuillez remplir tous les champs requis pour chaque mouvement')
+        return
+      }
+
+      // Create all movements
+      for (const movement of bulkMovements) {
+        await createStockMovement(movement)
+      }
+
+      // Reset form and refresh data
+      setBulkMovements([{
+        articleId: 0,
+        type: MovementType.INPUT,
+        reason: MovementReason.OTHER,
+        quantity: 1,
+        unitPrice: 0,
+        referenceDocument: '',
+        supplierCustomer: '',
+        location: '',
+        notes: ''
+      }])
+      setIsBulkMovementOpen(false)
+      await refreshData()
+    } catch (error) {
+      console.error('Failed to create bulk movements:', error)
+    }
+  }
+
   const categoryData = Object.values(ArticleCategory)
     .map(category => ({
       name: category,
@@ -959,6 +1053,15 @@ export function StockManagement() {
                                 <Edit className="h-4 w-4 mr-1" />
                                 Modifier
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openQuickMovementDialog(article)}
+                                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                              >
+                                <Activity className="h-4 w-4 mr-1" />
+                                Mouvement
+                              </Button>
                               <DeleteArticleDialog articleId={article.id} articleName={article.name} onDelete={handleDeleteArticle} />
                             </div>
                           </TableCell>
@@ -980,10 +1083,16 @@ export function StockManagement() {
                   <CardTitle className="text-gray-900 dark:text-white">Mouvements de Stock</CardTitle>
                   <CardDescription>Suivre tous les mouvements et transactions de stock</CardDescription>
                 </div>
-                <Button onClick={() => setIsAddMovementOpen(true)} className="bg-blue-800 hover:bg-blue-900 text-white gap-2">
-                  <Plus className="h-4 w-4" />
-                  Ajouter Mouvement
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setIsAddMovementOpen(true)} className="bg-blue-800 hover:bg-blue-900 text-white gap-2">
+                    <Plus className="h-4 w-4" />
+                    Ajouter Mouvement
+                  </Button>
+                  <Button onClick={() => setIsBulkMovementOpen(true)} className="bg-green-800 hover:bg-green-900 text-white gap-2">
+                    <Package className="h-4 w-4" />
+                    Mouvements Multiples
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -1702,6 +1811,168 @@ export function StockManagement() {
             </Button>
             <Button onClick={handleAddMovement} className="bg-blue-800 hover:bg-blue-900 text-white">
               Ajouter Mouvement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Movement Dialog */}
+      <Dialog open={isBulkMovementOpen} onOpenChange={setIsBulkMovementOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ajouter Mouvements Multiples</DialogTitle>
+            <DialogDescription>Créer plusieurs mouvements de stock en une seule fois</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {bulkMovements.map((movement, index) => (
+              <div key={index} className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Mouvement #{index + 1}</h4>
+                  {bulkMovements.length > 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeBulkMovement(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Article</Label>
+                    <Select
+                      value={movement.articleId?.toString() || ""}
+                      onValueChange={(value) => updateBulkMovement(index, 'articleId', parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner article" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(articles || []).map(article => (
+                          <SelectItem key={article.id} value={article.id.toString()}>
+                            {article.code} - {article.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select
+                      value={movement.type}
+                      onValueChange={(value) => updateBulkMovement(index, 'type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(MovementType).map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Quantité</Label>
+                    <Input
+                      type="number"
+                      value={movement.quantity}
+                      onChange={(e) => updateBulkMovement(index, 'quantity', parseInt(e.target.value))}
+                      min="1"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Prix Unitaire (MAD)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={movement.unitPrice}
+                      onChange={(e) => updateBulkMovement(index, 'unitPrice', parseFloat(e.target.value))}
+                      min="0"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Raison</Label>
+                    <Select
+                      value={movement.reason}
+                      onValueChange={(value) => updateBulkMovement(index, 'reason', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(MovementReason).map(reason => (
+                          <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Emplacement</Label>
+                    <Input
+                      value={movement.location}
+                      onChange={(e) => updateBulkMovement(index, 'location', e.target.value)}
+                      placeholder="Emplacement"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 col-span-2">
+                    <Label>Fournisseur/Client</Label>
+                    <Input
+                      value={movement.supplierCustomer}
+                      onChange={(e) => updateBulkMovement(index, 'supplierCustomer', e.target.value)}
+                      placeholder="ex., SportsTech Ltd"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Référence</Label>
+                    <Input
+                      value={movement.referenceDocument}
+                      onChange={(e) => updateBulkMovement(index, 'referenceDocument', e.target.value)}
+                      placeholder="ex., PO-2024-001"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 col-span-full">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={movement.notes}
+                      onChange={(e) => updateBulkMovement(index, 'notes', e.target.value)}
+                      placeholder="Notes supplémentaires"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <Button
+              variant="outline"
+              onClick={addBulkMovement}
+              className="w-full border-dashed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un autre mouvement
+            </Button>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkMovementOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleBulkMovements} className="bg-green-800 hover:bg-green-900 text-white">
+              <Package className="h-4 w-4 mr-2" />
+              Créer {bulkMovements.length} Mouvement{bulkMovements.length > 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
