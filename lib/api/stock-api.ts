@@ -79,8 +79,30 @@ export interface Article {
   maxStock?: number;
   unitPrice?: number;
   location?: string;
-  supplier?: string;
+  supplier?: {
+    id: number;
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    website?: string;
+    contactPerson: string;
+    rib?: string;
+    isActive?: boolean;
+    rating?: number;
+    category?: string;
+  };
   isActive: boolean;
+  image?: {
+    id: number;
+    url: string;
+    filename?: string;
+    contentType?: string;
+    size?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  qrCode?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -198,7 +220,8 @@ export interface CreateArticleDto {
   maxStock?: number;
   unitPrice?: number;
   location?: string;
-  supplier?: string;
+  supplierId?: number;
+  imageId?: number;
 }
 
 export interface UpdateArticleDto {
@@ -211,8 +234,9 @@ export interface UpdateArticleDto {
   maxStock?: number;
   unitPrice?: number;
   location?: string;
-  supplier?: string;
+  supplierId?: number;
   isActive?: boolean;
+  imageId?: number | null;
 }
 
 export interface CreateStockMovementDto {
@@ -323,6 +347,20 @@ export const stockApi = {
   // Create article
   async createArticle(data: CreateArticleDto): Promise<Article> {
     const res = await fetch(`${BASE_URL}/stock/articles`, {
+      method: "POST",
+      headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  // Create multiple articles at once
+  async createArticlesBatch(data: CreateArticleDto[]): Promise<{
+    success: Article[];
+    errors: { index: number; error: string; data: CreateArticleDto }[];
+  }> {
+    const res = await fetch(`${BASE_URL}/stock/articles/batch`, {
       method: "POST",
       headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -613,5 +651,38 @@ export const internalPurchaseOrderApi = {
     });
     if (!res.ok) throw await res.json();
     return res.blob();
+  }
+};
+
+// Supplier API
+export interface Supplier {
+  id: number;
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  website?: string;
+  contactPerson: string;
+  rib?: string;
+  isActive?: boolean;
+  rating?: number;
+  category?: string;
+}
+
+export const supplierApi = {
+  async getAll(): Promise<Supplier[]> {
+    const res = await fetch(`${BASE_URL}/suppliers`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  async getById(id: number): Promise<Supplier> {
+    const res = await fetch(`${BASE_URL}/suppliers/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
   }
 };

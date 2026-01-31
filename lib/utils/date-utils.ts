@@ -7,7 +7,7 @@
  * @param dateString - The date string to convert
  * @returns Date object or null if invalid
  */
-export const parseDate = (dateString: string): Date | null => {
+export const parseDate = (dateString: string | null | undefined): Date | null => {
   if (!dateString) return null;
   
   try {
@@ -19,7 +19,8 @@ export const parseDate = (dateString: string): Date | null => {
   }
 };
 
-export const calculateAge = (dateOfBirth: string): number => {
+export const calculateAge = (dateOfBirth: string | null | undefined): number => {
+    if (!dateOfBirth) return 0;
     const today = new Date()
     const birthDate = new Date(dateOfBirth)
     let age = today.getFullYear() - birthDate.getFullYear()

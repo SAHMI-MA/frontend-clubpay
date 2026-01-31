@@ -21,17 +21,17 @@ import { authUtils } from "@/lib/redux/auth-utils"
 import { Permissions } from "@/lib/auth-service"
 import { associationAPI, AssociationSettings, navigationGroups } from "@/lib/api/association-api"
 import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 
+interface AppSidebarProps {}
 
-interface AppSidebarProps {
-  currentPage: string
-  setCurrentPage: (page: string) => void
-}
-
-export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
+export function AppSidebar({ }: AppSidebarProps) {
   const user = authUtils.getUser()
+  const pathname = usePathname()
   const [associationSettings, setAssociationSettings] = useState<AssociationSettings | null>(null)
   const [baseUrl, setBaseUrl] = useState<string>("")
+  
   const getAssociationSettings = async () => {
     try {
       const settings = await associationAPI.getSettings()
@@ -43,10 +43,10 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
       setAssociationSettings(null)
     }
   }
+  
   useEffect(() => {
     getAssociationSettings()
   }, [])
-
 
   const userPermissions = new Set<string>()
   if (user && Array.isArray(user.roles)) {
@@ -66,6 +66,20 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
   const canView = (pageId: string) => {
     // Check for either exact match or .view permission
     return userPermissions.has(pageId) || userPermissions.has(`${pageId}.view`)
+  }
+
+  // Helper to get route from page ID
+  const getRouteFromPageId = (pageId: string) => {
+    if (pageId === "dashboard") return "/"
+    if (pageId === "clubs") return "/teams"
+    return `/${pageId}`
+  }
+
+  // Helper to check if current route is active
+  const isRouteActive = (pageId: string) => {
+    const route = getRouteFromPageId(pageId)
+    if (route === "/") return pathname === "/" || pathname === "/dashboard"
+    return pathname === route
   }
 
   // Filter navigation groups and items based on permissions
@@ -112,12 +126,14 @@ export function AppSidebar({ currentPage, setCurrentPage }: AppSidebarProps) {
                     {group.items.map((item) => (
                       <SidebarMenuItem key={item.id}>
                         <SidebarMenuButton
-                          onClick={() => setCurrentPage(item.id)}
-                          isActive={currentPage === item.id}
+                          asChild
+                          isActive={isRouteActive(item.id)}
                           className="w-full justify-start hover:bg-blue-50 dark:hover:bg-blue-900/20 data-[active=true]:bg-blue-100 dark:data-[active=true]:bg-blue-900/30 data-[active=true]:text-blue-800 dark:data-[active=true]:text-blue-400"
                         >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
+                          <Link href={getRouteFromPageId(item.id)}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}

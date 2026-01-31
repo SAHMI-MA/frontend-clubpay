@@ -118,7 +118,7 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
         {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-5xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -163,73 +163,135 @@ export function AuthPage({ onLogin, darkMode, setDarkMode }: AuthPageProps) {
           </p>
         </div>
 
-        <Tabs defaultValue="login" className="space-y-4">
+        <div className="flex gap-6 items-start">
+          {/* Login Form */}
+          <div className="flex-1">
+            <Tabs defaultValue="login" className="space-y-4">
+              {/* Login Tab */}
+              <TabsContent value="login">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-gray-900 dark:text-white">Bienvenue</CardTitle>
+                    <CardDescription>Connectez-vous à votre compte pour continuer</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      {loginError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{loginError}</AlertDescription>
+                        </Alert>
+                      )}
 
-          {/* Login Tab */}
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-white">Bienvenue</CardTitle>
-                <CardDescription>Connectez-vous à votre compte pour continuer</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  {loginError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{loginError}</AlertDescription>
-                    </Alert>
-                  )}
+                      <div className="space-y-2">
+                        <Label htmlFor="login-email">Email</Label>
+                        <Input
+                          id="login-email"
+                          type="email"
+                          placeholder="Entrez votre email"
+                          value={loginData.email}
+                          onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                          required
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="Entrez votre email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      required
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="login-password">Mot de passe</Label>
+                        <div className="relative">
+                          <Input
+                            id="login-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Entrez votre mot de passe"
+                            value={loginData.password}
+                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Mot de passe</Label>
-                    <div className="relative">
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Entrez votre mot de passe"
-                        value={loginData.password}
-                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                        required
-                      />
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
+                        type="submit"
+                        className="w-full bg-blue-800 hover:bg-blue-900 text-white"
+                        disabled={isLoading}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {isLoading ? "Connexion en cours..." : "Connexion"}
                       </Button>
-                    </div>
-                  </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
 
+          {/* Demo Credentials Section */}
+          <div className="flex-1">
+            <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Comptes de démonstration
+                </CardTitle>
+                <CardDescription className="text-xs text-amber-700 dark:text-amber-300">
+                  Cliquez sur un compte pour remplir automatiquement les champs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                <div className="grid gap-2">
                   <Button
-                    type="submit"
-                    className="w-full bg-blue-800 hover:bg-blue-900 text-white"
-                    disabled={isLoading}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="justify-start text-xs h-auto p-3 bg-white dark:bg-gray-800 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                    onClick={() => setLoginData({ email: "admin@example.com", password: "password" })}
                   >
-                    {isLoading ? "Connexion en cours..." : "Connexion"}
+                    <div className="text-left">
+                      <div className="font-medium text-blue-700 dark:text-blue-300">Administrateur</div>
+                      <div className="text-gray-600 dark:text-gray-400">admin@example.com</div>
+                    </div>
                   </Button>
-                </form>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="justify-start text-xs h-auto p-3 bg-white dark:bg-gray-800 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                    onClick={() => setLoginData({ email: "manager@example.com", password: "password" })}
+                  >
+                    <div className="text-left">
+                      <div className="font-medium text-green-700 dark:text-green-300">Gestionnaire</div>
+                      <div className="text-gray-600 dark:text-gray-400">manager@example.com</div>
+                    </div>
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="justify-start text-xs h-auto p-3 bg-white dark:bg-gray-800 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                    onClick={() => setLoginData({ email: "hr@example.com", password: "password" })}
+                  >
+                    <div className="text-left">
+                      <div className="font-medium text-purple-700 dark:text-purple-300">Gestionnaire RH</div>
+                      <div className="text-gray-600 dark:text-gray-400">hr@example.com</div>
+                    </div>
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-200 dark:border-amber-700">
+                  Mot de passe pour tous: <code className="font-mono bg-amber-200 dark:bg-amber-800 px-1 rounded">password</code>
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Registration Tab removed */}
-        </Tabs>
+          </div>
+        </div>
 
         {/* Footer removed */}
       </div>

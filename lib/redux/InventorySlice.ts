@@ -81,7 +81,7 @@ export const fetchAllInventoryItems = createAsyncThunk<InventoryItem[]>(
                 category: article.category,
                 unit: article.unit,
                 location: article.location,
-                supplier: article.supplier,
+                supplier: article.supplier?.name || undefined,
                 isActive: article.isActive,
                 allocationHistory,
                 inUserAllocation,

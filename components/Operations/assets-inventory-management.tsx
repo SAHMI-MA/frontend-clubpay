@@ -287,7 +287,7 @@ export function AssetInventoryManagement() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Biens</p>
                 <p className="text-2xl font-bold">{totalItems}</p>
-                <p className="text-xs text-muted-foreground">{activeItems} actifs</p>
+                <p className="text-xs text-muted-foreground">{activeItems} disponibles</p>
               </div>
               <Package className="h-8 w-8 text-blue-600" />
             </div>
@@ -329,7 +329,7 @@ export function AssetInventoryManagement() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Emplacements</p>
                 <p className="text-2xl font-bold">{uniqueLocations.length}</p>
-                <p className="text-xs text-muted-foreground">Sites actifs</p>
+                <p className="text-xs text-muted-foreground">Sites disponibles</p>
               </div>
               <MapPin className="h-8 w-8 text-purple-600" />
             </div>
@@ -388,8 +388,8 @@ export function AssetInventoryManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous statuts</SelectItem>
-                <SelectItem value="active">Actif</SelectItem>
-                <SelectItem value="inactive">Inactif</SelectItem>
+                <SelectItem value="active">Disponible</SelectItem>
+                <SelectItem value="inactive">Non disponible</SelectItem>
               </SelectContent>
             </Select>
             <Select value={locationFilter} onValueChange={setLocationFilter}>
@@ -467,7 +467,7 @@ export function AssetInventoryManagement() {
                           <td className="p-2 text-sm">{item.unit}</td>
                           <td className="p-2">
                             <Badge className={item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                              {item.isActive ? 'Actif' : 'Inactif'}
+                              {item.isActive ? 'Disponible' : 'Non disponible'}
                             </Badge>
                           </td>
                           <td className="p-2">
@@ -573,7 +573,7 @@ export function AssetInventoryManagement() {
                         <span className="font-medium">{allocatedInCategory}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Actifs:</span>
+                        <span className="text-sm text-muted-foreground">Disponibles:</span>
                         <span className="font-medium">{categoryItems.filter((item: InventoryItem) => item.isActive).length}</span>
                       </div>
                     </div>
@@ -760,7 +760,7 @@ function ItemDetails({ item }: { item: InventoryItem }) {
         <div>
           <Label>Statut</Label>
           <Badge className={item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-            {item.isActive ? 'Actif' : 'Inactif'}
+            {item.isActive ? 'Disponible' : 'Non disponible'}
           </Badge>
         </div>
       </div>

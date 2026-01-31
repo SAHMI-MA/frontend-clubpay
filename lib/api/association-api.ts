@@ -238,11 +238,6 @@ export const navigationGroups = [
     title: "Système",
     items: [
       {
-        title: "Analytique",
-        icon: BarChart3,
-        id: "analytics",
-      },
-      {
         title: "Paramètres & Journaux",
         icon: Settings,
         id: "settings",

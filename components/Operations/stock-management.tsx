@@ -62,7 +62,7 @@ export function exportStockMovementsToCSV(movements: any[]) {
   URL.revokeObjectURL(url);
 }
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -81,8 +81,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, MapPin, DollarSign, Activity } from 'lucide-react'
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, MapPin, DollarSign, Activity, Upload, Loader2, X, ImageIcon, Eye } from 'lucide-react'
 import { useStockManagement } from "@/hooks/use-stock-management"
+import { Image } from "@/lib/types/team-management"
+import { imageService } from "@/lib/team-management-services"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { fetchAllSuppliers } from "@/lib/redux/supplierSlice"
+import { getApiUrl } from "@/lib/api-config"
 import { 
   Article, 
   ArticleCategory, 
@@ -91,7 +96,8 @@ import {
   MovementReason,
   CreateArticleDto,
   UpdateArticleDto,
-  CreateStockMovementDto 
+  CreateStockMovementDto,
+  stockApi
 } from "@/lib/api/stock-api"
 
 const categoryColors = {
@@ -118,16 +124,38 @@ export function StockManagement() {
     refreshData
   } = useStockManagement()
 
+  // Redux for suppliers
+  const dispatch = useAppDispatch()
+  const { suppliers: suppliersList } = useAppSelector((state) => state.suppliers)
+
   // Local state for UI
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedLocation] = useState("all")
+  const [selectedStockStatus, setSelectedStockStatus] = useState("all")
+  const [selectedSupplier, setSelectedSupplier] = useState("all")
+  const [selectedUnit, setSelectedUnit] = useState("all")
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false)
+  const [isBatchAddOpen, setIsBatchAddOpen] = useState(false)
+  const [batchArticles, setBatchArticles] = useState<CreateArticleDto[]>([])
+  const [batchErrors, setBatchErrors] = useState<{ index: number; error: string }[]>([])
   const [isEditArticleOpen, setIsEditArticleOpen] = useState(false)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
+  const [isViewArticleOpen, setIsViewArticleOpen] = useState(false)
+  const [viewingArticle, setViewingArticle] = useState<Article | null>(null)
   const [isAddMovementOpen, setIsAddMovementOpen] = useState(false)
   const [isViewMovementOpen, setIsViewMovementOpen] = useState(false)
   const [viewingMovement, setViewingMovement] = useState<any>(null)
+
+  // Image handling states
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null)
+  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false)
+  const [batchImageFiles, setBatchImageFiles] = useState<{[key: number]: File}>({})
+  const [batchImagePreviews, setBatchImagePreviews] = useState<{[key: number]: string}>({})
 
   const [newArticle, setNewArticle] = useState<CreateArticleDto>({
     code: "",
@@ -140,7 +168,7 @@ export function StockManagement() {
     maxStock: 0,
     unitPrice: 0,
     location: "",
-    supplier: "",
+    supplierId: undefined,
   })
 
   const [editArticle, setEditArticle] = useState<UpdateArticleDto>({
@@ -153,7 +181,7 @@ export function StockManagement() {
     maxStock: 0,
     unitPrice: 0,
     location: "",
-    supplier: "",
+    supplierId: undefined,
   })
 
   const [newMovement, setNewMovement] = useState<CreateStockMovementDto>({
@@ -172,11 +200,45 @@ export function StockManagement() {
     const matchesSearch = 
       article.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       article.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (article.supplier && article.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
+      (article.supplier?.name && article.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesCategory = selectedCategory === "all" || article.category === selectedCategory
     const matchesLocation = selectedLocation === "all" || article.location === selectedLocation
-    return matchesSearch && matchesCategory && matchesLocation
+    
+    // Stock status filter
+    let matchesStockStatus = true
+    if (selectedStockStatus === "low") {
+      matchesStockStatus = Number(article.currentStock) <= Number(article.minStock)
+    } else if (selectedStockStatus === "normal") {
+      matchesStockStatus = Number(article.currentStock) > Number(article.minStock) && 
+        (!article.maxStock || Number(article.currentStock) <= Number(article.maxStock))
+    } else if (selectedStockStatus === "high") {
+      matchesStockStatus = article.maxStock ? Number(article.currentStock) > Number(article.maxStock) : false
+    } else if (selectedStockStatus === "out") {
+      matchesStockStatus = Number(article.currentStock) === 0
+    }
+    
+    // Supplier filter
+    const matchesSupplier = selectedSupplier === "all" || 
+      (selectedSupplier === "none" && !article.supplier) ||
+      (article.supplier?.id.toString() === selectedSupplier)
+    
+    // Unit filter
+    const matchesUnit = selectedUnit === "all" || article.unit === selectedUnit
+    
+    return matchesSearch && matchesCategory && matchesLocation && matchesStockStatus && matchesSupplier && matchesUnit
   })
+
+  // Load suppliers on mount using Redux
+  useEffect(() => {
+    dispatch(fetchAllSuppliers())
+  }, [dispatch])
+
+  // Initialize batch articles when dialog opens
+  useEffect(() => {
+    if (isBatchAddOpen && batchArticles.length === 0) {
+      initializeBatchArticles()
+    }
+  }, [isBatchAddOpen])
 
   const lowStockArticles = (articles || []).filter(article => Number(article.currentStock) <= Number(article.minStock))
   const totalStockValue = Number(dashboardStats?.totalStockValue || (articles || []).reduce((sum, article) => sum + (Number(article.currentStock) * Number(article.unitPrice || 0)), 0))
@@ -214,7 +276,22 @@ export function StockManagement() {
 
   const handleAddArticle = async () => {
     try {
-      await createArticle(newArticle)
+      let imageId: number | undefined = undefined
+      
+      // Upload image first if there's one
+      if (imageFile) {
+        imageId = await uploadImage(imageFile)
+        if (!imageId) {
+          throw new Error('Image upload failed')
+        }
+      }
+
+      const articleData = {
+        ...newArticle,
+        imageId,
+      }
+
+      await createArticle(articleData)
       setNewArticle({
         code: "",
         name: "",
@@ -226,8 +303,11 @@ export function StockManagement() {
         maxStock: 0,
         unitPrice: 0,
         location: "",
-        supplier: "",
+        supplierId: undefined,
       })
+      // Reset image states
+      setImageFile(null)
+      setImagePreview(null)
       setIsAddArticleOpen(false)
     } catch (error) {
       console.error('Failed to create article:', error)
@@ -238,7 +318,26 @@ export function StockManagement() {
     if (!editingArticle) return;
     
     try {
-      await updateArticle(editingArticle.id, editArticle)
+      let imageId: number | null | undefined = undefined
+      
+      // Upload image if there's a new one
+      if (editImageFile) {
+        const uploadedImageId = await uploadEditImage(editImageFile)
+        if (!uploadedImageId) {
+          throw new Error('Image upload failed')
+        }
+        imageId = uploadedImageId
+      } else if (editImagePreview === null && editingArticle.image) {
+        // User explicitly removed the image
+        imageId = null
+      }
+
+      const articleData = {
+        ...editArticle,
+        ...(imageId !== undefined && { imageId }),
+      }
+
+      await updateArticle(editingArticle.id, articleData)
       setEditArticle({
         code: "",
         name: "",
@@ -249,8 +348,11 @@ export function StockManagement() {
         maxStock: 0,
         unitPrice: 0,
         location: "",
-        supplier: "",
+        supplierId: undefined,
       })
+      // Reset image states
+      setEditImageFile(null)
+      setEditImagePreview(null)
       setEditingArticle(null)
       setIsEditArticleOpen(false)
       await refreshData()
@@ -271,9 +373,239 @@ export function StockManagement() {
       maxStock: article.maxStock || 0,
       unitPrice: article.unitPrice || 0,
       location: article.location || "",
-      supplier: article.supplier || "",
+      supplierId: article.supplier?.id,
     })
+    // Set existing image preview
+    if (article.image) {
+      setEditImagePreview(getApiUrl(article.image.url))
+    } else {
+      setEditImagePreview(null)
+    }
+    setEditImageFile(null)
     setIsEditArticleOpen(true)
+  }
+
+  // Batch article functions
+  const initializeBatchArticles = () => {
+    setBatchArticles([
+      {
+        code: "",
+        name: "",
+        description: "",
+        category: ArticleCategory.EQUIPMENT,
+        unit: Unit.PIECE,
+        currentStock: 0,
+        minStock: 0,
+        maxStock: 0,
+        unitPrice: 0,
+        location: "",
+        supplierId: undefined,
+      },
+      {
+        code: "",
+        name: "",
+        description: "",
+        category: ArticleCategory.EQUIPMENT,
+        unit: Unit.PIECE,
+        currentStock: 0,
+        minStock: 0,
+        maxStock: 0,
+        unitPrice: 0,
+        location: "",
+        supplierId: undefined,
+      },
+    ])
+    setBatchErrors([])
+  }
+
+  const addBatchRow = () => {
+    setBatchArticles([
+      ...batchArticles,
+      {
+        code: "",
+        name: "",
+        description: "",
+        category: ArticleCategory.EQUIPMENT,
+        unit: Unit.PIECE,
+        currentStock: 0,
+        minStock: 0,
+        maxStock: 0,
+        unitPrice: 0,
+        location: "",
+        supplierId: undefined,
+      },
+    ])
+  }
+
+  const removeBatchRow = (index: number) => {
+    setBatchArticles(batchArticles.filter((_, i) => i !== index))
+    setBatchErrors(batchErrors.filter((e) => e.index !== index))
+    // Remove image data for this index
+    const newImageFiles = {...batchImageFiles}
+    const newImagePreviews = {...batchImagePreviews}
+    delete newImageFiles[index]
+    delete newImagePreviews[index]
+    setBatchImageFiles(newImageFiles)
+    setBatchImagePreviews(newImagePreviews)
+  }
+
+  const updateBatchArticle = (index: number, field: keyof CreateArticleDto, value: any) => {
+    const updated = [...batchArticles]
+    updated[index] = { ...updated[index], [field]: value }
+    setBatchArticles(updated)
+  }
+
+  const handleBatchImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setBatchImageFiles({...batchImageFiles, [index]: file})
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setBatchImagePreviews({...batchImagePreviews, [index]: reader.result as string})
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeBatchImage = (index: number) => {
+    const newImageFiles = {...batchImageFiles}
+    const newImagePreviews = {...batchImagePreviews}
+    delete newImageFiles[index]
+    delete newImagePreviews[index]
+    setBatchImageFiles(newImageFiles)
+    setBatchImagePreviews(newImagePreviews)
+  }
+
+  const handleBatchSubmit = async () => {
+    try {
+      setBatchErrors([])
+      
+      // First upload all images and get their IDs
+      const articlesWithImages = [...batchArticles]
+      for (let i = 0; i < articlesWithImages.length; i++) {
+        if (batchImageFiles[i]) {
+          try {
+            const uploadedImage = await imageService.uploadImage(batchImageFiles[i])
+            articlesWithImages[i] = { ...articlesWithImages[i], imageId: uploadedImage.id }
+          } catch (error) {
+            console.error(`Error uploading image for article ${i}:`, error)
+          }
+        }
+      }
+      
+      const result = await stockApi.createArticlesBatch(articlesWithImages)
+      
+      if (result.errors.length > 0) {
+        setBatchErrors(result.errors)
+      }
+      
+      if (result.success.length > 0) {
+        await refreshData()
+        if (result.errors.length === 0) {
+          setIsBatchAddOpen(false)
+          setBatchArticles([])
+          setBatchImageFiles({})
+          setBatchImagePreviews({})
+        }
+      }
+    } catch (error: any) {
+      console.error("Error creating batch articles:", error)
+    }
+  }
+
+  // Image handling functions
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      console.error('Please select a valid image file')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      console.error('Image must not exceed 5MB')
+      return
+    }
+
+    setImageFile(file)
+    // Create preview URL
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleEditImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      console.error('Please select a valid image file')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      console.error('Image must not exceed 5MB')
+      return
+    }
+
+    setEditImageFile(file)
+    // Create preview URL
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setEditImagePreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    const fileInput = document.getElementById('image-upload') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+
+  const removeEditImage = () => {
+    setEditImageFile(null)
+    setEditImagePreview(null)
+    const fileInput = document.getElementById('edit-image-upload') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+
+  const uploadImage = async (file: File): Promise<number | undefined> => {
+    try {
+      setIsUploadingImage(true)
+      const response = await imageService.uploadImage(file)
+      return response.id
+    } catch (error) {
+      console.error('Image upload error:', error)
+      return undefined
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const uploadEditImage = async (file: File): Promise<number | undefined> => {
+    try {
+      setIsUploadingEditImage(true)
+      const response = await imageService.uploadImage(file)
+      return response.id
+    } catch (error) {
+      console.error('Image upload error:', error)
+      return undefined
+    } finally {
+      setIsUploadingEditImage(false)
+    }
   }
 
   const handleAddMovement = async () => {
@@ -408,6 +740,10 @@ export function StockManagement() {
             <Plus className="h-4 w-4" />
             Ajouter Article
           </Button>
+          <Button onClick={() => setIsBatchAddOpen(true)} variant="outline" className="gap-2">
+            <Package className="h-4 w-4" />
+            Ajout Multiple
+          </Button>
         </div>
       </div>
 
@@ -495,6 +831,43 @@ export function StockManagement() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="Unité" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes Unités</SelectItem>
+                    {Object.values(Unit).map(unit => (
+                      <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedStockStatus} onValueChange={setSelectedStockStatus}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Statut Stock" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous Statuts</SelectItem>
+                    <SelectItem value="low">Stock Faible</SelectItem>
+                    <SelectItem value="normal">Stock Normal</SelectItem>
+                    <SelectItem value="high">Stock Élevé</SelectItem>
+                    <SelectItem value="out">Rupture</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Fournisseur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous Fournisseurs</SelectItem>
+                    <SelectItem value="none">Sans fournisseur</SelectItem>
+                    {suppliersList.map(supplier => (
+                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Articles Table */}
@@ -504,6 +877,7 @@ export function StockManagement() {
                     <TableRow>
                       <TableHead>#</TableHead>
                       <TableHead>Code</TableHead>
+                      <TableHead>Image</TableHead>
                       <TableHead>Article</TableHead>
                       <TableHead>Catégorie</TableHead>
                       <TableHead>Stock Actuel</TableHead>
@@ -522,9 +896,22 @@ export function StockManagement() {
                           <TableCell className="font-medium">{index + 1}</TableCell>
                           <TableCell className="font-medium">{article.code}</TableCell>
                           <TableCell>
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {article.image ? (
+                                <img
+                                  src={getApiUrl(article.image.url)}
+                                  alt={article.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <ImageIcon className="h-6 w-6 text-gray-400" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium">{article.name}</span>
-                              <span className="text-xs text-gray-500">{article.supplier}</span>
+                              <span className="text-xs text-gray-500">{article.supplier?.name || '-'}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -554,6 +941,17 @@ export function StockManagement() {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setViewingArticle(article)
+                                  setIsViewArticleOpen(true)
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Voir
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -870,13 +1268,90 @@ export function StockManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="supplier">Fournisseur</Label>
-              <Input
-                id="supplier"
-                value={newArticle.supplier}
-                onChange={(e) => setNewArticle({ ...newArticle, supplier: e.target.value })}
-                placeholder="ex., SportsTech Ltd"
-              />
+              <Select
+                value={newArticle.supplierId?.toString() || "none"}
+                onValueChange={(value) => setNewArticle({ ...newArticle, supplierId: value === "none" ? undefined : parseInt(value) })}
+              >
+                <SelectTrigger id="supplier">
+                  <SelectValue placeholder={suppliersList.length === 0 ? "Aucun fournisseur disponible" : "Sélectionner un fournisseur"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun fournisseur</SelectItem>
+                  {suppliersList.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">Aucun fournisseur disponible</div>
+                  ) : (
+                    suppliersList.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+            
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <Label>Image de l'Article</Label>
+              <div className="flex items-center gap-4">
+                {/* Image preview */}
+                <div className="flex-shrink-0">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-16 w-16 rounded-lg object-cover border-2 border-gray-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                {/* Upload button */}
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="image-upload"
+                    disabled={isUploadingImage}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('image-upload')?.click()}
+                    disabled={isUploadingImage}
+                    className="w-full"
+                  >
+                    {isUploadingImage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Téléchargement...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {imagePreview ? 'Changer l\'image' : 'Ajouter une image'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
             <div className="col-span-2 space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -999,13 +1474,90 @@ export function StockManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-supplier">Fournisseur</Label>
-              <Input
-                id="edit-supplier"
-                value={editArticle.supplier}
-                onChange={(e) => setEditArticle({ ...editArticle, supplier: e.target.value })}
-                placeholder="ex., SportsTech Ltd"
-              />
+              <Select
+                value={editArticle.supplierId?.toString() || "none"}
+                onValueChange={(value) => setEditArticle({ ...editArticle, supplierId: value === "none" ? undefined : parseInt(value) })}
+              >
+                <SelectTrigger id="edit-supplier">
+                  <SelectValue placeholder={suppliersList.length === 0 ? "Aucun fournisseur disponible" : "Sélectionner un fournisseur"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun fournisseur</SelectItem>
+                  {suppliersList.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">Aucun fournisseur disponible</div>
+                  ) : (
+                    suppliersList.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+            
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <Label>Image de l'Article</Label>
+              <div className="flex items-center gap-4">
+                {/* Image preview */}
+                <div className="flex-shrink-0">
+                  {editImagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={editImagePreview}
+                        alt="Preview"
+                        className="h-16 w-16 rounded-lg object-cover border-2 border-gray-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={removeEditImage}
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                      <Upload className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                {/* Upload button */}
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="hidden"
+                    id="edit-image-upload"
+                    disabled={isUploadingEditImage}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('edit-image-upload')?.click()}
+                    disabled={isUploadingEditImage}
+                    className="w-full"
+                  >
+                    {isUploadingEditImage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Téléchargement...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {editImagePreview ? 'Changer l\'image' : 'Ajouter une image'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
             <div className="col-span-2 space-y-2">
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
@@ -1306,6 +1858,441 @@ export function StockManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewMovementOpen(false)}>
               Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Article Dialog */}
+      <Dialog open={isViewArticleOpen} onOpenChange={setIsViewArticleOpen}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Détails de l'article</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur l'article
+            </DialogDescription>
+          </DialogHeader>
+          {viewingArticle && (
+            <div className="space-y-6">
+              {/* Image and Basic Info Row */}
+              <div className="grid grid-cols-3 gap-6">
+                {/* Image Section */}
+                {viewingArticle.image && (
+                  <div className="col-span-1">
+                    <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                      <img
+                        src={getApiUrl(viewingArticle.image.url)}
+                        alt={viewingArticle.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Basic Information */}
+                <div className={`space-y-4 ${viewingArticle.image ? 'col-span-2' : 'col-span-3'}`}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-500">Code</Label>
+                      <p className="font-medium">{viewingArticle.code}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Nom</Label>
+                      <p className="font-medium">{viewingArticle.name}</p>
+                    </div>
+                  </div>
+
+                  {viewingArticle.description && (
+                    <div>
+                      <Label className="text-gray-500">Description</Label>
+                      <p className="font-medium">{viewingArticle.description}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-500">Catégorie</Label>
+                      <Badge style={{ backgroundColor: categoryColors[viewingArticle.category] + '20', color: categoryColors[viewingArticle.category] }}>
+                        {viewingArticle.category}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Unité</Label>
+                      <p className="font-medium">{viewingArticle.unit}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock Information */}
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-3">Informations de stock</h4>
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <Label className="text-gray-500">Stock actuel</Label>
+                    <p className="font-medium text-lg">{viewingArticle.currentStock} {viewingArticle.unit}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Stock minimum</Label>
+                    <p className="font-medium">{viewingArticle.minStock} {viewingArticle.unit}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Stock maximum</Label>
+                    <p className="font-medium">{viewingArticle.maxStock || 'N/A'} {viewingArticle.maxStock ? viewingArticle.unit : ''}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Statut</Label>
+                    <Badge className={getStockStatusColor(getStockStatus(viewingArticle))}>
+                      {getStockStatus(viewingArticle) === 'low' ? 'Stock faible' : getStockStatus(viewingArticle) === 'high' ? 'Stock élevé' : 'Normal'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing & Location */}
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-3">Prix et emplacement</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-gray-500">Prix unitaire</Label>
+                    <p className="font-medium">{viewingArticle.unitPrice ? `${viewingArticle.unitPrice.toFixed(2)} MAD` : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Valeur totale</Label>
+                    <p className="font-medium">
+                      {viewingArticle.unitPrice 
+                        ? `${(viewingArticle.currentStock * viewingArticle.unitPrice).toFixed(2)} MAD`
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Emplacement</Label>
+                    <p className="font-medium">{viewingArticle.location || 'Non spécifié'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supplier Information */}
+              {viewingArticle.supplier && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3">Fournisseur</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-gray-500">Nom</Label>
+                      <p className="font-medium">{viewingArticle.supplier.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Téléphone</Label>
+                      <p className="font-medium">{viewingArticle.supplier.phone}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Email</Label>
+                      <p className="font-medium">{viewingArticle.supplier.email}</p>
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-gray-500">Adresse</Label>
+                      <p className="font-medium">{viewingArticle.supplier.address}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* QR Code */}
+              {viewingArticle.qrCode && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3">Code QR</h4>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white p-4 rounded-lg border inline-block">
+                      <img 
+                        src={viewingArticle.qrCode} 
+                        alt={`QR Code for ${viewingArticle.name}`}
+                        className="w-32 h-32"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600 mb-2">
+                        Scannez ce code QR pour accéder rapidement aux informations de l'article
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = viewingArticle.qrCode!;
+                          link.download = `qrcode-${viewingArticle.code}.png`;
+                          link.click();
+                        }}
+                      >
+                        Télécharger QR Code
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Status and Timestamps */}
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-gray-500">Actif</Label>
+                    <Badge className={viewingArticle.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {viewingArticle.isActive ? 'Oui' : 'Non'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Créé le</Label>
+                    <p className="text-sm">{new Date(viewingArticle.createdAt).toLocaleDateString('fr-FR', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500">Modifié le</Label>
+                    <p className="text-sm">{new Date(viewingArticle.updatedAt).toLocaleDateString('fr-FR', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewArticleOpen(false)}>
+              Fermer
+            </Button>
+            {viewingArticle && (
+              <Button 
+                onClick={() => {
+                  setIsViewArticleOpen(false)
+                  openEditDialog(viewingArticle)
+                }}
+                className="bg-blue-800 hover:bg-blue-900"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Add Articles Dialog */}
+      <Dialog open={isBatchAddOpen} onOpenChange={setIsBatchAddOpen}>
+        <DialogContent className="sm:max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ajouter Plusieurs Articles</DialogTitle>
+            <DialogDescription>
+              Créez plusieurs articles en une seule fois
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {batchArticles.map((article, index) => {
+              const hasError = batchErrors.some(e => e.index === index)
+              const errorMsg = batchErrors.find(e => e.index === index)?.error
+              
+              return (
+                <Card key={index} className={hasError ? 'border-red-500' : ''}>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-sm">Article {index + 1}</CardTitle>
+                    {batchArticles.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeBatchRow(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {hasError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                        {errorMsg}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 gap-4">
+                      <div>
+                        <Label>Code *</Label>
+                        <Input
+                          value={article.code}
+                          onChange={(e) => updateBatchArticle(index, 'code', e.target.value)}
+                          placeholder="ART001"
+                        />
+                      </div>
+                      <div>
+                        <Label>Nom *</Label>
+                        <Input
+                          value={article.name}
+                          onChange={(e) => updateBatchArticle(index, 'name', e.target.value)}
+                          placeholder="Nom de l'article"
+                        />
+                      </div>
+                      <div>
+                        <Label>Catégorie</Label>
+                        <Select
+                          value={article.category}
+                          onValueChange={(value) => updateBatchArticle(index, 'category', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.values(ArticleCategory).map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Unité</Label>
+                        <Select
+                          value={article.unit}
+                          onValueChange={(value) => updateBatchArticle(index, 'unit', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.values(Unit).map(unit => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div>
+                        <Label>Stock Initial</Label>
+                        <Input
+                          type="number"
+                          value={article.currentStock}
+                          onChange={(e) => updateBatchArticle(index, 'currentStock', Number(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Stock Min</Label>
+                        <Input
+                          type="number"
+                          value={article.minStock}
+                          onChange={(e) => updateBatchArticle(index, 'minStock', Number(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Stock Max</Label>
+                        <Input
+                          type="number"
+                          value={article.maxStock}
+                          onChange={(e) => updateBatchArticle(index, 'maxStock', Number(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Prix Unitaire</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={article.unitPrice}
+                          onChange={(e) => updateBatchArticle(index, 'unitPrice', Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Emplacement</Label>
+                        <Input
+                          value={article.location}
+                          onChange={(e) => updateBatchArticle(index, 'location', e.target.value)}
+                          placeholder="Zone A"
+                        />
+                      </div>
+                      <div>
+                        <Label>Fournisseur</Label>
+                        <Select
+                          value={article.supplierId?.toString() || "none"}
+                          onValueChange={(value) => updateBatchArticle(index, 'supplierId', value === "none" ? undefined : Number(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Aucun fournisseur</SelectItem>
+                            {suppliersList.map(supplier => (
+                              <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Image</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleBatchImageChange(index, e)}
+                          className="flex-1"
+                        />
+                        {batchImagePreviews[index] && (
+                          <div className="relative">
+                            <img
+                              src={batchImagePreviews[index]}
+                              alt="Preview"
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
+                              onClick={() => removeBatchImage(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+            <Button
+              variant="outline"
+              onClick={addBatchRow}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter une ligne
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBatchAddOpen(false)
+                setBatchArticles([])
+                setBatchErrors([])
+                setBatchImageFiles({})
+                setBatchImagePreviews({})
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleBatchSubmit}
+              className="bg-blue-800 hover:bg-blue-900"
+              disabled={batchArticles.some(a => !a.code || !a.name)}
+            >
+              Créer Tous les Articles
             </Button>
           </DialogFooter>
         </DialogContent>

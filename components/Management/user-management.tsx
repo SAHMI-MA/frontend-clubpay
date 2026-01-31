@@ -43,6 +43,7 @@ import {
 import { fetchAllPermissions } from "@/lib/redux/permissionSlice"
 
 import type { CreateRoleDto, CreateUserDto, Role, UpdateRoleDto, UpdateUserDto, User } from "@/lib/services"
+import { parseDate } from "@/lib/utils/date-utils"
 
 /**
  * Export a list of users to CSV (ID, First Name, Last Name, Email, Roles)
@@ -93,7 +94,6 @@ function SearchablePermissionsSelector({
   loading = false,
   placeholder = "Sélectionner des permissions..."
 }: SearchablePermissionsSelectorProps) {
-  const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
   const filteredPermissions = permissions.filter(permission =>
@@ -120,59 +120,52 @@ function SearchablePermissionsSelector({
 
   return (
     <div className="space-y-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-          >
-            {selectedPermissions.length === 0
-              ? placeholder
-              : `${selectedPermissions.length} permission(s) sélectionnée(s)`}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Rechercher des permissions..."
-              value={searchValue}
-              onValueChange={setSearchValue}
-            />
-            <CommandList>
-              <CommandEmpty>Aucune permission trouvée.</CommandEmpty>
-              <CommandGroup>
-                {filteredPermissions.map((permission) => (
-                  <CommandItem
-                    key={permission.id}
-                    value={permission.name}
-                    onSelect={() => {
-                      const isSelected = selectedPermissions.includes(permission.id);
-                      onPermissionChange(permission.id, !isSelected);
-                    }}
-                  >
-                    <Check
-                      className={`mr-2 h-4 w-4 ${
-                        selectedPermissions.includes(permission.id)
-                          ? "opacity-100"
-                          : "opacity-0"
-                      }`}
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium">{permission.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {permission.description || `Pour la page ${permission.page}`}
-                      </div>
+      {/* Selected permissions count display */}
+      <div className="text-sm text-gray-600 mb-2">
+        {selectedPermissions.length === 0
+          ? placeholder
+          : `${selectedPermissions.length} permission(s) sélectionnée(s)`}
+      </div>
+      
+      {/* Search and select interface */}
+      <div className="border rounded-md">
+        <Command>
+          <CommandInput
+            placeholder="Rechercher des permissions..."
+            value={searchValue}
+            onValueChange={setSearchValue}
+          />
+          <CommandList className="max-h-48 overflow-y-auto">
+            <CommandEmpty>Aucune permission trouvée.</CommandEmpty>
+            <CommandGroup>
+              {filteredPermissions.map((permission) => (
+                <CommandItem
+                  key={permission.id}
+                  value={`${permission.id}-${permission.name}`}
+                  onSelect={(currentValue) => {
+                    const isSelected = selectedPermissions.includes(permission.id);
+                    onPermissionChange(permission.id, !isSelected);
+                  }}
+                >
+                  <Check
+                    className={`mr-2 h-4 w-4 ${
+                      selectedPermissions.includes(permission.id)
+                        ? "opacity-100"
+                        : "opacity-0"
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">{permission.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {permission.description || `Pour la page ${permission.page}`}
                     </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </div>
       
       {/* Selected permissions badges */}
       {selectedPermissions.length > 0 && (
@@ -831,7 +824,7 @@ export function UserManagement() {
                                 {user.isActive ? "Actif" : "Inactif"}
                               </Badge>
                             </TableCell>
-                            <TableCell>{user.lastLogin || "Jamais"}</TableCell>
+                            <TableCell>{parseDate(user.lastLogin)?.toString() || "Jamais"}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
                                 <Button

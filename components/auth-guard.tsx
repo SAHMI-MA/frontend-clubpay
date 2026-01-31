@@ -2,11 +2,13 @@
 
 import { useAppSelector } from "@/lib/redux/hooks"
 import { AuthPage } from "@/components/auth-page"
-import { Dashboard } from "@/components/dashboard"
-import { AppLayout } from "@/components/app-layout"
 import { useState } from "react"
 
-export default function Home() {
+interface AuthGuardProps {
+  children: React.ReactNode
+}
+
+export function AuthGuard({ children }: AuthGuardProps) {
   const [darkMode, setDarkMode] = useState(false)
   const { isAuthenticated } = useAppSelector(state => state.auth)
 
@@ -23,10 +25,5 @@ export default function Home() {
     )
   }
 
-  // Show dashboard for authenticated users
-  return (
-    <AppLayout>
-      <Dashboard />
-    </AppLayout>
-  )
+  return <>{children}</>
 }

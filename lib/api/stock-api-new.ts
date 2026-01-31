@@ -59,7 +59,19 @@ export interface Article {
   maxStock?: number;
   unitPrice?: number;
   location?: string;
-  supplier?: string;
+  supplier?: {
+    id: number;
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    website?: string;
+    contactPerson: string;
+    rib?: string;
+    isActive?: boolean;
+    rating?: number;
+    category?: string;
+  };
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
