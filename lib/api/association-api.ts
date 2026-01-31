@@ -1,6 +1,5 @@
 // Association Settings API
 import {
-  BarChart3,
   Building2,
   Calendar,
   CreditCard,

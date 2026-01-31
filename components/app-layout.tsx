@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { logoutUser } from "@/lib/redux/authThunks"
 import { useRouter } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
+import { useNotificationWebSocket } from "@/hooks/use-notification-websocket"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -17,7 +18,10 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [darkMode, setDarkMode] = useState(false)
   const dispatch = useAppDispatch()
   const router = useRouter()
-  const { user: reduxUser } = useAppSelector(state => state.auth)
+  const { user: reduxUser, token } = useAppSelector(state => state.auth)
+
+  // Initialize WebSocket connection for real-time notifications
+  const { isConnected } = useNotificationWebSocket(token)
 
   // Transform Redux user data to the format expected by components
   const user = reduxUser ? {
@@ -49,7 +53,8 @@ export function AppLayout({ children }: AppLayoutProps) {
               <TopBar 
                 darkMode={darkMode} 
                 setDarkMode={setDarkMode} 
-                user={user} 
+                user={user}
+                isWebSocketConnected={isConnected}
                 onLogout={handleLogout}
                 onNavigateToProfile={handleNavigateToProfile}
                 onNavigateToSettings={handleNavigateToSettings}

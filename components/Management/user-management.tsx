@@ -20,8 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2, Check, ChevronsUpDown, X } from "lucide-react"
+import { Edit, Search, Trash2, UserPlus, Shield, Users, Settings, Plus, Loader2, Check, X } from "lucide-react"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toast } from "sonner"
 import {
@@ -142,7 +141,7 @@ function SearchablePermissionsSelector({
                 <CommandItem
                   key={permission.id}
                   value={`${permission.id}-${permission.name}`}
-                  onSelect={(currentValue) => {
+                  onSelect={() => {
                     const isSelected = selectedPermissions.includes(permission.id);
                     onPermissionChange(permission.id, !isSelected);
                   }}

@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Team } from "@/lib/types/team-management"
+import { Team as TeamType } from "@/lib/types/team-management"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Edit, Search, Trash2, Eye, Users, DollarSign } from "lucide-react"
+import { Edit, Search, Trash2, Eye, Users, DollarSign, AlertTriangle } from "lucide-react"
 import { useAppDispatch } from "@/lib/redux/hooks"
 import { deleteTeam } from "@/lib/redux/teamSlice"
 import { toast } from "sonner"
@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/dialog"
 
 interface TeamListProps {
-  teams: Team[]
-  onViewDetails: (team: Team) => void
-  onEditTeam?: (team: Team) => void
+  teams: TeamType[]
+  onViewDetails: (team: TeamType) => void
+  onEditTeam?: (team: TeamType) => void
   isSimplified?: boolean
 }
 
@@ -32,9 +32,9 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
   const dispatch = useAppDispatch()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
+  const [teamToDelete, setTeamToDelete] = useState<TeamType | null>(null)
 
-  const handleDeleteClick = (team: Team) => {
+  const handleDeleteClick = (team: TeamType) => {
     setTeamToDelete(team)
     setIsDeleteDialogOpen(true)
   }
@@ -59,18 +59,43 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
     return matchesSearch
   })
 
+  // Helper function to check if budget is exceeded
+  const isBudgetExceeded = (team: TeamType) => {
+    const budget = Number(team.budget) || 0
+    const spending = Number(team.currentSpending) || 0
+    return spending > budget
+  }
+
+  // Helper function to get budget percentage
+  const getBudgetPercentage = (team: TeamType) => {
+    const budget = Number(team.budget) || 0
+    const spending = Number(team.currentSpending) || 0
+    if (budget === 0) return 0
+    return (spending / budget) * 100
+  }
+
   if (isSimplified) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTeams.map(team => (
-          <Card key={team.id} className="overflow-hidden">
+        {filteredTeams.map(team => {
+          const budgetExceeded = isBudgetExceeded(team)
+          const budgetPercentage = getBudgetPercentage(team)
+          const warningThreshold = team.budgetWarningThreshold || 80
+          
+          return (
+          <Card key={team.id} className={`overflow-hidden ${budgetExceeded ? 'border-red-500 border-2' : ''}`}>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
                   <TeamAvatar team={team} size="md" />
                   <div>
-                    <CardTitle className="text-base">{team.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {team.name}
+                      {budgetExceeded && (
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge variant="outline" className="text-xs font-mono">
                         {team.code}
                       </Badge>
@@ -86,6 +111,16 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                           )}
                         </div>
                       )}
+                      {budgetExceeded && (
+                        <Badge className="bg-red-500 text-white text-xs">
+                          Budget dépassé!
+                        </Badge>
+                      )}
+                      {!budgetExceeded && budgetPercentage >= warningThreshold && (
+                        <Badge className="bg-orange-500 text-white text-xs">
+                          {budgetPercentage.toFixed(0)}% utilisé
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -99,9 +134,11 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                   {team.description || "Aucune description disponible"}
                 </p>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4 text-green-600" />
+                
+                {/* Budget Status Section */}
+                <div className="space-y-2 pt-2 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Budget:</span>
                     <span className="font-medium">
                       {new Intl.NumberFormat('fr-FR', {
                         style: 'currency',
@@ -110,6 +147,44 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                       }).format(Number(team.budget))}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Dépenses:</span>
+                    <span className={`font-medium ${budgetExceeded ? 'text-red-600' : ''}`}>
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'MAD',
+                        minimumFractionDigits: 0
+                      }).format(Number(team.currentSpending || 0))}
+                    </span>
+                  </div>
+                  {/* Budget Progress Bar */}
+                  <div className="w-full">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className={budgetExceeded ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                        {budgetPercentage.toFixed(1)}%
+                      </span>
+                      <span className="text-gray-500">
+                        Reste: {new Intl.NumberFormat('fr-FR', {
+                          style: 'currency',
+                          currency: 'MAD',
+                          minimumFractionDigits: 0
+                        }).format(Math.max(0, Number(team.budget) - Number(team.currentSpending || 0)))}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          budgetExceeded ? 'bg-red-500' : 
+                          budgetPercentage >= warningThreshold ? 'bg-orange-500' : 
+                          'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm pt-2">
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4 text-blue-600" />
                     <span>{team.numberOfStaff || 0} Personnel</span>
@@ -141,7 +216,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
               </div>
             </CardFooter>
           </Card>
-        ))}
+        )})}
       </div>
     )
   }
@@ -187,14 +262,27 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTeams.map((team, index) => (
-                    <TableRow key={team.id}>
+                  filteredTeams.map((team, index) => {
+                    const budgetExceeded = isBudgetExceeded(team)
+                    const budgetPercentage = getBudgetPercentage(team)
+                    const warningThreshold = team.budgetWarningThreshold || 80
+                    
+                    return (
+                    <TableRow key={team.id} className={budgetExceeded ? 'bg-red-50' : ''}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <TeamAvatar team={team} size="sm" />
                           <div>
-                            <p className="font-medium">{team.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{team.name}</p>
+                              {budgetExceeded && (
+                                <Badge className="bg-red-500 text-white text-xs">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Budget dépassé
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500 font-mono">{team.code}</p>
                           </div>
                         </div>
@@ -227,15 +315,37 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-green-800" />
-                          <span className="font-medium">
-                            {new Intl.NumberFormat('fr-FR', {
-                              style: 'currency',
-                              currency: 'MAD',
-                              minimumFractionDigits: 0
-                            }).format(Number(team.budget))}
-                          </span>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className={`h-4 w-4 ${budgetExceeded ? 'text-red-600' : 'text-green-800'}`} />
+                            <div className="text-sm">
+                              <p className="font-medium">
+                                {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: 'MAD',
+                                  minimumFractionDigits: 0
+                                }).format(Number(team.budget))}
+                              </p>
+                              <p className={`text-xs ${budgetExceeded ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                                Dépensé: {new Intl.NumberFormat('fr-FR', {
+                                  style: 'currency',
+                                  currency: 'MAD',
+                                  minimumFractionDigits: 0
+                                }).format(Number(team.currentSpending || 0))} ({budgetPercentage.toFixed(0)}%)
+                              </p>
+                            </div>
+                          </div>
+                          {/* Mini Progress Bar */}
+                          <div className="w-32 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className={`h-1.5 rounded-full ${
+                                budgetExceeded ? 'bg-red-500' : 
+                                budgetPercentage >= warningThreshold ? 'bg-orange-500' : 
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+                            />
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -269,7 +379,7 @@ export function TeamList({ teams, onViewDetails, onEditTeam, isSimplified = fals
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                  )})
                 )}
               </TableBody>
             </Table>

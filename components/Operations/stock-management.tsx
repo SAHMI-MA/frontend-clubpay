@@ -83,7 +83,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
 import { Package, Plus, Search, Edit, Trash2, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, MapPin, DollarSign, Activity, Upload, Loader2, X, ImageIcon, Eye } from 'lucide-react'
 import { useStockManagement } from "@/hooks/use-stock-management"
-import { Image } from "@/lib/types/team-management"
 import { imageService } from "@/lib/team-management-services"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { fetchAllSuppliers } from "@/lib/redux/supplierSlice"

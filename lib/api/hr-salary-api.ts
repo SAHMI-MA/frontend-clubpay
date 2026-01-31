@@ -132,6 +132,15 @@ export async function listSalaryPayments(): Promise<SalaryPayment[]> {
   }));
 }
 
+export async function getNextPaymentPeriod(employeeId: string): Promise<{
+  periodStart: string;
+  periodEnd: string;
+  payPeriod: string;
+}> {
+  const res = await axiosInstance.get(`/hr/salary-payments/next-period/${employeeId}`);
+  return res.data;
+}
+
 export async function createSalaryPayment(body: CreateSalaryPaymentBody): Promise<SalaryPayment> {
   console.log("POST /hr/salary-payments", body);
   const res = await axiosInstance.post<SalaryPayment>("/hr/salary-payments", body)

@@ -381,6 +381,22 @@ export const approveSalaryPayment = createAsyncThunk(
   }
 );
 
+// Get next payment period for club players/staff
+export const getNextClubPaymentPeriod = createAsyncThunk(
+  'financial/getNextClubPaymentPeriod',
+  async ({ type, id }: { type: 'player' | 'staff'; id: number }, { rejectWithValue }) => {
+    try {
+      const endpoint = type === 'player' 
+        ? `/accounting/salary-payments/next-period/player/${id}`
+        : `/accounting/salary-payments/next-period/staff/${id}`;
+      const data = await api.get<{ periodStart: string; periodEnd: string; payPeriod: string }>(endpoint);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get next payment period');
+    }
+  }
+);
+
 // Bulk Salary Payments Thunk
 export const createBulkSalaryPayment = createAsyncThunk(
   'financial/createBulkSalaryPayment',

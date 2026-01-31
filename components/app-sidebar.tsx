@@ -24,7 +24,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-interface AppSidebarProps {}
+interface AppSidebarProps {
+  temp?: string
+}
 
 export function AppSidebar({ }: AppSidebarProps) {
   const user = authUtils.getUser()

@@ -85,6 +85,7 @@ import {
   createSalaryPayment,
   createTransactionFromSalaryPayment,
   approveSalaryPayment,
+  getNextClubPaymentPeriod,
 } from "@/lib/redux/financialSlice"
 import {
   TransactionType,
@@ -131,6 +132,7 @@ export function ClubSalaryPaymentsManagement() {
     paymentDate: "",
     periodStart: "",
     periodEnd: "",
+    payPeriod: "", // Add payPeriod field
     bonus: "",
     netAmount: "",
     recipientType: "player" as "player" | "staff",
@@ -138,6 +140,11 @@ export function ClubSalaryPaymentsManagement() {
     staffId: null as number | null,
     notes: "",
   })
+
+  // Payment period calculation states
+  const [loadingPaymentPeriod, setLoadingPaymentPeriod] = useState(false)
+  const [duplicatePaymentWarning, setDuplicatePaymentWarning] = useState<string | null>(null)
+  const [noContractWarning, setNoContractWarning] = useState<string | null>(null)
 
   const dispatch = useAppDispatch()
 
@@ -160,6 +167,47 @@ export function ClubSalaryPaymentsManagement() {
   useEffect(() => {
     console.log("Salary payments updated:", salaryPayments.length, "payments loaded")
   }, [salaryPayments])
+
+  // Auto-fetch payment period when player/staff is selected
+  useEffect(() => {
+    const recipientId = salaryPaymentForm.recipientType === 'player' 
+      ? salaryPaymentForm.playerId 
+      : salaryPaymentForm.staffId;
+    
+    if (recipientId && isCreateSalaryPaymentDialogOpen) {
+      setLoadingPaymentPeriod(true)
+      setDuplicatePaymentWarning(null)
+      setNoContractWarning(null)
+      
+      dispatch(getNextClubPaymentPeriod({ 
+        type: salaryPaymentForm.recipientType, 
+        id: recipientId 
+      }))
+        .unwrap()
+        .then((periodData: { periodStart: string; periodEnd: string; payPeriod: string }) => {
+          setSalaryPaymentForm(prev => ({
+            ...prev,
+            payPeriod: periodData.payPeriod,
+            periodStart: periodData.periodStart,
+            periodEnd: periodData.periodEnd,
+          }))
+        })
+        .catch((error: any) => {
+          console.error("Failed to fetch payment period:", error)
+          const errorStr = typeof error === 'string' ? error : (error?.message || JSON.stringify(error))
+          
+          if (errorStr.includes('no active contract') || errorStr.includes('pas de contrat')) {
+            const recipientType = salaryPaymentForm.recipientType === 'player' ? 'joueur' : 'personnel'
+            setNoContractWarning(`Ce ${recipientType} n'a pas de contrat actif. Veuillez d'abord créer un contrat.`)
+          } else if (errorStr.includes('already exists') || errorStr.includes('existe déjà')) {
+            setDuplicatePaymentWarning(errorStr)
+          }
+        })
+        .finally(() => {
+          setLoadingPaymentPeriod(false)
+        })
+    }
+  }, [salaryPaymentForm.playerId, salaryPaymentForm.staffId, salaryPaymentForm.recipientType, isCreateSalaryPaymentDialogOpen, dispatch])
 
   // Generate PDF payment slip
   const generatePaymentSlipPDF = useCallback(
@@ -316,13 +364,18 @@ export function ClubSalaryPaymentsManagement() {
         paymentDate: "",
         periodStart: "",
         periodEnd: "",
+        payPeriod: "",
         bonus: "",
         netAmount: "",
-        recipientType: "player",
+        recipientType: "player" as "player" | "staff",
         playerId: null,
         staffId: null,
         notes: "",
       })
+      
+      // Reset warnings
+      setDuplicatePaymentWarning(null)
+      setNoContractWarning(null)
 
       // Refresh data
       dispatch(fetchSalaryPayments())
@@ -844,9 +897,11 @@ export function ClubSalaryPaymentsManagement() {
                     name="recipientType"
                     value="player"
                     checked={salaryPaymentForm.recipientType === "player"}
-                    onChange={() =>
-                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null })
-                    }
+                    onChange={() => {
+                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "player", staffId: null, periodStart: "", periodEnd: "", payPeriod: "" })
+                      setNoContractWarning(null)
+                      setDuplicatePaymentWarning(null)
+                    }}
                     className="h-4 w-4 border-gray-300 text-blue-600"
                   />
                   <Label htmlFor="playerType" className="cursor-pointer">
@@ -860,9 +915,11 @@ export function ClubSalaryPaymentsManagement() {
                     name="recipientType"
                     value="staff"
                     checked={salaryPaymentForm.recipientType === "staff"}
-                    onChange={() =>
-                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "staff", playerId: null })
-                    }
+                    onChange={() => {
+                      setSalaryPaymentForm({ ...salaryPaymentForm, recipientType: "staff", playerId: null, periodStart: "", periodEnd: "", payPeriod: "" })
+                      setNoContractWarning(null)
+                      setDuplicatePaymentWarning(null)
+                    }}
                     className="h-4 w-4 border-gray-300 text-blue-600"
                   />
                   <Label htmlFor="staffType" className="cursor-pointer">
@@ -982,6 +1039,38 @@ export function ClubSalaryPaymentsManagement() {
                   </Select>
                 )}
               </div>
+
+              {/* Warning: No contract */}
+              {noContractWarning && (
+                <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-md p-3 mt-2">
+                  <p className="text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {noContractWarning}
+                  </p>
+                </div>
+              )}
+
+              {/* Warning: Duplicate payment */}
+              {duplicatePaymentWarning && (
+                <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 mt-2">
+                  <p className="text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {duplicatePaymentWarning}
+                  </p>
+                </div>
+              )}
+
+              {/* Loading payment period indicator */}
+              {loadingPaymentPeriod && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Calcul de la période de paie...
+                </div>
+              )}
             </div>
 
             {/* Financial Information Section */}

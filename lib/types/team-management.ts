@@ -15,6 +15,8 @@ export interface Team {
   name: string;
   code: string;        // Team code
   budget: number;
+  currentSpending?: number; // Current spending amount for budget tracking
+  budgetWarningThreshold?: number; // Warning threshold percentage (default 80%)
   category?: {
     id: number;
     name: string;

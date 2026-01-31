@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Moon, Search, Sun, User, Globe, Info, AlertCircle, Trophy, CreditCard, Users } from "lucide-react"
+import { Bell, Moon, Search, Sun, User, Globe, Info, AlertCircle, Package, DollarSign, UserPlus, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -13,60 +13,111 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
-import { markAlertAsRead } from "@/lib/redux/dashboardSlice"
+import { fetchNotifications, markAsRead, markAllAsRead } from "@/lib/redux/notificationSlice"
+import { useRouter } from "next/navigation"
 
 interface TopBarProps {
   darkMode: boolean
   setDarkMode: (darkMode: boolean) => void
   user: { name: string; email: string; role: string } | null
+  isWebSocketConnected: boolean
   onLogout: () => void
   onNavigateToProfile?: () => void
   onNavigateToSettings?: () => void
 }
 
-export function TopBar({ darkMode, setDarkMode, user, onLogout, onNavigateToProfile, onNavigateToSettings }: TopBarProps) {
+export function TopBar({ darkMode, setDarkMode, user, isWebSocketConnected, onLogout, onNavigateToProfile, onNavigateToSettings }: TopBarProps) {
   const dispatch = useDispatch<AppDispatch>()
-  const { alerts } = useSelector((state: RootState) => state.dashboard)
+  const router = useRouter()
+  const { notifications, unreadCount, loading } = useSelector((state: RootState) => state.notifications)
   
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
 
-  // Calculate unread count from dashboard alerts
-  const unreadCount = alerts.filter(alert => !alert.isRead).length
+  // Fetch initial notifications on mount
+  useEffect(() => {
+    dispatch(fetchNotifications({ limit: 20 }))
+  }, [dispatch])
 
   const handleMarkAsRead = async (id: number) => {
-    dispatch(markAlertAsRead(id))
+    await dispatch(markAsRead(id))
   }
 
   const handleMarkAllAsRead = async () => {
     setMarkingAll(true)
-    const unreadAlerts = alerts.filter(alert => !alert.isRead)
-    unreadAlerts.forEach(alert => dispatch(markAlertAsRead(alert.id)))
+    await dispatch(markAllAsRead())
     setMarkingAll(false)
   }
 
-  // Icon by alert type (updated to match dashboard alert types)
+  const handleNotificationClick = (notification: any) => {
+    // Mark as read if unread
+    if (notification.status === 'unread') {
+      handleMarkAsRead(notification.id)
+    }
+    
+    // Close dropdown
+    setNotifDropdownOpen(false)
+    
+    // Navigate if action URL exists
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl)
+    }
+  }
+
+  // Icon by notification type
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'contract_expiry': 
-      case 'contract': 
-        return <Trophy className="h-4 w-4 text-red-500" />
-      case 'payment_received': 
-      case 'payment': 
-        return <CreditCard className="h-4 w-4 text-green-500" />
-      case 'new_registration': 
-      case 'registration': 
-        return <Users className="h-4 w-4 text-blue-500" />
-      case 'inventory_update': 
-      case 'high_value_acquisition':
-        return <Info className="h-4 w-4 text-orange-500" />
-      case 'equipment_request':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      default: 
+      case 'acquisition_created':
+      case 'acquisition_approved':
+      case 'acquisition_rejected':
+        return <Package className="h-4 w-4 text-purple-500" />
+      case 'salary_payment_created':
+      case 'salary_payment_approved':
+      case 'salary_payment_rejected':
+        return <DollarSign className="h-4 w-4 text-green-500" />
+      case 'stock_low':
+      case 'stock_out':
+      case 'stock_movement':
+        return <AlertCircle className="h-4 w-4 text-orange-500" />
+      case 'employee_added':
+      case 'employee_updated':
+        return <UserPlus className="h-4 w-4 text-blue-500" />
+      case 'system_alert':
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      case 'reminder':
         return <Info className="h-4 w-4 text-blue-500" />
+      case 'info':
+        return <FileText className="h-4 w-4 text-gray-500" />
+      default: 
+        return <Bell className="h-4 w-4 text-blue-500" />
+    }
+  }
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      case 'high':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      case 'low':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'Urgent'
+      case 'high': return 'Élevé'
+      case 'medium': return 'Moyen'
+      case 'low': return 'Faible'
+      default: return priority
     }
   }
 
@@ -114,26 +165,32 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout, onNavigateToProf
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        {/* Notifications (Dashboard Alerts) */}
+        {/* Notifications */}
         <DropdownMenu open={notifDropdownOpen} onOpenChange={setNotifDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="relative text-gray-600 dark:text-gray-400"
-              title="Alertes récentes"
+              title={isWebSocketConnected ? "Notifications (Connecté en temps réel)" : "Notifications"}
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-xs">
-                  {unreadCount}
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs p-0 flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </Badge>
+              )}
+              {/* WebSocket connection indicator */}
+              {isWebSocketConnected && (
+                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-green-500 border border-white dark:border-gray-800" 
+                  title="Connecté en temps réel"
+                />
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-96 max-h-96 overflow-y-auto p-0">
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <DropdownMenuLabel>Alertes récentes</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-96 max-h-[500px] overflow-y-auto p-0">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 sticky top-0 bg-white dark:bg-gray-800 border-b">
+              <DropdownMenuLabel className="text-base">Notifications</DropdownMenuLabel>
               {unreadCount > 0 && (
                 <button
                   className="text-xs text-blue-600 hover:underline disabled:opacity-50"
@@ -144,51 +201,67 @@ export function TopBar({ darkMode, setDarkMode, user, onLogout, onNavigateToProf
                 </button>
               )}
             </div>
-            <DropdownMenuSeparator />
-            {alerts.length === 0 ? (
-              <div className="flex flex-col items-center p-6 text-gray-400">
-                <Bell className="h-8 w-8 mb-2" />
-                <span>Aucune alerte récente</span>
+            {loading ? (
+              <div className="flex items-center justify-center p-8 text-gray-400">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
-            ) : alerts.map((alert, index) => {
-              const formattedDate = new Date(alert.createdAt).toLocaleString('fr-FR', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-              
-              return (
-                <DropdownMenuItem
-                  key={`alert-${alert.id}-${alert.createdAt}-${index}`}
-                  onClick={() => !alert.isRead && handleMarkAsRead(alert.id)}
-                  className={`flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 transition-colors cursor-pointer ${!alert.isRead ? 'bg-orange-50 dark:bg-gray-700 font-semibold' : 'bg-white dark:bg-gray-800'}`}
-                >
-                  <span className="mt-1">{getTypeIcon(alert.type)}</span>
-                  <span className="flex-1">
-                    <span className="block text-sm">{alert.title}</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">{alert.description}</span>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-400">{formattedDate}</span>
-                      <Badge 
-                        className={`text-xs px-2 py-0 ${
-                          alert.priority === 'high' ? 'bg-red-100 text-red-800' :
-                          alert.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {alert.priority === 'high' ? 'Urgent' : 
-                         alert.priority === 'medium' ? 'Moyen' : 'Faible'}
-                      </Badge>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center p-8 text-gray-400">
+                <Bell className="h-12 w-12 mb-3 opacity-30" />
+                <span className="text-sm">Aucune notification</span>
+              </div>
+            ) : (
+              notifications.map((notification) => {
+                const formattedDate = new Date(notification.createdAt).toLocaleString('fr-FR', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+                
+                return (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 transition-all duration-200 ${
+                      notification.actionUrl 
+                        ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer' 
+                        : 'cursor-default'
+                    } ${
+                      notification.status === 'unread' 
+                        ? 'bg-blue-50 dark:bg-blue-900/10' 
+                        : 'bg-white dark:bg-gray-800'
+                    }`}
+                  >
+                    <span className="mt-1 flex-shrink-0">{getTypeIcon(notification.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={`block text-sm ${notification.status === 'unread' ? 'font-semibold' : ''}`}>
+                          {notification.title}
+                        </span>
+                        {notification.status === 'unread' && (
+                          <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1.5"></span>
+                        )}
+                      </div>
+                      <span className="block text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                        {notification.message}
+                      </span>
+                      <div className="flex items-center justify-between mt-2 gap-2">
+                        <span className="text-xs text-gray-400">{formattedDate}</span>
+                        <Badge className={`text-xs px-2 py-0 ${getPriorityBadge(notification.priority)}`}>
+                          {getPriorityLabel(notification.priority)}
+                        </Badge>
+                      </div>
+                      {notification.actionLabel && notification.actionUrl && (
+                        <span className="inline-flex items-center text-xs text-blue-600 mt-1.5 font-medium group-hover:underline">
+                          <span>→ {notification.actionLabel}</span>
+                        </span>
+                      )}
                     </div>
-                  </span>
-                  {!alert.isRead && <span className="text-xs text-orange-500 mt-1">Non lu</span>}
-                </DropdownMenuItem>
-              )
-            })}
-            <div className="px-4 py-2 text-center text-xs text-blue-600 hover:underline cursor-pointer border-t border-gray-100 dark:border-gray-700">
-              Voir toutes les alertes
-            </div>
+                  </DropdownMenuItem>
+                )
+              })
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 

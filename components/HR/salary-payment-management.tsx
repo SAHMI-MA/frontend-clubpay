@@ -123,6 +123,8 @@ export function SalaryPaymentManagement() {
   const currentUser = authUtils.getUser()
 
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [loadingPaymentPeriod, setLoadingPaymentPeriod] = useState(false)
+  const [duplicatePaymentWarning, setDuplicatePaymentWarning] = useState<string | null>(null)
   useEffect(() => {
     import("@/lib/api/hr-api").then(({ hrApi }) => {
       hrApi
@@ -153,6 +155,35 @@ export function SalaryPaymentManagement() {
         .catch(() => setDepartmentsList([]))
     })
   }, [])
+
+  // Auto-fetch payment period when employee changes
+  useEffect(() => {
+    if (newPayment.employeeId && showNewPaymentDialog) {
+      setLoadingPaymentPeriod(true)
+      setDuplicatePaymentWarning(null)
+      
+      import("@/lib/api/hr-salary-api").then(({ getNextPaymentPeriod }) => {
+        getNextPaymentPeriod(newPayment.employeeId)
+          .then((periodData) => {
+            setNewPayment(prev => ({
+              ...prev,
+              payPeriod: periodData.payPeriod,
+              periodStart: new Date(periodData.periodStart),
+              periodEnd: new Date(periodData.periodEnd),
+            }))
+          })
+          .catch((error) => {
+            console.error("Failed to fetch payment period:", error)
+            if (error.response?.status === 400 && error.response?.data?.message?.includes('existe déjà')) {
+              setDuplicatePaymentWarning(error.response.data.message)
+            }
+          })
+          .finally(() => {
+            setLoadingPaymentPeriod(false)
+          })
+      })
+    }
+  }, [newPayment.employeeId, showNewPaymentDialog])
 
   // Fetch payments from backend
   useEffect(() => {
@@ -656,8 +687,16 @@ export function SalaryPaymentManagement() {
                 <Button variant="outline" onClick={() => setShowNewPaymentDialog(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleCreatePayment} disabled={!newPayment.employeeId || !newPayment.payPeriod}>
-                  Créer le paiement
+                <Button 
+                  onClick={handleCreatePayment} 
+                  disabled={
+                    !newPayment.employeeId || 
+                    !newPayment.payPeriod || 
+                    loadingPaymentPeriod ||
+                    !!duplicatePaymentWarning
+                  }
+                >
+                  {loadingPaymentPeriod ? "Calcul..." : "Créer le paiement"}
                 </Button>
               </DialogFooter>
             </DialogContent>
