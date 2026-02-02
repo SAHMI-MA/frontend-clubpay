@@ -143,8 +143,19 @@ export async function getNextPaymentPeriod(employeeId: string): Promise<{
 
 export async function createSalaryPayment(body: CreateSalaryPaymentBody): Promise<SalaryPayment> {
   console.log("POST /hr/salary-payments", body);
-  const res = await axiosInstance.post<SalaryPayment>("/hr/salary-payments", body)
-  return res.data
+  try {
+    const res = await axiosInstance.post<SalaryPayment>("/hr/salary-payments", body)
+    return res.data
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      console.error("=== 400 Bad Request when creating salary payment ===");
+      console.error("Request Body:", JSON.stringify(body, null, 2));
+      console.error("Error Message:", error.response?.data?.message || error.message);
+      console.error("Error Details:", JSON.stringify(error.response?.data, null, 2));
+      console.error("Status Text:", error.response?.statusText);
+    }
+    throw error;
+  }
 }
 
 export async function updateSalaryPayment(id: string, body: UpdateSalaryPaymentBody): Promise<SalaryPayment> {

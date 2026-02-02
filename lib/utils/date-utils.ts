@@ -49,7 +49,7 @@ export const formatDate = (
   if (!date) return 'Invalid Date';
   
   try {
-    return new Intl.DateTimeFormat('en-US', options).format(date);
+    return new Intl.DateTimeFormat('fr-FR', options).format(date);
   } catch (error) {
     console.warn('Error formatting date:', dateString, error);
     return 'Invalid Date';

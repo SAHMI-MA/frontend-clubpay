@@ -66,7 +66,7 @@ export function Combobox({
     (Object.keys(groupedOptions).length === 1 && !Object.keys(groupedOptions).includes("Positions"))
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -79,7 +79,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" sideOffset={4}>
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -91,8 +91,8 @@ export function Combobox({
                     key={option.value}
                     value={option.value}
                     keywords={option.keywords ? [option.keywords] : undefined}
-                    onSelect={(currentValue) => {
-                      onValueChange?.(currentValue === value ? "" : currentValue)
+                    onSelect={() => {
+                      onValueChange?.(option.value === value ? "" : option.value)
                       setOpen(false)
                     }}
                   >
