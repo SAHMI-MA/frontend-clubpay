@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { authUtils } from "@/lib/redux/auth-utils"
 import { getApiUrl } from "@/lib/api-config"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -22,19 +23,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DollarSign, Plus, Search, Filter, Download, Eye, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react"
+import { DollarSign, Plus, Search, Filter, Eye, CheckCircle, XCircle, Clock, Trash2, Users } from "lucide-react"
 import {
   listSalaryPayments,
   createSalaryPayment,
   deleteSalaryPayment,
   type SalaryPayment as ApiSalaryPayment,
   type CreateSalaryPaymentBody,
-  createBulkSalaryPaymentForDepartement,
-  type CreateBulkSalaryPaymentBody,
   approveOrRejectSalaryPayment,
 } from "@/lib/api/hr-salary-api"
 import type { Department } from "@/lib/api/hr-api"
 import { generateEmployeeSalaryPDF } from "@/lib/jsPDF/EmployeeSalaryPDF"
+import { formatDate } from "@/lib/utils/date-utils"
 
 /**
  * Export a list of salary payments to CSV
@@ -95,12 +95,15 @@ export function SalaryPaymentManagement() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [startDateFilter, setStartDateFilter] = useState("")
+  const [endDateFilter, setEndDateFilter] = useState("")
   const [selectedPayment, setSelectedPayment] = useState<ApiSalaryPayment | null>(null)
   const [showNewPaymentDialog, setShowNewPaymentDialog] = useState(false)
-  const [showBulkPaymentDialog, setShowBulkPaymentDialog] = useState<boolean>(false)
+  const [showBulkPaymentDialog] = useState<boolean>(false)
   const [newPayment, setNewPayment] = useState({
     employeeId: "",
-    payPeriod: "",
+    payPeriod: null as Date | null,
     baseSalary: 0,
     overtime: 0,
     bonuses: 0,
@@ -108,12 +111,9 @@ export function SalaryPaymentManagement() {
     paymentMethod: "Bank Transfer",
     amount: 0,
     paymentDate: null as Date | null,
-    periodStart: null as Date | null,
-    periodEnd: null as Date | null,
     bankAccountId: undefined as number | undefined,
   })
   const [departmentsList, setDepartmentsList] = useState<Department[]>([])
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; payment: ApiSalaryPayment | null }>({
     open: false,
     payment: null,
@@ -136,10 +136,10 @@ export function SalaryPaymentManagement() {
               name: e.fullName || "",
               position: e.position
                 ? {
-                    id: e.position.id,
-                    title: e.position.title,
-                    level: e.position.level,
-                  }
+                  id: e.position.id,
+                  title: e.position.title,
+                  level: e.position.level,
+                }
                 : null,
               baseSalary: Number(e.currentSalary) || 0,
               taxRate: e.taxRate || 0,
@@ -161,15 +161,13 @@ export function SalaryPaymentManagement() {
     if (newPayment.employeeId && showNewPaymentDialog) {
       setLoadingPaymentPeriod(true)
       setDuplicatePaymentWarning(null)
-      
+
       import("@/lib/api/hr-salary-api").then(({ getNextPaymentPeriod }) => {
         getNextPaymentPeriod(newPayment.employeeId)
           .then((periodData) => {
             setNewPayment(prev => ({
               ...prev,
-              payPeriod: periodData.payPeriod,
-              periodStart: new Date(periodData.periodStart),
-              periodEnd: new Date(periodData.periodEnd),
+              payPeriod: new Date(periodData.payPeriod),
             }))
           })
           .catch((error) => {
@@ -215,9 +213,9 @@ export function SalaryPaymentManagement() {
   // Generate PDF payment slip for HR salary payments
   const generateHRPaymentSlipPDF = useCallback(
     async (payment: ApiSalaryPayment) => {
-      await generateEmployeeSalaryPDF({ 
-        payment, 
-        bankAccounts: bankAccounts.map(acc => ({ ...acc, id: String(acc.id) })) 
+      await generateEmployeeSalaryPDF({
+        payment,
+        bankAccounts: bankAccounts.map(acc => ({ ...acc, id: String(acc.id) }))
       })
     },
     [employees, bankAccounts],
@@ -234,7 +232,18 @@ export function SalaryPaymentManagement() {
     }
     const matchesSearch = employeeName.includes(searchTerm.toLowerCase()) || id.includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || payment.status === statusFilter
-    return matchesSearch && matchesStatus
+
+    // Department filter - check both the department ID as number and string
+    const paymentDeptId = payment.employee?.department?.id
+    const matchesDepartment = departmentFilter === "all" ||
+      (paymentDeptId && (String(paymentDeptId) === departmentFilter || paymentDeptId === Number(departmentFilter)))
+
+    // Date filter
+    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : null
+    const matchesStartDate = !startDateFilter || !paymentDate || paymentDate >= new Date(startDateFilter)
+    const matchesEndDate = !endDateFilter || !paymentDate || paymentDate <= new Date(endDateFilter)
+
+    return matchesSearch && matchesStatus && matchesDepartment && matchesStartDate && matchesEndDate
   })
 
   const getStatusBadge = (status: string) => {
@@ -278,17 +287,6 @@ export function SalaryPaymentManagement() {
     return { grossPay, totalDeductions, netPay }
   }
 
-  const calculateBulkPayment = () => {
-    let SalaryPayment = 0
-    const employeesList = selectedDepartment?.employees || []
-    console.log("Selected Department Employees:", employeesList)
-    SalaryPayment = employeesList.reduce((sum, emp) => sum + Number(emp.currentSalary), 0)
-    const grossPay = SalaryPayment + newPayment.overtime + newPayment.bonuses
-    return {
-      grossPay,
-    }
-  }
-
   // Replace handleCreatePayment with API call
   const handleCreatePayment = async () => {
     // Validate all fields are filled and valid
@@ -311,12 +309,9 @@ export function SalaryPaymentManagement() {
       !newPayment.paymentDate ||
       !(newPayment.paymentDate instanceof Date) ||
       isNaN(newPayment.paymentDate.getTime()) ||
-      !newPayment.periodStart ||
-      !(newPayment.periodStart instanceof Date) ||
-      isNaN(newPayment.periodStart.getTime()) ||
-      !newPayment.periodEnd ||
-      !(newPayment.periodEnd instanceof Date) ||
-      isNaN(newPayment.periodEnd.getTime())
+      !newPayment.payPeriod ||
+      !(newPayment.payPeriod instanceof Date) ||
+      isNaN(newPayment.payPeriod.getTime())
     ) {
       setError("Tous les champs sont obligatoires et doivent être valides.")
       return
@@ -334,15 +329,13 @@ export function SalaryPaymentManagement() {
 
     const body: CreateSalaryPaymentBody = {
       employeeId: newPayment.employeeId,
-      payPeriod: newPayment.payPeriod,
+      payPeriod: getDateString(newPayment.payPeriod)!,
       baseSalary: newPayment.baseSalary,
       overtime: newPayment.overtime,
       bonuses: newPayment.bonuses,
       paymentMethod: newPayment.paymentMethod,
       status: "pending",
       paymentDate: getDateString(newPayment.paymentDate)!,
-      periodStart: getDateString(newPayment.periodStart)!,
-      periodEnd: getDateString(newPayment.periodEnd)!,
       createdById: currentUser!.id,
       deductions: 0,
       bankAccountId: newPayment.paymentMethod === "Bank Transfer" ? newPayment.bankAccountId : undefined,
@@ -353,7 +346,7 @@ export function SalaryPaymentManagement() {
       setShowNewPaymentDialog(false)
       setNewPayment({
         employeeId: "",
-        payPeriod: "",
+        payPeriod: null,
         baseSalary: 0,
         overtime: 0,
         bonuses: 0,
@@ -361,77 +354,14 @@ export function SalaryPaymentManagement() {
         amount: 0,
         deductions: 0,
         paymentDate: null,
-        periodStart: null,
-        periodEnd: null,
         bankAccountId: undefined,
       })
     } catch (e: any) {
-      setError("Failed to create payment " + e.message)
-    }
-  }
-
-  const handleCreateBulkPayment = async () => {
-    if (!selectedDepartment) {
-      setError("Please select a department")
-      return
-    }
-    if (newPayment.paymentMethod === "Bank Transfer" && !newPayment.bankAccountId) {
-      setError("Veuillez sélectionner un compte bancaire du club pour le virement bancaire.")
-      return
-    }
-    // Get filtered employees for bulk payment
-    const employeesList = selectedDepartment.employees || []
-    const filteredEmployees = employeesList
-    const employeeIds = filteredEmployees.map((emp) => emp.employeeId)
-    if (employeeIds.length === 0) {
-      setError("No employees found for the selected department/position")
-      return
-    }
-    const body: CreateBulkSalaryPaymentBody = {
-      payPeriod: newPayment.payPeriod,
-      paymentMethod: newPayment.paymentMethod,
-      overtime: newPayment.overtime,
-      bonuses: newPayment.bonuses,
-      status: "pending",
-      paymentDate: newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : "",
-      periodStart: newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : undefined,
-      periodEnd: newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : undefined,
-      deductions: newPayment.deductions,
-      bankAccountId: newPayment.paymentMethod === "Bank Transfer" ? newPayment.bankAccountId : undefined,
-      createdById: currentUser!.id,
-    }
-    try {
-      const created = await createBulkSalaryPaymentForDepartement(body, selectedDepartment.id)
-      setPayments((prev) => [...prev, ...created])
-      setShowBulkPaymentDialog(false)
-      setNewPayment({
-        employeeId: "",
-        payPeriod: "",
-        baseSalary: 0,
-        overtime: 0,
-        bonuses: 0,
-        paymentMethod: "Bank Transfer",
-        amount: 0,
-        deductions: 0,
-        paymentDate: null,
-        periodStart: null,
-        periodEnd: null,
-        bankAccountId: undefined,
-      })
-    } catch (e: any) {
-      // Enhanced error logging
-      console.error("Bulk salary payment error:", e)
-      if (e.response) {
-        console.error("Bulk salary payment error response:", e.response)
-        if (e.response.data) {
-          console.error("Bulk salary payment error response data:", e.response.data)
-          setError("Failed to create bulk payment: " + (e.response.data.message || JSON.stringify(e.response.data)))
-          return
-        }
-      }
-      setError("Failed to create bulk payment: " + e.message)
-    } finally {
-      setSelectedDepartment(null)
+      // Extract the actual error message from the backend
+      const errorMessage = e.response?.data?.message || e.message || "Failed to create payment"
+      // If message is an array (validation errors), join them
+      const displayMessage = Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage
+      setError(displayMessage)
     }
   }
 
@@ -489,7 +419,7 @@ export function SalaryPaymentManagement() {
       )}
       {error && (
         <Alert variant="destructive" className="mb-4">
-          {error}
+          <p className="whitespace-normal">{String(error)}</p>
         </Alert>
       )}
       {/* Export Button */}
@@ -508,6 +438,14 @@ export function SalaryPaymentManagement() {
           <p className="text-gray-600 dark:text-gray-400">Traitez et gérez les paiements de salaires des employés</p>
         </div>
         <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            onClick={() => window.location.href = '/salary-payments/grouped'}
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Paiements groupés
+          </Button>
           <Dialog open={showNewPaymentDialog} onOpenChange={setShowNewPaymentDialog}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700">
@@ -520,130 +458,114 @@ export function SalaryPaymentManagement() {
                 <DialogTitle>Créer un nouveau paiement de salaire</DialogTitle>
                 <DialogDescription>Traiter un nouveau paiement de salaire pour un employé</DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employee">Employé</Label>
-                  <Select
-                    value={newPayment.employeeId}
-                    onValueChange={(value) => {
-                      const employee = employees.find((emp) => emp.employeeId === value)
-                      setNewPayment({
-                        ...newPayment,
-                        employeeId: value,
-                        baseSalary: employee?.baseSalary || 0,
-                      })
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un employé" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((employee) => (
-                        <SelectItem key={employee.employeeId} value={employee.employeeId}>
-                          {employee.name} - {employee.position ? employee.position.title : "Aucune position"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="employee">Employé</Label>
+                    <Combobox
+                      options={employees.map((employee) => ({
+                        value: employee.employeeId,
+                        label: `${employee.name} - ${employee.position ? employee.position.title : "Aucune position"}`,
+                        keywords: `${employee.employeeId} ${employee.name} ${employee.position?.title || ""}`
+                      }))}
+                      value={newPayment.employeeId}
+                      onValueChange={(value) => {
+                        const employee = employees.find((emp) => emp.employeeId === value)
+                        setNewPayment({
+                          ...newPayment,
+                          employeeId: value,
+                          baseSalary: employee?.baseSalary || 0,
+                        })
+                      }}
+                      placeholder="Sélectionner un employé"
+                      searchPlaceholder="Rechercher un employé..."
+                      emptyText="Aucun employé trouvé"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payPeriod">Période de paie</Label>
+                    <Input
+                      id="payPeriod"
+                      type="date"
+                      value={newPayment.payPeriod ? newPayment.payPeriod.toISOString().slice(0, 10) : ""}
+                      onChange={(e) =>
+                        setNewPayment({ ...newPayment, payPeriod: e.target.value ? new Date(e.target.value) : null })
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payPeriod">Période de paie</Label>
-                  <Input
-                    id="payPeriod"
-                    value={newPayment.payPeriod}
-                    onChange={(e) => setNewPayment({ ...newPayment, payPeriod: e.target.value })}
-                    placeholder="ex : Décembre 2024"
-                  />
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="baseSalary">Salaire de base</Label>
+                    <Input
+                      id="baseSalary"
+                      type="number"
+                      value={newPayment.baseSalary}
+                      onChange={(e) => setNewPayment({ ...newPayment, baseSalary: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="overtime">Heures supplémentaires</Label>
+                    <Input
+                      id="overtime"
+                      type="number"
+                      value={newPayment.overtime}
+                      onChange={(e) => setNewPayment({ ...newPayment, overtime: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodStart">Début de la période</Label>
-                  <Input
-                    id="periodStart"
-                    type="date"
-                    value={newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, periodStart: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="bonuses">Primes</Label>
+                    <Input
+                      id="bonuses"
+                      type="number"
+                      value={newPayment.bonuses}
+                      onChange={(e) => setNewPayment({ ...newPayment, bonuses: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deductions">Déductions</Label>
+                    <Input
+                      id="deductions"
+                      type="number"
+                      value={newPayment.deductions}
+                      onChange={(e) => setNewPayment({ ...newPayment, deductions: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodEnd">Fin de la période</Label>
-                  <Input
-                    id="periodEnd"
-                    type="date"
-                    value={newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, periodEnd: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="baseSalary">Salaire de base</Label>
-                  <Input
-                    id="baseSalary"
-                    type="number"
-                    value={newPayment.baseSalary}
-                    onChange={(e) => setNewPayment({ ...newPayment, baseSalary: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="overtime">Heures supplémentaires</Label>
-                  <Input
-                    id="overtime"
-                    type="number"
-                    value={newPayment.overtime}
-                    onChange={(e) => setNewPayment({ ...newPayment, overtime: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bonuses">Primes</Label>
-                  <Input
-                    id="bonuses"
-                    type="number"
-                    value={newPayment.bonuses}
-                    onChange={(e) => setNewPayment({ ...newPayment, bonuses: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deductions">Déductions</Label>
-                  <Input
-                    id="deductions"
-                    type="number"
-                    value={newPayment.deductions}
-                    onChange={(e) => setNewPayment({ ...newPayment, deductions: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentDate">Date de paiement</Label>
-                  <Input
-                    id="paymentDate"
-                    type="date"
-                    value={newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, paymentDate: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Méthode de paiement</Label>
-                  <Select
-                    value={newPayment.paymentMethod}
-                    onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bank Transfer">Virement bancaire</SelectItem>
-                      <SelectItem value="Direct Deposit">Dépôt direct</SelectItem>
-                      <SelectItem value="Check">Chèque</SelectItem>
-                      <SelectItem value="Cash">Espèces</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentDate">Date de paiement</Label>
+                    <Input
+                      id="paymentDate"
+                      type="date"
+                      value={newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : ""}
+                      onChange={(e) =>
+                        setNewPayment({ ...newPayment, paymentDate: e.target.value ? new Date(e.target.value) : null })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentMethod">Méthode de paiement</Label>
+                    <Select
+                      value={newPayment.paymentMethod}
+                      onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bank Transfer">Virement bancaire</SelectItem>
+                        <SelectItem value="Direct Deposit">Dépôt direct</SelectItem>
+                        <SelectItem value="Check">Chèque</SelectItem>
+                        <SelectItem value="Cash">Espèces</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 {newPayment.paymentMethod === "Bank Transfer" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="bankAccountId">Compte bancaire du club</Label>
+                  <div className="space-y-2">                  <Label htmlFor="bankAccountId">Compte bancaire du club</Label>
                     <Select
                       value={newPayment.bankAccountId ? String(newPayment.bankAccountId) : ""}
                       onValueChange={(id) => setNewPayment((f) => ({ ...f, bankAccountId: Number(id) }))}
@@ -687,194 +609,16 @@ export function SalaryPaymentManagement() {
                 <Button variant="outline" onClick={() => setShowNewPaymentDialog(false)}>
                   Annuler
                 </Button>
-                <Button 
-                  onClick={handleCreatePayment} 
+                <Button
+                  onClick={handleCreatePayment}
                   disabled={
-                    !newPayment.employeeId || 
-                    !newPayment.payPeriod || 
+                    !newPayment.employeeId ||
+                    !newPayment.payPeriod ||
                     loadingPaymentPeriod ||
                     !!duplicatePaymentWarning
                   }
                 >
                   {loadingPaymentPeriod ? "Calcul..." : "Créer le paiement"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={showBulkPaymentDialog} onOpenChange={setShowBulkPaymentDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouveau paiement groupé
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Créer un paiement de salaire groupé</DialogTitle>
-                <DialogDescription>Traiter des paiements de salaires groupés pour plusieurs employés</DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="departement">Département</Label>
-                  <Select
-                    value={selectedDepartment?.id?.toString() || "0"}
-                    onValueChange={(value) => {
-                      const department = departmentsList.find((dep) => dep.id === Number(value))
-                      setSelectedDepartment(department || null)
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un département" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem key={0} value={"0"} disabled>
-                        Sélectionner un département
-                      </SelectItem>
-                      {departmentsList.map((department) => (
-                        <SelectItem key={department.id} value={department.id.toString()}>
-                          {department.name} - ({department.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payPeriod">Période de paie</Label>
-                  <Input
-                    id="payPeriod"
-                    value={newPayment.payPeriod}
-                    onChange={(e) => setNewPayment({ ...newPayment, payPeriod: e.target.value })}
-                    placeholder="ex : Décembre 2024"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodStart">Début de la période</Label>
-                  <Input
-                    id="periodStart"
-                    type="date"
-                    value={newPayment.periodStart ? newPayment.periodStart.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, periodStart: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodEnd">Fin de la période</Label>
-                  <Input
-                    id="periodEnd"
-                    type="date"
-                    value={newPayment.periodEnd ? newPayment.periodEnd.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, periodEnd: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="overtime">Heures supplémentaires</Label>
-                  <Input
-                    id="overtime"
-                    type="number"
-                    value={newPayment.overtime}
-                    onChange={(e) => setNewPayment({ ...newPayment, overtime: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bonuses">Primes</Label>
-                  <Input
-                    id="bonuses"
-                    type="number"
-                    value={newPayment.bonuses}
-                    onChange={(e) => setNewPayment({ ...newPayment, bonuses: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deductions">Déductions</Label>
-                  <Input
-                    id="deductions"
-                    type="number"
-                    value={newPayment.deductions}
-                    onChange={(e) => setNewPayment({ ...newPayment, deductions: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentDate">Date de paiement</Label>
-                  <Input
-                    id="paymentDate"
-                    type="date"
-                    value={newPayment.paymentDate ? newPayment.paymentDate.toISOString().slice(0, 10) : ""}
-                    onChange={(e) =>
-                      setNewPayment({ ...newPayment, paymentDate: e.target.value ? new Date(e.target.value) : null })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Méthode de paiement</Label>
-                  <Select
-                    value={newPayment.paymentMethod}
-                    onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bank Transfer">Virement bancaire</SelectItem>
-                      <SelectItem value="Direct Deposit">Dépôt direct</SelectItem>
-                      <SelectItem value="Check">Chèque</SelectItem>
-                      <SelectItem value="Cash">Espèces</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {newPayment.paymentMethod === "Bank Transfer" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="bankAccountId">Compte bancaire du club</Label>
-                    <Select
-                      value={newPayment.bankAccountId ? String(newPayment.bankAccountId) : ""}
-                      onValueChange={(id) => setNewPayment((f) => ({ ...f, bankAccountId: Number(id) }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un compte bancaire" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bankAccounts.map((account) => (
-                          <SelectItem key={account.id} value={String(account.id)}>
-                            {account.bankName} - {account.accountNumber}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-              {selectedDepartment?.employees && (
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <h4 className="font-semibold mb-2">Calcul du paiement</h4>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Salaire brut :</span>
-                      <p className="font-semibold">{calculateBulkPayment().grossPay.toLocaleString()} MAD</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Déductions :</span>
-                      <p className="font-semibold">{newPayment.deductions.toLocaleString()} MAD</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Salaire net :</span>
-                      <p className="font-semibold text-green-600">
-                        {(calculateBulkPayment().grossPay - newPayment.deductions).toLocaleString()} MAD
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowBulkPaymentDialog(false)}>
-                  Annuler
-                </Button>
-                <Button
-                  onClick={handleCreateBulkPayment}
-                  disabled={!selectedDepartment || !selectedDepartment || !newPayment.payPeriod}
-                >
-                  Créer le paiement groupé
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -933,35 +677,72 @@ export function SalaryPaymentManagement() {
           <CardDescription>Gérez et suivez tous les paiements de salaires</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Rechercher par nom, poste ou ID de paiement..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Rechercher par nom, poste ou ID de paiement..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="processed">Traité</SelectItem>
+                  <SelectItem value="failed">Échoué</SelectItem>
+                  <SelectItem value="cancelled">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="block">
+                <Label htmlFor="start-date" className="text-xs mb-1 block">Département</Label>
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Département" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les départements</SelectItem>
+                    {departmentsList.map((dept) => (
+                      <SelectItem key={dept.id} value={String(dept.id)}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 flex-1">
+                <div className="flex-1">
+                  <Label htmlFor="start-date" className="text-xs mb-1 block">Date début</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDateFilter}
+                    onChange={(e) => setStartDateFilter(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="end-date" className="text-xs mb-1 block">Date fin</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDateFilter}
+                    onChange={(e) => setEndDateFilter(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="processed">Traité</SelectItem>
-                <SelectItem value="failed">Échoué</SelectItem>
-                <SelectItem value="cancelled">Annulé</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Exporter
-            </Button>
           </div>
 
           <div className="rounded-md border">
@@ -981,7 +762,8 @@ export function SalaryPaymentManagement() {
               </TableHeader>
               <TableBody>
                 {filteredPayments.map((payment, index) => {
-                  const employeeName = payment.employee?.employeeId || payment.employeeId || ""
+                  const employeeId = payment.employee?.employeeId || payment.employeeId || ""
+                  const employeeName = payment.employee?.fullName || ""
                   const grossPay = Number(payment.baseSalary) + Number(payment.overtime) + Number(payment.bonuses)
                   const deductions = 0 // If you have deduction logic, update here
                   const netPay = Number(payment.amount)
@@ -991,10 +773,11 @@ export function SalaryPaymentManagement() {
                       <TableCell className="font-medium">{payment.id}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{employeeName}</div>
+                          <div className="font-medium">{employeeId}</div>
+                          {employeeName && <div className="text-xs text-muted-foreground">{employeeName}</div>}
                         </div>
                       </TableCell>
-                      <TableCell>{payment.payPeriod}</TableCell>
+                      <TableCell>{formatDate(payment.payPeriod)}</TableCell>
                       <TableCell>{grossPay.toLocaleString()} MAD</TableCell>
                       <TableCell>{deductions.toLocaleString()} MAD</TableCell>
                       <TableCell className="font-semibold text-green-600">{netPay.toLocaleString()} MAD</TableCell>
