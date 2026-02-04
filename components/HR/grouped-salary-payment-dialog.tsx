@@ -293,7 +293,7 @@ export function GroupedSalaryPaymentDialog({
                         </div>
                       </TableCell>
                       <TableCell>{emp.department}</TableCell>
-                      <TableCell>{emp.currentSalary.toLocaleString()} DZD</TableCell>
+                      <TableCell>{emp.currentSalary.toLocaleString()} MAD</TableCell>
                       <TableCell>
                         <Input
                           type="number"
@@ -374,7 +374,7 @@ export function GroupedSalaryPaymentDialog({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant total:</span>
-                    <span className="font-bold text-green-600">{totalAmount.toLocaleString()} DZD</span>
+                    <span className="font-bold text-green-600">{totalAmount.toLocaleString()} MAD</span>
                   </div>
                 </CardContent>
               </Card>
