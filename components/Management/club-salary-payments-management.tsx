@@ -628,13 +628,23 @@ export function ClubSalaryPaymentsManagement() {
             Gérez les paiements de salaires pour les joueurs et le staff du club
           </p>
         </div>
-        <Button
-          onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau Paiement
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => window.location.href = "/club-salary-payments/grouped"}
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Paiements Groupés
+          </Button>
+          <Button
+            onClick={() => setIsCreateSalaryPaymentDialogOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau Paiement
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
