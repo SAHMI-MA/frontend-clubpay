@@ -18,6 +18,7 @@ import { fetchAllPlayers } from "@/lib/redux/playerSlice"
 import { fetchAllStaff } from "@/lib/redux/staffSlice"
 import { formatCurrency } from "@/lib/pdf-utils"
 import { authUtils } from "@/lib/redux/auth-utils"
+import { getApiUrl } from "@/lib/api-config"
 
 interface GroupedPaymentItem {
   type: 'player' | 'staff'
@@ -121,22 +122,30 @@ export default function GroupedClubSalaryPaymentsPage() {
     if (paymentMethod === "Bank Transfer" && currentStep === 3) {
       setLoadingBankAccounts(true)
       const token = authUtils.getToken()
+      console.log('[Club Grouped Payment] Fetching bank accounts with token:', token ? 'Token present' : 'No token')
+      console.log('[Club Grouped Payment] Token value:', token)
+      console.log('[Club Grouped Payment] API URL:', getApiUrl('/bank-accounts'))
       
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/club/bank-accounts`, {
+      fetch(getApiUrl('/bank-accounts'), {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       })
         .then((res) => res.json())
         .then((data) => {
-          setBankAccounts(data)
-          if (data.length > 0 && !bankAccountId) {
-            setBankAccountId(data[0].id)
+          console.log('Bank accounts response:', data)
+          // Ensure data is an array
+          const accountsArray = Array.isArray(data) ? data : (data?.data || [])
+          setBankAccounts(accountsArray)
+          if (accountsArray.length > 0 && !bankAccountId) {
+            setBankAccountId(accountsArray[0].id)
           }
         })
         .catch((error) => {
           console.error("Failed to fetch bank accounts:", error)
           showToast("Failed to load bank accounts", "error", "Error")
+          setBankAccounts([])
         })
         .finally(() => {
           setLoadingBankAccounts(false)

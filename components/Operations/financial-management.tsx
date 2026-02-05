@@ -622,7 +622,7 @@ export function FinancialManagement() {
   useEffect(() => {
     // Fetch data from Redux
     dispatch(fetchTransactions())
-    dispatch(fetchSalaryPayments())
+    dispatch(fetchSalaryPayments({ page: 1, limit: 10 }))
     dispatch(fetchAllPlayers())
     dispatch(fetchAllStaff())
 
@@ -953,7 +953,7 @@ export function FinancialManagement() {
       })
 
       // Refresh data
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page: 1, limit: 10 }))
       dispatch(fetchTransactions()) // Salary payments may create transactions
     } catch (err: any) {
       console.error("Failed to create salary payment:", err)
@@ -1031,8 +1031,8 @@ export function FinancialManagement() {
             ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})`
             : "Unknown recipient"
 
-        const periodStart = new Date(paymentDetails.periodStart).toLocaleDateString()
-        const periodEnd = new Date(paymentDetails.periodEnd).toLocaleDateString()
+        const periodStart = paymentDetails.periodStart ? new Date(paymentDetails.periodStart).toLocaleDateString() : 'N/A'
+        const periodEnd = paymentDetails.periodEnd ? new Date(paymentDetails.periodEnd).toLocaleDateString() : 'N/A'
 
         customDescription = `${selectedTransactionType === TransactionType.INCOME ? "Income" : "Expense"} for ${recipientName} - Period: ${periodStart} to ${periodEnd}`
       }
@@ -1066,7 +1066,7 @@ export function FinancialManagement() {
 
       // Refresh transactions and salary payments
       dispatch(fetchTransactions())
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page: 1, limit: 10 }))
     } catch (err: any) {
       console.error("Failed to create transaction from salary payment:", err)
 

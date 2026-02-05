@@ -115,19 +115,23 @@ export function ClubSalaryPaymentsManagement() {
   const dispatch = useAppDispatch()
   
   // Get data from Redux store
-  const { salaryPayments, loading } = useAppSelector((state) => state.financial)
+  const { salaryPayments, loading, totalSalaryPayments: totalPaymentCount, totalPages } = useAppSelector((state) => state.financial)
   const players = useAppSelector((state) => state.players?.players || [])
   const staff = useAppSelector((state) => state.staff?.staff || [])
   const playersLoading = useAppSelector((state) => state.players?.loading || false)
   const staffLoading = useAppSelector((state) => state.staff?.loading || false)
   const authUser = useAppSelector((state: RootState) => state.auth.user)
 
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+
   // Fetch initial data on component mount
   useEffect(() => {
-    dispatch(fetchSalaryPayments())
+    dispatch(fetchSalaryPayments({ page, limit }))
     dispatch(fetchAllPlayers())
     dispatch(fetchAllStaff())
-  }, [dispatch])
+  }, [dispatch, page, limit])
 
   // Create salary payment
   const handleCreateSalaryPayment = useCallback(async () => {
@@ -210,7 +214,7 @@ export function ClubSalaryPaymentsManagement() {
       })
       
       // Refresh data
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page, limit }))
     } catch (err: any) {
       console.error("Failed to create salary payment:", err)
       
@@ -293,7 +297,7 @@ export function ClubSalaryPaymentsManagement() {
       const transactionData: CreateTransactionFromSalaryPaymentDto = {
         salaryPaymentId: selectedSalaryPaymentId,
         createdById: userId,
-        customDescription: `Salary payment for ${recipientName} - Period: ${new Date(salaryPayment.periodStart).toLocaleDateString()} to ${new Date(salaryPayment.periodEnd).toLocaleDateString()}`,
+        customDescription: `Salary payment for ${recipientName} - Period: ${salaryPayment.periodStart ? new Date(salaryPayment.periodStart).toLocaleDateString() : 'N/A'} to ${salaryPayment.periodEnd ? new Date(salaryPayment.periodEnd).toLocaleDateString() : 'N/A'}`,
         transactionType: selectedTransactionType,
         transactionCategory: selectedTransactionCategory as TransactionCategory
       }
@@ -310,7 +314,7 @@ export function ClubSalaryPaymentsManagement() {
       )
 
       // Refresh salary payments to get updated status
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page, limit }))
     } catch (err: any) {
       console.error("Failed to create transaction from salary payment:", err)
       showToast(
@@ -554,7 +558,7 @@ export function ClubSalaryPaymentsManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {new Date(payment.periodStart).toLocaleDateString()} - {new Date(payment.periodEnd).toLocaleDateString()}
+                          {payment.periodStart && payment.periodEnd ? `${new Date(payment.periodStart).toLocaleDateString()} - ${new Date(payment.periodEnd).toLocaleDateString()}` : 'N/A'}
                         </TableCell>
                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>{formatCurrency(payment.taxAmount)}</TableCell>
@@ -597,6 +601,99 @@ export function ClubSalaryPaymentsManagement() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Afficher</span>
+              <Select
+                value={limit.toString()}
+                onValueChange={(value) => {
+                  setLimit(Number(value))
+                  setPage(1) // Reset to first page when changing page size
+                }}
+              >
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">par page</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Page {page} sur {totalPages || 1} ({totalPaymentCount || 0} paiements au total)
+              </span>
+              
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1 || loading}
+                >
+                  Première
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1 || loading}
+                >
+                  Précédent
+                </Button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages || 1) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= (totalPages - 2)) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      disabled={loading}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= (totalPages || 1) || loading}
+                >
+                  Suivant
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(totalPages || 1)}
+                  disabled={page >= (totalPages || 1) || loading}
+                >
+                  Dernière
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

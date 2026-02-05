@@ -67,8 +67,9 @@ export interface SalaryPayment {
   id: number;
   amount: number;
   paymentDate: string; // ISO format date string
-  periodStart: string; // ISO format date string
-  periodEnd: string; // ISO format date string
+  periodStart?: string | null; // ISO format date string
+  periodEnd?: string | null; // ISO format date string
+  payPeriod?: string | null; // ISO format date string for pay period month
   bonus?: number;
   taxAmount: number;
   netAmount: number;

@@ -26,7 +26,11 @@ export function exportClubSalaryPaymentsToCSV(salaryPayments: any[]) {
         ? `${payment.staff.firstName} ${payment.staff.lastName} (Staff)`
         : "Unknown",
     payment.playerId ? "Player" : payment.staffId ? "Staff" : "Unknown",
-    `${new Date(payment.periodStart).toLocaleDateString()} - ${new Date(payment.periodEnd).toLocaleDateString()}`,
+    payment.periodStart && payment.periodEnd
+      ? `${new Date(payment.periodStart!).toLocaleDateString()} - ${new Date(payment.periodEnd!).toLocaleDateString()}`
+      : payment.payPeriod
+      ? new Date(payment.payPeriod!).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+      : "N/A",
     payment.amount || 0,
     payment.taxAmount || 0,
     payment.netAmount || 0,
@@ -149,19 +153,23 @@ export function ClubSalaryPaymentsManagement() {
   const dispatch = useAppDispatch()
 
   // Get data from Redux store
-  const { salaryPayments, loading } = useAppSelector((state) => state.financial)
+  const { salaryPayments, loading, totalSalaryPayments: totalPaymentCount, totalPages } = useAppSelector((state) => state.financial)
   const players = useAppSelector((state) => state.players?.players || [])
   const staff = useAppSelector((state) => state.staff?.staff || [])
   const playersLoading = useAppSelector((state) => state.players?.loading || false)
   const staffLoading = useAppSelector((state) => state.staff?.loading || false)
   const authUser = useAppSelector((state: RootState) => state.auth.user)
 
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+
   // Fetch initial data on component mount
   useEffect(() => {
-    dispatch(fetchSalaryPayments())
+    dispatch(fetchSalaryPayments({ page, limit }))
     dispatch(fetchAllPlayers())
     dispatch(fetchAllStaff())
-  }, [dispatch])
+  }, [dispatch, page, limit])
 
   // Refresh payment counter when salary payments change
   useEffect(() => {
@@ -296,9 +304,7 @@ export function ClubSalaryPaymentsManagement() {
     // Validation
     if (
       !salaryPaymentForm.amount ||
-      !salaryPaymentForm.paymentDate ||
-      !salaryPaymentForm.periodStart ||
-      !salaryPaymentForm.periodEnd
+      !salaryPaymentForm.paymentDate
     ) {
       setSalaryPaymentError("Please fill in all required fields")
       return
@@ -378,7 +384,7 @@ export function ClubSalaryPaymentsManagement() {
       setNoContractWarning(null)
 
       // Refresh data
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page, limit }))
     } catch (err: any) {
       console.error("Failed to create salary payment:", err)
 
@@ -439,10 +445,16 @@ export function ClubSalaryPaymentsManagement() {
           ? `${staffInfo.firstName} ${staffInfo.lastName} (${staffInfo.role})`
           : "Unknown"
 
+      const periodInfo = salaryPayment.periodStart && salaryPayment.periodEnd
+        ? `Period: ${new Date(salaryPayment.periodStart!).toLocaleDateString()} to ${new Date(salaryPayment.periodEnd!).toLocaleDateString()}`
+        : salaryPayment.payPeriod
+        ? `Pay Period: ${new Date(salaryPayment.payPeriod!).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`
+        : "";
+
       const transactionData: CreateTransactionFromSalaryPaymentDto = {
         salaryPaymentId: selectedSalaryPaymentId,
         createdById: userId,
-        customDescription: `Salary payment for ${recipientName} - Period: ${new Date(salaryPayment.periodStart).toLocaleDateString()} to ${new Date(salaryPayment.periodEnd).toLocaleDateString()}`,
+        customDescription: `Salary payment for ${recipientName}${periodInfo ? ` - ${periodInfo}` : ""}`,
         transactionType: selectedTransactionType,
         transactionCategory: selectedTransactionCategory as TransactionCategory,
       }
@@ -455,7 +467,7 @@ export function ClubSalaryPaymentsManagement() {
       showToast("Transaction created successfully from salary payment", "success", "Transaction Created")
 
       // Refresh salary payments to get updated status
-      dispatch(fetchSalaryPayments())
+      dispatch(fetchSalaryPayments({ page, limit }))
     } catch (err: any) {
       console.error("Failed to create transaction from salary payment:", err)
       showToast(
@@ -498,7 +510,7 @@ export function ClubSalaryPaymentsManagement() {
         showToast("Paiement de salaire approuvé et transaction créée avec succès", "success", "Paiement Approuvé")
 
         // Refresh salary payments to get updated data
-        dispatch(fetchSalaryPayments())
+        dispatch(fetchSalaryPayments({ page, limit }))
 
         console.log("Salary payment approved:", approvedPayment)
       } catch (err: any) {
@@ -807,8 +819,11 @@ export function ClubSalaryPaymentsManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {new Date(payment.periodStart).toLocaleDateString()} -{" "}
-                          {new Date(payment.periodEnd).toLocaleDateString()}
+                          {payment.periodStart && payment.periodEnd
+                            ? `${new Date(payment.periodStart!).toLocaleDateString()} - ${new Date(payment.periodEnd!).toLocaleDateString()}`
+                            : payment.payPeriod
+                            ? new Date(payment.payPeriod!).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+                            : "N/A"}
                         </TableCell>
                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>{formatCurrency(payment?.bonus || 0)}</TableCell>
@@ -875,6 +890,99 @@ export function ClubSalaryPaymentsManagement() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Afficher</span>
+              <Select
+                value={limit.toString()}
+                onValueChange={(value) => {
+                  setLimit(Number(value))
+                  setPage(1) // Reset to first page when changing page size
+                }}
+              >
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">par page</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Page {page} sur {totalPages || 1} ({totalPaymentCount || 0} paiements au total)
+              </span>
+              
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1 || loading}
+                >
+                  Première
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1 || loading}
+                >
+                  Précédent
+                </Button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages || 1) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= (totalPages - 2)) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      disabled={loading}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= (totalPages || 1) || loading}
+                >
+                  Suivant
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(totalPages || 1)}
+                  disabled={page >= (totalPages || 1) || loading}
+                >
+                  Dernière
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1171,7 +1279,7 @@ export function ClubSalaryPaymentsManagement() {
               {/* Period Start */}
               <div className="space-y-2">
                 <Label htmlFor="periodStart" className="text-sm font-medium">
-                  Début de période*
+                  Début de période
                 </Label>
                 <Input
                   id="periodStart"
@@ -1184,7 +1292,7 @@ export function ClubSalaryPaymentsManagement() {
               {/* Period End */}
               <div className="space-y-2">
                 <Label htmlFor="periodEnd" className="text-sm font-medium">
-                  Fin de période*
+                  Fin de période
                 </Label>
                 <Input
                   id="periodEnd"
@@ -1424,18 +1532,33 @@ export function ClubSalaryPaymentsManagement() {
               <div className="border-t pt-3">
                 <Label className="text-sm font-medium">Période</Label>
                 <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
-                  <div>
-                    <Label className="text-xs text-gray-500">Du</Label>
-                    <p className="font-medium">
-                      {new Date(selectedPaymentForView.periodStart).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">Au</Label>
-                    <p className="font-medium">
-                      {new Date(selectedPaymentForView.periodEnd).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
+                  {selectedPaymentForView.periodStart && selectedPaymentForView.periodEnd ? (
+                    <>
+                      <div>
+                        <Label className="text-xs text-gray-500">Du</Label>
+                        <p className="font-medium">
+                          {new Date(selectedPaymentForView.periodStart!).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Au</Label>
+                        <p className="font-medium">
+                          {new Date(selectedPaymentForView.periodEnd!).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                    </>
+                  ) : selectedPaymentForView.payPeriod ? (
+                    <div className="col-span-2">
+                      <Label className="text-xs text-gray-500">Mois de paiement</Label>
+                      <p className="font-medium">
+                        {new Date(selectedPaymentForView.payPeriod!).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-500">Aucune période spécifiée</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

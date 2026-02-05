@@ -61,10 +61,14 @@ export function GroupedSalaryPaymentDialog({
       })
       
       const token = authUtils.getToken()
+      console.log('[HR Grouped Payment] Fetching bank accounts with token:', token ? 'Token present' : 'No token')
+      console.log('[HR Grouped Payment] Token value:', token)
+      console.log('[HR Grouped Payment] API URL:', getApiUrl("/bank-accounts"))
+      
       fetch(getApiUrl("/bank-accounts"), {
         headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       })
         .then((res) => (res.ok ? res.json() : []))

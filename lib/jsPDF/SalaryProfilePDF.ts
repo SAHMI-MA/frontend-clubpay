@@ -55,11 +55,6 @@ export async function GenerateSalaryProfilePDF({ payment, players, staff }: Sala
     yPos += 8
 
     doc.text(`Statut: ${payment.status === "PAID" ? "Payé" : "En attente"}`, 20, yPos)
-    doc.text(
-      `Période: ${new Date(payment.periodStart).toLocaleDateString("fr-FR")} - ${new Date(payment.periodEnd).toLocaleDateString("fr-FR")}`,
-      120,
-      yPos,
-    )
     yPos += 20
 
     // Recipient Information

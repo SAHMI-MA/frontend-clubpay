@@ -29,6 +29,10 @@ interface FinancialState {
   selectedReport: FinancialReport | null;
   loading: boolean;
   error: string | null;
+  totalSalaryPayments: number;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 const initialState: FinancialState = {
@@ -43,6 +47,10 @@ const initialState: FinancialState = {
   selectedReport: null,
   loading: false,
   error: null,
+  totalSalaryPayments: 0,
+  currentPage: 1,
+  pageSize: 10,
+  totalPages: 0,
 };
 
 // Transactions Thunks
@@ -310,9 +318,15 @@ export const createRentalFromAcquisition = createAsyncThunk(
 // Salary Payments Thunks
 export const fetchSalaryPayments = createAsyncThunk(
   'financial/fetchSalaryPayments',
-  async (_, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
     try {
-      const data = await api.get<SalaryPayment[]>('/accounting/salary-payments');
+      const data = await api.get<{
+        data: SalaryPayment[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>(`/accounting/salary-payments?page=${page}&limit=${limit}`);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch salary payments');
@@ -419,7 +433,7 @@ export const createBulkSalaryPayment = createAsyncThunk(
       const response = await api.post<SalaryPayment[]>('/accounting/salary-payments/bulk', paymentData);
       
       // Refresh salary payments after creating bulk payments
-      await dispatch(fetchSalaryPayments());
+      await dispatch(fetchSalaryPayments({ page: 1, limit: 10 }));
       
       return response;
     } catch (error: any) {
@@ -703,9 +717,19 @@ const financialSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(fetchSalaryPayments.fulfilled, (state, action) => {
+    builder.addCase(fetchSalaryPayments.fulfilled, (state, action: PayloadAction<any>) => {
       state.loading = false;
-      state.salaryPayments = action.payload;
+      // Handle paginated response
+      if (action.payload.data) {
+        state.salaryPayments = action.payload.data;
+        state.totalSalaryPayments = action.payload.total || 0;
+        state.currentPage = action.payload.page || 1;
+        state.pageSize = action.payload.limit || 10;
+        state.totalPages = action.payload.totalPages || 0;
+      } else {
+        // Fallback for non-paginated response
+        state.salaryPayments = action.payload;
+      }
     });
     builder.addCase(fetchSalaryPayments.rejected, (state, action) => {
       state.loading = false;
