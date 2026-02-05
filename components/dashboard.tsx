@@ -13,6 +13,7 @@ import {
   fetchAllDashboardData, 
   markAlertAsRead 
 } from "@/lib/redux/dashboardSlice"
+import { AlertsDashboardWidget } from "@/components/alerts/alerts-dashboard-widget"
 
 export function Dashboard() {
   const dispatch = useDispatch<AppDispatch>()
@@ -300,8 +301,13 @@ export function Dashboard() {
       </div>
 
       {/* Recent Activity and Upcoming Matches */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Alerts Dashboard Widget */}
+        <div className="lg:col-span-1">
+          <AlertsDashboardWidget />
+        </div>
+
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -359,7 +365,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />

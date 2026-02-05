@@ -18,6 +18,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/redux/store"
 import { fetchNotifications, markAsRead, markAllAsRead } from "@/lib/redux/notificationSlice"
 import { useRouter } from "next/navigation"
+import { AlertBadge } from "@/components/alerts/alert-badge"
 
 interface TopBarProps {
   darkMode: boolean
@@ -164,6 +165,9 @@ export function TopBar({ darkMode, setDarkMode, user, isWebSocketConnected, onLo
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+
+        {/* Alerts Badge */}
+        <AlertBadge />
 
         {/* Notifications */}
         <DropdownMenu open={notifDropdownOpen} onOpenChange={setNotifDropdownOpen}>

@@ -17,6 +17,7 @@ import objectiveReducer from './objectiveSlice';
 import matchReducer from './matchSlice';
 import dashboardReducer from './dashboardSlice';
 import notificationReducer from './notificationSlice';
+import alertsReducer from './alertsSlice';
 import { inventoryReducer } from './InventorySlice';
 
 // Configure the Redux store
@@ -40,6 +41,7 @@ export const store = configureStore({
     matches: matchReducer,
     dashboard: dashboardReducer,
     notifications: notificationReducer,
+    alerts: alertsReducer,
     inventory: inventoryReducer
   },
   // Enable Redux DevTools extension
