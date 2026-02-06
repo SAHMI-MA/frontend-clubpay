@@ -33,7 +33,7 @@ export function AppSidebar({ }: AppSidebarProps) {
   const pathname = usePathname()
   const [associationSettings, setAssociationSettings] = useState<AssociationSettings | null>(null)
   const [baseUrl, setBaseUrl] = useState<string>("")
-  
+
   const getAssociationSettings = async () => {
     try {
       const settings = await associationAPI.getSettings()
@@ -45,23 +45,33 @@ export function AppSidebar({ }: AppSidebarProps) {
       setAssociationSettings(null)
     }
   }
-  
+
   useEffect(() => {
     getAssociationSettings()
   }, [])
 
   const userPermissions = new Set<string>()
   if (user && Array.isArray(user.roles)) {
-    user.roles.forEach(role => {
-      if (Array.isArray(role.permissions)) {
-        role.permissions.forEach((perm: Permissions) => {
-          if (perm && perm.page) {
-            userPermissions.add(perm.page)
-            userPermissions.add(`${perm.page}.view`)
-          }
+    // if user is admin, grant all permissions
+    if (user.roles.some(role => role.name === "admin")) {
+      navigationGroups.forEach(group => {
+        group.items.forEach(item => {
+          userPermissions.add(item.id)
+          userPermissions.add(`${item.id}.view`)
         })
-      }
-    })
+      })
+    } else {
+      user.roles.forEach(role => {
+        if (Array.isArray(role.permissions)) {
+          role.permissions.forEach((perm: Permissions) => {
+            if (perm && perm.page) {
+              userPermissions.add(perm.page)
+              userPermissions.add(`${perm.page}.view`)
+            }
+          })
+        }
+      })
+    }
   }
 
   // Helper to check if user can view a page
@@ -95,16 +105,16 @@ export function AppSidebar({ }: AppSidebarProps) {
     <Sidebar className="border-r border-gray-200 dark:border-gray-700">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-            {
+          {
             associationSettings != null && associationSettings.logoUrl != null ?
-            <img
-              src={`${baseUrl}${associationSettings.logoUrl}`}
-              alt="Association Logo"
-              className="h-16 w-16 rounded-full object-cover"
-              style={{ aspectRatio: "1 / 1" }}
-            />
-            : <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
-            }
+              <img
+                src={`${baseUrl}${associationSettings.logoUrl}`}
+                alt="Association Logo"
+                className="h-16 w-16 rounded-full object-cover"
+                style={{ aspectRatio: "1 / 1" }}
+              />
+              : <Shield className="h-8 w-8 text-blue-800 dark:text-blue-400" />
+          }
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{associationSettings?.name}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">{associationSettings?.tagline}</p>

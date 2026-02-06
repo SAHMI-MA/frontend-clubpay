@@ -175,6 +175,11 @@ export const navigationGroups = [
         title: "Finances",
         icon: CreditCard,
         id: "financial",
+      },
+      {
+        title: "Rapports",
+        icon: FileText,
+        id: "reports",
       }
     ],
   },
@@ -185,6 +190,11 @@ export const navigationGroups = [
         title: "BDC Externe",
         icon: Warehouse,
         id: "rental",
+      },
+      {
+        title: "Gestion des Allocataires",
+        icon: Home,
+        id: "housing-management",
       },
       {
         title: "Gestion des fournisseurs",
