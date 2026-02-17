@@ -14,6 +14,7 @@ import { Building, Camera, History, Save, Search, Upload, Activity, Loader2, X, 
 import { toast } from "sonner"
 import { getApiUrl, apiConfig } from "@/lib/api-config"
 import { authUtils } from '@/lib/redux/auth-utils';
+import { ColorThemeManager } from "./color-theme-manager";
 
 // Types
 interface AssociationSettings {
@@ -1244,9 +1245,10 @@ export function AssociationSettings() {
           </div>
 
           <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="general">Général</TabsTrigger>
               <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
+              <TabsTrigger value="theme">Thème</TabsTrigger>
               <TabsTrigger value="bankAccounts">Comptes bancaires du club</TabsTrigger>
               <TabsTrigger value="logs">Journaux d'activité</TabsTrigger>
             </TabsList>
@@ -1566,6 +1568,10 @@ export function AssociationSettings() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="theme" className="space-y-4">
+              <ColorThemeManager />
             </TabsContent>
 
             <TabsContent value="bankAccounts" className="space-y-4">

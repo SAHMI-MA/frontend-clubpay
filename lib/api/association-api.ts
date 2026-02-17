@@ -177,10 +177,10 @@ export const navigationGroups = [
         id: "financial",
       },
       {
-        title: "Rapports",
+        title: "Rapports de Paiements",
         icon: FileText,
-        id: "reports",
-      }
+        id: "payment-reports",
+      },
     ],
   },
   {

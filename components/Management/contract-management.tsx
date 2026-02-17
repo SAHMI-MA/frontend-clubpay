@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToastNotification, useToast } from "@/components/ui/toast-notification"
+import { Combobox } from "@/components/ui/combobox"
 import {
   Plus,
   Search,
@@ -159,6 +160,10 @@ export function ContractManagement() {
     benefits: "",
     terms: "",
     contractType: "player" as "player" | "staff",
+    housingType: "" as "" | "Personal" | "Club Provided",
+    housingPaymentMode: "" as "" | "Club Pays" | "Club Advances and Deducts" | "Shared",
+    clubHousingPercentage: "",
+    occupantHousingPercentage: "",
   })
   const [contractFile, setContractFile] = useState<File | null>(null)
   const [fileUploading, setFileUploading] = useState(false)
@@ -177,6 +182,19 @@ export function ContractManagement() {
   const [editFileUploading, setEditFileUploading] = useState(false);
   const [editUploadedFileId, setEditUploadedFileId] = useState<number | null>(null);
   const [editFileUploadError, setEditFileUploadError] = useState<string | null>(null);
+
+  // Utilities state
+  const [contractUtilities, setContractUtilities] = useState<Array<{
+    utilityType: string;
+    paymentMode: string;
+    billingMode: string;
+    monthlyFlatRate?: number;
+    notes?: string;
+  }>>([]);
+
+  // Multi-step form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 5;
 
   // Toast notification hook
   const { toastState, showToast, hideToast } = useToast()
@@ -397,6 +415,10 @@ export function ContractManagement() {
         signatureBonus: contractForm.hasBonus ? Number(contractForm.signatureBonus) : undefined,
         description: contractForm.description,
         contractFileId: contractFileId,
+        housingType: contractForm.housingType || undefined,
+        housingPaymentMode: (contractForm.housingType === "Club Provided" && contractForm.housingPaymentMode) ? contractForm.housingPaymentMode : undefined,
+        clubHousingPercentage: (contractForm.housingPaymentMode === "Shared" && contractForm.clubHousingPercentage) ? Number(contractForm.clubHousingPercentage) : undefined,
+        occupantHousingPercentage: (contractForm.housingPaymentMode === "Shared" && contractForm.occupantHousingPercentage) ? Number(contractForm.occupantHousingPercentage) : undefined,
       }
 
       console.log("Creating contract with data:", contractData)
@@ -408,14 +430,14 @@ export function ContractManagement() {
         }))
 
         if (createPlayerContract.fulfilled.match(result)) {
-          console.log("✅ Contrat joueur créé avec succès")
-          showToast("Contrat joueur créé avec succès", "success", "Succès")
+          console.log("✅ Contrat joueur généré avec succès")
+          showToast("Contrat joueur généré avec succès", "success", "Succès")
           setIsCreateDialogOpen(false)
           resetForm()
         } else if (createPlayerContract.rejected.match(result)) {
-          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la création du contrat"
-          console.error("❌ Erreur création contrat joueur:", errorMessage)
-          showToast(errorMessage, "error", "Erreur de création")
+          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la génération du contrat"
+          console.error("❌ Erreur génération contrat joueur:", errorMessage)
+          showToast(errorMessage, "error", "Erreur de génération")
         }
       } else {
         const result = await dispatch(createStaffContract({
@@ -426,19 +448,19 @@ export function ContractManagement() {
         }))
 
         if (createStaffContract.fulfilled.match(result)) {
-          console.log("✅ Contrat staff créé avec succès")
-          showToast("Contrat staff créé avec succès", "success", "Succès")
+          console.log("✅ Contrat staff généré avec succès")
+          showToast("Contrat staff généré avec succès", "success", "Succès")
           setIsCreateDialogOpen(false)
           resetForm()
         } else if (createStaffContract.rejected.match(result)) {
-          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la création du contrat"
-          console.error("❌ Erreur création contrat staff:", errorMessage)
-          showToast(errorMessage, "error", "Erreur de création")
+          const errorMessage = (result.payload as any)?.message || (result.error as any)?.message || "Erreur lors de la génération du contrat"
+          console.error("❌ Erreur génération contrat staff:", errorMessage)
+          showToast(errorMessage, "error", "Erreur de génération")
         }
       }
     } catch (error: any) {
-      console.error("Échec de la création du contrat:", error)
-      const errorMessage = error?.message || "Erreur inattendue lors de la création du contrat"
+      console.error("Échec de la génération du contrat:", error)
+      const errorMessage = error?.message || "Erreur inattendue lors de la génération du contrat"
       showToast(errorMessage, "error", "Erreur")
     }
   }
@@ -458,10 +480,16 @@ export function ContractManagement() {
       benefits: "",
       terms: "",
       contractType: "player",
+      housingType: "",
+      housingPaymentMode: "",
+      clubHousingPercentage: "",
+      occupantHousingPercentage: "",
     })
     setContractFile(null)
     setUploadedFileId(null)
     setUploadedFileName(null)
+    setContractUtilities([])
+    setCurrentStep(1)
   }
 
   // File upload handler
@@ -618,7 +646,7 @@ export function ContractManagement() {
         return sum + (salary || 0);
       }, 0),
     },
-  }
+  };
 
   const validateContractDates = (startDate: string, endDate: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -687,239 +715,515 @@ export function ContractManagement() {
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
-                Nouveau contrat
+                Générer un contrat
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Créer un nouveau contrat</DialogTitle>
-                <DialogDescription>Créer un nouveau contrat joueur ou staff avec conditions</DialogDescription>
+                <DialogTitle>Générer un nouveau contrat</DialogTitle>
+                <DialogDescription>
+                  Étape {currentStep} sur {totalSteps}
+                </DialogDescription>
               </DialogHeader>
+
+              {/* Progress Indicator */}
+              <div className="flex items-center gap-2 mb-4">
+                {Array.from({ length: totalSteps }).map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-2 flex-1 rounded-full transition-colors ${
+                      index + 1 <= currentStep ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                    }`}
+                  />
+                ))}
+              </div>
+
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="contractType">Type de contrat</Label>
-                    <Select
-                      value={contractForm.contractType}
-                      onValueChange={(value) => setContractForm({ ...contractForm, contractType: value as "player" | "staff" })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner le type de contrat" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="player">Contrat joueur</SelectItem>
-                        <SelectItem value="staff">Contrat staff</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="title">Titre du contrat</Label>
-                    <Input
-                      id="title"
-                      value={contractForm.title}
-                      onChange={(e) => setContractForm({ ...contractForm, title: e.target.value })}
-                      placeholder="ex : Contrat joueur professionnel"
-                    />
-                  </div>
+                {/* Step 1: Basic Information */}
+                {currentStep === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Informations de Base</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="contractType">Type de contrat</Label>
+                        <Select
+                          value={contractForm.contractType}
+                          onValueChange={(value) => setContractForm({ ...contractForm, contractType: value as "player" | "staff" })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner le type de contrat" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="player">Contrat joueur</SelectItem>
+                            <SelectItem value="staff">Contrat staff</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="title">Titre du contrat</Label>
+                        <Input
+                          id="title"
+                          value={contractForm.title}
+                          onChange={(e) => setContractForm({ ...contractForm, title: e.target.value })}
+                          placeholder="ex : Contrat joueur professionnel"
+                        />
+                      </div>
 
-                  {contractForm.contractType === "player" ? (
-                    <div>
-                      <Label htmlFor="playerId">Sélectionner un joueur</Label>
-                      <Select
-                        value={contractForm.playerId}
-                        onValueChange={(value) => setContractForm({ ...contractForm, playerId: value })}
-                        disabled={playersLoading}
+                      {contractForm.contractType === "player" ? (
+                        <div className="col-span-2">
+                          <Label htmlFor="playerId">Sélectionner un joueur</Label>
+                          <Combobox
+                            options={players.map((player: Player) => ({
+                              value: player.id.toString(),
+                              label: `${player.firstName} ${player.lastName}`,
+                              group: player.team?.name || "Sans équipe",
+                              keywords: `${player.firstName} ${player.lastName} ${player.position || ''} ${player.team?.name || ''}`.toLowerCase()
+                            }))}
+                            value={contractForm.playerId}
+                            onValueChange={(value) => setContractForm({ ...contractForm, playerId: value })}
+                            placeholder={playersLoading ? "Chargement des joueurs..." : players.length === 0 ? "Aucun joueur disponible" : "Sélectionner un joueur"}
+                            searchPlaceholder="Rechercher un joueur..."
+                            emptyText="Aucun joueur trouvé."
+                            disabled={playersLoading}
+                          />
+                        </div>
+                      ) : (
+                        <div className="col-span-2">
+                          <Label htmlFor="staffId">Sélectionner un membre du staff</Label>
+                          <Combobox
+                            options={staff.map((staffMember: Staff) => ({
+                              value: staffMember.id.toString(),
+                              label: `${staffMember.firstName} ${staffMember.lastName}`,
+                              group: staffMember.team?.name || "Sans équipe",
+                              keywords: `${staffMember.firstName} ${staffMember.lastName} ${staffMember.role || ''} ${staffMember.team?.name || ''}`.toLowerCase()
+                            }))}
+                            value={contractForm.staffId}
+                            onValueChange={(value) => setContractForm({ ...contractForm, staffId: value })}
+                            placeholder={staffLoading ? "Chargement du staff..." : staff.length === 0 ? "Aucun staff disponible" : "Sélectionner un membre du staff"}
+                            searchPlaceholder="Rechercher un membre du staff..."
+                            emptyText="Aucun membre trouvé."
+                            disabled={staffLoading}
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="startDate">Date de début</Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          min={new Date().toISOString().split('T')[0]}
+                          value={contractForm.startDate}
+                          onChange={(e) => setContractForm({ ...contractForm, startDate: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="endDate">Date de fin</Label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          min={contractForm.startDate || new Date().toISOString().split('T')[0]}
+                          value={contractForm.endDate}
+                          onChange={(e) => setContractForm({ ...contractForm, endDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Financial Information */}
+                {currentStep === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Informations Financières</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="salary">Salaire Mensuel (MAD)</Label>
+                        <Input
+                          id="salary"
+                          type="number"
+                          value={contractForm.salary}
+                          onChange={(e) => setContractForm({ ...contractForm, salary: e.target.value })}
+                          placeholder="85000"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="hasBonus"
+                            checked={contractForm.hasBonus || false}
+                            onChange={(e) => setContractForm({ ...contractForm, hasBonus: e.target.checked })}
+                          />
+                          <Label htmlFor="hasBonus">Inclure des primes dans le contrat</Label>
+                        </div>
+                      </div>
+
+                      {contractForm.hasBonus && (
+                        <div className="col-span-2">
+                          <Label htmlFor="signatureBonus">Prime de signature (MAD)</Label>
+                          <Input
+                            id="signatureBonus"
+                            type="number"
+                            value={contractForm.signatureBonus}
+                            onChange={(e) => setContractForm({ ...contractForm, signatureBonus: e.target.value })}
+                            placeholder="15000"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Housing Configuration */}
+                {currentStep === 3 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Configuration du Logement</h3>
+                    
+                    <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="housingType">Type de Logement</Label>
+                          <Select
+                            value={contractForm.housingType}
+                            onValueChange={(value) => setContractForm({ 
+                              ...contractForm, 
+                              housingType: value as any,
+                              housingPaymentMode: value === "Personal" ? "" : contractForm.housingPaymentMode,
+                              clubHousingPercentage: value === "Personal" ? "" : contractForm.clubHousingPercentage,
+                              occupantHousingPercentage: value === "Personal" ? "" : contractForm.occupantHousingPercentage,
+                            })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner le type de logement" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Personal">Logement personnel</SelectItem>
+                              <SelectItem value="Club Provided">Logement fourni par le club</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {contractForm.housingType === "Club Provided" && (
+                          <>
+                            <div>
+                              <Label htmlFor="housingPaymentMode">Mode de Prise en Charge</Label>
+                              <Select
+                                value={contractForm.housingPaymentMode}
+                                onValueChange={(value) => setContractForm({ 
+                                  ...contractForm, 
+                                  housingPaymentMode: value as any,
+                                  clubHousingPercentage: value === "Shared" ? contractForm.clubHousingPercentage : "",
+                                  occupantHousingPercentage: value === "Shared" ? contractForm.occupantHousingPercentage : "",
+                                })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner le mode de paiement" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Club Pays">Loyer payé par le club</SelectItem>
+                                  <SelectItem value="Club Advances and Deducts">Loyer avancé puis déduit du salaire</SelectItem>
+                                  <SelectItem value="Shared">Partagé (club % / occupant %)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {contractForm.housingPaymentMode === "Shared" && (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="clubHousingPercentage">Part du Club (%)</Label>
+                                  <Input
+                                    id="clubHousingPercentage"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={contractForm.clubHousingPercentage}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const occupantValue = value ? String(100 - Number(value)) : "";
+                                      setContractForm({ 
+                                        ...contractForm, 
+                                        clubHousingPercentage: value,
+                                        occupantHousingPercentage: occupantValue
+                                      });
+                                    }}
+                                    placeholder="50"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="occupantHousingPercentage">Part de l'Occupant (%)</Label>
+                                  <Input
+                                    id="occupantHousingPercentage"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={contractForm.occupantHousingPercentage}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const clubValue = value ? String(100 - Number(value)) : "";
+                                      setContractForm({ 
+                                        ...contractForm, 
+                                        occupantHousingPercentage: value,
+                                        clubHousingPercentage: clubValue
+                                      });
+                                    }}
+                                    placeholder="50"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                  </div>
+                )}
+
+                {/* Step 4: Utilities Configuration */}
+                {currentStep === 4 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Configuration des Charges</h3>
+                    
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setContractUtilities([
+                            ...contractUtilities,
+                            {
+                              utilityType: 'Water',
+                              paymentMode: 'Club Pays',
+                              billingMode: 'Flat Rate',
+                              monthlyFlatRate: 0,
+                              notes: '',
+                            },
+                          ]);
+                        }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder={playersLoading ? "Chargement des joueurs..." : players.length === 0 ? "Aucun joueur disponible" : "Sélectionner un joueur"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(() => {
-                            console.log('🔍 Rendu du menu déroulant des joueurs, joueurs:', players, 'chargement:', playersLoading)
-                            if (players.length === 0 && !playersLoading) {
-                              return (
-                                <SelectItem value="no-players" disabled>
-                                  Aucun joueur disponible
-                                </SelectItem>
-                              )
-                            }
-                            return players.map((player: Player) => {
-                              console.log('🔍 Rendu du joueur:', player)
-                              return (
-                                <SelectItem key={player.id} value={player.id.toString()}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">
-                                      {player.firstName} {player.lastName}
-                                    </span>
-                                    <span className="text-sm text-gray-500">
-                                      {player.position} {player.team?.name ? `• ${player.team.name}` : ''}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              )
-                            })
-                          })()}
-                        </SelectContent>
-                      </Select>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ajouter une Charge
+                      </Button>
                     </div>
-                  ) : (
+
+                    {contractUtilities.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Aucune charge configurée. Cliquez sur "Ajouter une Charge" pour commencer.
+                      </div>
+                    )}
+
+                    {contractUtilities.length > 0 && (
+                      <div className="space-y-3">
+                        {contractUtilities.map((utility, index) => (
+                          <div key={index} className="border rounded-md p-4 bg-muted/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Charge {index + 1}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newUtilities = contractUtilities.filter((_, i) => i !== index);
+                                  setContractUtilities(newUtilities);
+                                }}
+                              >
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label>Type de Charge</Label>
+                                <Select
+                                  value={utility.utilityType}
+                                  onValueChange={(value) => {
+                                    const newUtilities = [...contractUtilities];
+                                    newUtilities[index].utilityType = value;
+                                    setContractUtilities(newUtilities);
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Water">Eau</SelectItem>
+                                    <SelectItem value="Electricity">Électricité</SelectItem>
+                                    <SelectItem value="Internet">Internet</SelectItem>
+                                    <SelectItem value="Building Fees">Syndic / Autres</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label>Qui Paie ?</Label>
+                                <Select
+                                  value={utility.paymentMode}
+                                  onValueChange={(value) => {
+                                    const newUtilities = [...contractUtilities];
+                                    newUtilities[index].paymentMode = value;
+                                    setContractUtilities(newUtilities);
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Club Pays">Payé par le club</SelectItem>
+                                    <SelectItem value="Deducted from Salary">Déduit du salaire</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label>Mode de Facturation</Label>
+                                <Select
+                                  value={utility.billingMode}
+                                  onValueChange={(value) => {
+                                    const newUtilities = [...contractUtilities];
+                                    newUtilities[index].billingMode = value;
+                                    if (value === 'Actual') {
+                                      newUtilities[index].monthlyFlatRate = undefined;
+                                    }
+                                    setContractUtilities(newUtilities);
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Flat Rate">Forfait mensuel</SelectItem>
+                                    <SelectItem value="Actual">Réel (selon facture)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {utility.billingMode === 'Flat Rate' && (
+                                <div>
+                                  <Label>Montant Mensuel (MAD)</Label>
+                                  <Input
+                                    type="number"
+                                    value={utility.monthlyFlatRate || ''}
+                                    onChange={(e) => {
+                                      const newUtilities = [...contractUtilities];
+                                      newUtilities[index].monthlyFlatRate = e.target.value ? Number(e.target.value) : undefined;
+                                      setContractUtilities(newUtilities);
+                                    }}
+                                    placeholder="500"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label>Notes</Label>
+                              <Input
+                                value={utility.notes || ''}
+                                onChange={(e) => {
+                                  const newUtilities = [...contractUtilities];
+                                  newUtilities[index].notes = e.target.value;
+                                  setContractUtilities(newUtilities);
+                                }}
+                                placeholder="Informations complémentaires..."
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 5: Documentation & Terms */}
+                {currentStep === 5 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Documentation & Conditions</h3>
+                    
                     <div>
-                      <Label htmlFor="staffId">Sélectionner un membre du staff</Label>
-                      <Select
-                        value={contractForm.staffId}
-                        onValueChange={(value) => setContractForm({ ...contractForm, staffId: value })}
-                        disabled={staffLoading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={staffLoading ? "Chargement du staff..." : staff.length === 0 ? "Aucun staff disponible" : "Sélectionner un membre du staff"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(() => {
-                            console.log('🔍 Rendu du menu déroulant du staff, staff:', staff, 'chargement:', staffLoading)
-                            if (staff.length === 0 && !staffLoading) {
-                              return (
-                                <SelectItem value="no-staff" disabled>
-                                  Aucun staff disponible
-                                </SelectItem>
-                              )
-                            }
-                            return staff.map((staffMember: Staff) => {
-                              console.log('🔍 Rendu du membre du staff:', staffMember)
-                              return (
-                                <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">
-                                      {staffMember.firstName} {staffMember.lastName}
-                                    </span>
-                                    <span className="text-sm text-gray-500">
-                                      {staffMember.role} {staffMember.team?.name ? `• ${staffMember.team.name}` : ''}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              )
-                            })
-                          })()}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  <div>
-                    <Label htmlFor="salary">Salaire Mensuel (MAD)</Label>
-                    <Input
-                      id="salary"
-                      type="number"
-                      value={contractForm.salary}
-                      onChange={(e) => setContractForm({ ...contractForm, salary: e.target.value })}
-                      placeholder="85000"
-                    />
-                  </div>
-
-                  {/* Has Bonus checkbox */}
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="hasBonus"
-                        checked={contractForm.hasBonus || false}
-                        onChange={(e) => setContractForm({ ...contractForm, hasBonus: e.target.checked })}
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        rows={3}
+                        value={contractForm.description}
+                        onChange={(e) => setContractForm({ ...contractForm, description: e.target.value })}
+                        placeholder="Description du contrat et détails clés..."
                       />
-                      <Label htmlFor="hasBonus">Inclure des primes dans le contrat</Label>
                     </div>
-                  </div>
 
-                  {/* Signature Bonus - only shown if hasBonus is true */}
-                  {contractForm.hasBonus && (
                     <div>
-                      <Label htmlFor="signatureBonus">Prime de signature (MAD)</Label>
-                      <Input
-                        id="signatureBonus"
-                        type="number"
-                        value={contractForm.signatureBonus}
-                        onChange={(e) => setContractForm({ ...contractForm, signatureBonus: e.target.value })}
-                        placeholder="15000"
+                      <Label htmlFor="terms">Conditions générales</Label>
+                      <Textarea
+                        id="terms"
+                        rows={3}
+                        value={contractForm.terms}
+                        onChange={(e) => setContractForm({ ...contractForm, terms: e.target.value })}
+                        placeholder="Conditions, clauses et spécificités..."
                       />
                     </div>
-                  )}
-                  <div>
-                    <Label htmlFor="startDate">Date de début</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]} // Prevent past dates
-                      value={contractForm.startDate}
-                      onChange={(e) => setContractForm({ ...contractForm, startDate: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="endDate">Date de fin</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      min={contractForm.startDate || new Date().toISOString().split('T')[0]} // End date must be after start date
-                      value={contractForm.endDate}
-                      onChange={(e) => setContractForm({ ...contractForm, endDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={contractForm.description}
-                    onChange={(e) => setContractForm({ ...contractForm, description: e.target.value })}
-                    placeholder="Description du contrat et détails clés..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="terms">Conditions générales</Label>
-                  <Textarea
-                    id="terms"
-                    value={contractForm.terms}
-                    onChange={(e) => setContractForm({ ...contractForm, terms: e.target.value })}
-                    placeholder="Conditions, clauses et spécificités..."
-                  />
-                </div>
 
-                <div className="col-span-2">
-                  <Label htmlFor="contractFile">Fichier du contrat (PDF, DOCX, etc.)</Label>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      id="contractFile"
-                      type="file"
-                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                      onChange={e => {
-                        if (e.target.files && e.target.files[0]) {
-                          setContractFile(e.target.files[0])
-                          setUploadedFileId(null)
-                          setUploadedFileName(null)
-                        } else {
-                          setContractFile(null)
-                          setUploadedFileId(null)
-                          setUploadedFileName(null)
-                        }
-                      }}
-                      disabled={fileUploading}
-                    />
-                    <Button type="button" onClick={handleFileUpload} disabled={!contractFile || fileUploading || !!uploadedFileId}>
-                      {fileUploading ? 'Téléversement...' : uploadedFileId ? 'Téléversé' : 'Téléverser le fichier'}
-                    </Button>
+                    <div>
+                      <Label htmlFor="contractFile">Fichier du contrat (PDF, DOCX, etc.)</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          id="contractFile"
+                          type="file"
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                          onChange={e => {
+                            if (e.target.files && e.target.files[0]) {
+                              setContractFile(e.target.files[0])
+                              setUploadedFileId(null)
+                              setUploadedFileName(null)
+                            } else {
+                              setContractFile(null)
+                              setUploadedFileId(null)
+                              setUploadedFileName(null)
+                            }
+                          }}
+                          disabled={fileUploading}
+                        />
+                        <Button type="button" onClick={handleFileUpload} disabled={!contractFile || fileUploading || !!uploadedFileId}>
+                          {fileUploading ? 'Téléversement...' : uploadedFileId ? 'Téléversé' : 'Téléverser le fichier'}
+                        </Button>
+                      </div>
+                      {contractFile && !uploadedFileId && (
+                        <div className="text-xs text-gray-600 mt-1">Sélectionné : {contractFile.name}</div>
+                      )}
+                      {uploadedFileId && uploadedFileName && (
+                        <div className="text-xs text-green-600 mt-1">Téléversé : {uploadedFileName}</div>
+                      )}
+                      {fileUploadError && (
+                        <div className="text-xs text-red-600 mt-1">{fileUploadError}</div>
+                      )}
+                    </div>
                   </div>
-                  {contractFile && !uploadedFileId && (
-                    <div className="text-xs text-gray-600 mt-1">Sélectionné : {contractFile.name}</div>
-                  )}
-                  {uploadedFileId && uploadedFileName && (
-                    <div className="text-xs text-green-600 mt-1">Téléversé : {uploadedFileName}</div>
-                  )}
-                  {fileUploadError && (
-                    <div className="text-xs text-red-600 mt-1">{fileUploadError}</div>
-                  )}
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Annuler
+                )}
+
+                {/* Step Navigation Buttons */}
+                <div className="flex justify-between pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (currentStep === 1) {
+                        setIsCreateDialogOpen(false);
+                      } else {
+                        setCurrentStep(currentStep - 1);
+                      }
+                    }}
+                  >
+                    {currentStep === 1 ? 'Annuler' : 'Précédent'}
                   </Button>
-                  <Button onClick={handleCreateContract}>Créer le contrat</Button>
+
+                  {currentStep < totalSteps ? (
+                    <Button
+                      type="button"
+                      onClick={() => setCurrentStep(currentStep + 1)}
+                    >
+                      Suivant
+                    </Button>
+                  ) : (
+                    <Button onClick={handleCreateContract}>
+                      Générer le contrat
+                    </Button>
+                  )}
                 </div>
               </div>
             </DialogContent>

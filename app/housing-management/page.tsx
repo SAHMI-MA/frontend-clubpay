@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Home, MapPin, Plus, User, Users as UsersIcon, Calendar, Edit, Trash2, Building, Loader2 } from 'lucide-react';
+import { Home, MapPin, Plus, User, Users as UsersIcon, Calendar, Edit, Trash2, Building, Loader2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   housingApi, 
@@ -25,12 +25,14 @@ import {
   CreateHousingAllocationDto,
   HousingStatistics
 } from '@/lib/api/housing-api';
+import { HousingInventoryManager } from '@/components/Operations/housing-inventory-manager';
 
 export default function HousingManagementPage() {
-  const [activeTab, setActiveTab] = useState<'housings' | 'allocations'>('housings');
+  const [activeTab, setActiveTab] = useState<'housings' | 'allocations' | 'inventory'>('housings');
   const [housingDialogOpen, setHousingDialogOpen] = useState(false);
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [editingHousing, setEditingHousing] = useState<Housing | null>(null);
+  const [selectedHousingForInventory, setSelectedHousingForInventory] = useState<Housing | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
@@ -225,6 +227,24 @@ export default function HousingManagementPage() {
     return <Badge variant={variants[status] as any}>{labels[status]}</Badge>;
   };
 
+  const getStatusColor = (status: HousingStatus) => {
+    const colors = {
+      available: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+      occupied: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+      maintenance: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100'
+    };
+    return colors[status];
+  };
+
+  const getStatusLabel = (status: HousingStatus) => {
+    const labels = {
+      available: 'Disponible',
+      occupied: 'Occupé',
+      maintenance: 'Maintenance'
+    };
+    return labels[status];
+  };
+
   const getTypeLabel = (type: HousingType) => {
     const labels = {
       apartment: 'Appartement',
@@ -339,10 +359,11 @@ export default function HousingManagementPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'housings' | 'allocations' | 'inventory')}>
+            <TabsList className="grid grid-cols-3">
               <TabsTrigger value="housings">Logements</TabsTrigger>
               <TabsTrigger value="allocations">Allocations</TabsTrigger>
+              <TabsTrigger value="inventory">Inventaire</TabsTrigger>
             </TabsList>
 
             {/* Housings Tab */}
@@ -685,6 +706,65 @@ export default function HousingManagementPage() {
                   ))}
                 </TableBody>
               </Table>
+            </TabsContent>
+
+            {/* Inventory Tab */}
+            <TabsContent value="inventory" className="space-y-4">
+              {!selectedHousingForInventory ? (
+                <div className="space-y-4">
+                  <div className="text-center py-8">
+                    <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Sélectionnez un Logement</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Choisissez un logement pour gérer son inventaire
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {housings.map((housing) => (
+                      <Card
+                        key={housing.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => setSelectedHousingForInventory(housing)}
+                      >
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <Home className="h-5 w-5 text-primary" />
+                              <h4 className="font-semibold">{housing.name}</h4>
+                            </div>
+                            <Badge className={getStatusColor(housing.status)}>
+                              {getStatusLabel(housing.status)}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              <span>{housing.address}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4" />
+                              <span>{getTypeLabel(housing.type)}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedHousingForInventory(null)}
+                  >
+                    ← Retour à la Liste
+                  </Button>
+                  <HousingInventoryManager
+                    housingId={selectedHousingForInventory.id}
+                    housingName={selectedHousingForInventory.name}
+                  />
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
