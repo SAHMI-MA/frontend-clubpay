@@ -37,6 +37,20 @@ const axiosInstance = axios.create({
   baseURL: apiConfig.baseUrl,
 });
 
+// Add request interceptor to include auth token
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export interface SalaryPayment {
   id: string | number;
   employeeId: string;
@@ -92,7 +106,7 @@ export async function createBulkSalaryPaymentForDepartement(
   departmentId: number
 ): Promise<SalaryPayment[]> {
   const res = await axiosInstance.post<SalaryPayment[]>(`/hr/salary-payments/bulk/department/${departmentId}`, body);
-  return res.data;
+  return Array.isArray(res.data) ? res.data : [];
 }
 
 export async function createBulkSalaryPaymentForPosition(
@@ -100,7 +114,7 @@ export async function createBulkSalaryPaymentForPosition(
   positionId: number
 ): Promise<SalaryPayment[]> {
   const res = await axiosInstance.post<SalaryPayment[]>(`/hr/salary-payments/bulk/position/${positionId}`, body);
-  return res.data;
+  return Array.isArray(res.data) ? res.data : [];
 }
 
 export interface UpdateSalaryPaymentBody {
@@ -110,8 +124,10 @@ export interface UpdateSalaryPaymentBody {
 
 export async function listSalaryPayments(): Promise<SalaryPayment[]> {
   const res = await axiosInstance.get<SalaryPayment[]>("/hr/salary-payments")
+  // Ensure res.data is an array before mapping
+  const data = Array.isArray(res.data) ? res.data : [];
   // Map backend response to frontend shape if needed
-  return res.data.map((p: any) => ({
+  return data.map((p: any) => ({
     ...p,
     id: p.id,
     employeeId: p.employeeId,
